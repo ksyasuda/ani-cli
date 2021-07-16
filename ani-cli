@@ -70,19 +70,10 @@ get_links () {
 
 	dpage_url=$(
 	curl -s "https://gogoanime.vc/$anime_id-episode-$ep_no" |
-	sed -n -E '
-		/^[[:space:]]*<li class="dowloads">/{
-		s/.*href="([^"]*)".*/\1/p
-		q
-		}')
+	sed -n -E 's_^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)" >.*_https:\1_p')
 
 	curl -s "$dpage_url" |
-	sed -n -E '
-		/^[[:space:]]*href="([^"]*\.mp4)".*/{
-		s/^[[:space:]]*href="([^"]*\.mp4)".*/\1/p
-		q
-		}
-		'
+	sed -n -E "s/^[[:space:]]*sources:\[\{file\: '([^']*)'.*/\1/p" | sed 1q
 }
 
 dep_ch () {
@@ -174,6 +165,8 @@ open_episode () {
 	anime_id=$1
 	episode=$2
 
+	# clear the screen
+	printf '\x1B[2J\x1B[1;1H'
 	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
 		err "Episode out of range"
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
@@ -311,7 +304,7 @@ while :; do
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
 			;;
 
-		q) 
+		q)
 			break;;
 
 		*)
