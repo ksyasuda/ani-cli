@@ -39,7 +39,7 @@ err () {
 
 search_anime () {
 	# get anime name along with its id
-	search=$1
+    search=$(printf '%s' "$1" | tr ' ' '-')
 	titlepattern='<a href="/category/'
 
 	curl -s "https://gogoanime.vc//search.html" \
@@ -63,17 +63,28 @@ search_eps () {
 		'
 }
 
-get_links () {
+get_dpage_link() {
 	# get the download page url
 	anime_id=$1
 	ep_no=$2
 
-	dpage_url=$(
 	curl -s "https://gogoanime.vc/$anime_id-episode-$ep_no" |
-	sed -n -E 's_^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)" >.*_https:\1_p')
+	sed -n -E '
+		/^[[:space:]]*<li class="dowloads">/{
+		s/.*href="([^"]*)".*/\1/p
+		q
+		}'
+}
+
+get_links () {
+	dpage_url="$1"
 
 	curl -s "$dpage_url" |
-	sed -n -E "s/^[[:space:]]*sources:\[\{file\: '([^']*)'.*/\1/p" | sed 1q
+	sed -n -E '
+		/href="([^"]*)" download>Download/{
+		s/href="([^"]*)" download>Download/\1/p
+		q
+		}' | tr -d ' '
 }
 
 dep_ch () {
@@ -176,7 +187,8 @@ open_episode () {
 
 	printf "Getting data for episode %d\n" $episode
 
-	video_url=$(get_links "$anime_id" "$episode")
+	dpage_url=$(get_dpage_link "$anime_id" "$episode")
+	video_url=$(get_links "$dpage_url")
 
 	case $video_url in
 		*streamtape*)
@@ -197,7 +209,7 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		setsid -f $player_fn "$video_url" >/dev/null 2>&1
+		setsid -f $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
