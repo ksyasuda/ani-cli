@@ -10,7 +10,6 @@ configuration {
     scroll-method:			0;
     disable-history:			false;
     sidebar-mode:			true;
-    markup:                 true;
 }
 
 @import "~/.ani-cli/arc_dark_transparent_colors.rasi"
