@@ -6,6 +6,7 @@ player_fn="mpv"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
+history_db="history.sqlite3"
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -15,47 +16,47 @@ c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
+rofi_cmd="rofi -config ~/SudacodeRice/rofi/rofidmenu.rasi -dmenu -l 10 -i -p 'Enter Choice:'"
 
-help_text () {
+help_text() {
 	while IFS= read line; do
 		printf "%s\n" "$line"
 	done <<-EOF
-	USAGE: $prog <query>
-	 -h	 show this help text
-	 -d	 download episode
-	 -H	 continue where you left off
+		USAGE: $prog <query>
+		 -h  show this help text
+		 -d  download episode
+		 -H  continue where you left off
 	EOF
 }
 
-
-die () {
+die() {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 	exit 1
 }
 
-err () {
+err() {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
-search_anime () {
+search_anime() {
 	# get anime name along with its id
-    search=$(printf '%s' "$1" | tr ' ' '-')
+	search=$(printf '%s' "$1" | tr ' ' '-')
 	titlepattern='<a href="/category/'
 
 	curl -s "https://gogoanime.pe//search.html" \
 		-G \
 		-d "keyword=$search" |
-	sed -n -E '
+		sed -n -E '
 		s_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p
 		'
 }
 
-search_eps () {
+search_eps() {
 	# get available episodes for anime_id
 	anime_id=$1
 
 	curl -s "https://gogoanime.pe/category/$anime_id" |
-	sed -n -E '
+		sed -n -E '
 		/^[[:space:]]*<a href="#" class="active" ep_start/{
 		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
 		q
@@ -69,71 +70,137 @@ get_dpage_link() {
 	ep_no=$2
 
 	curl -s "https://gogoanime.pe/$anime_id-episode-$ep_no" |
-	sed -n -E '
+		sed -n -E '
 		/^[[:space:]]*<li class="dowloads">/{
 		s/.*href="([^"]*)".*/\1/p
 		q
 		}'
 }
 
-get_links () {
+get_links() {
 	dpage_url="$1"
 
 	curl -s "$dpage_url" |
-	sed -n -E '
+		sed -n -E '
 		/href="([^"]*)" download>Download/{
 		s/href="([^"]*)" download>Download/\1/p
 		q
 		}' | tr -d ' '
 }
 
-dep_ch () {
+dep_ch() {
 	for dep; do
-		if ! command -v "$dep" >/dev/null ; then
+		if ! command -v "$dep" >/dev/null; then
 			die "Program \"$dep\" not found. Please install it."
 		fi
 	done
 }
 
+check_db() {
+	echo "$1 $2"
+	if [[ "$2" == "search" ]]; then
+		stmt="SELECT DISTINCT COUNT(*) FROM search_history WHERE name = '$1'"
+		res=$(printf "%s\n" "$stmt" | sqlite3 "$history_db")
+		echo "$res"
+		return "$res"
+	else
+		stmt="SELECT DISTINCT COUNT(*) FROM watch_history WHERE anime_name = '$1' AND episode_number = $2"
+		res=$(printf "%s\n" "$stmt" | sqlite3 "$history_db")
+		echo "$res"
+		return "$res"
+	fi
+}
+
+update_date() {
+	if [[ "$2" == "search" ]]; then
+		curdate=$(date +'%Y-%m-%d')
+		stmt="UPDATE search_history SET search_date = '$curdate' WHERE name = '$1'" && return 0 || return 1
+	else
+		curdate=$(date +'%Y-%m-%d')
+		stmt="UPDATE watch_history SET watch_date = '$curdate' WHERE anime_name = '$1' AND episode_number = $2" && return 0 || return 1
+	fi
+}
+
+insert_history() {
+	curdate=$(date +'%Y-%m-%d')
+	check_db "$@"
+	num=$?
+	# echo "$num"
+	if [[ "$num" -gt 0 ]]; then
+		if [[ "$2" == "search" ]]; then
+			printf "%s\n" "Already in search db... Updating search_date"
+		else
+			printf "%s\n" "Already in search db... Updating watch_date"
+		fi
+		update_date "$@"
+	else
+		if [[ "$2" == "search" ]]; then
+			stmt="INSERT INTO search_history(name, search_date) VALUES('$1', '$curdate')"
+			printf "%s\n" "$stmt" | sqlite3 "$history_db"
+		else
+			stmt="INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$1', '$2', '$curdate')"
+			printf "%s\n" "$stmt" | sqlite3 "$history_db"
+		fi
+	fi
+}
+
 # get query
-get_search_query () {
+get_search_query() {
+	stmt="SELECT DISTINCT name FROM search_history"
+	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
+	hist=$(echo "$stmt" | sqlite3 "$history_db")
+	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
 	if [ -z "$*" ]; then
-		printf "Search Anime: "
-		read -r query
+		query=$(printf "%s\n" "${hist[@]}" | rofi -dmenu -l "$cnt" -p "Search Anime:" -config ~/SudacodeRice/rofi/rofidmenu.rasi)
+		# if [[ "$query" != "" ]]; then
+		# 	insert_history "$query" "search"
+		# else
+		# 	echo 'Query empty... Skipping insert'
+		# fi
+		# printf "Search Anime: "
+		# read -r query
 	else
 		query=$*
 	fi
 }
 
 # create history file
-[ -f "$logfile" ] || : > "$logfile"
+[ -f "$logfile" ] || : >"$logfile"
 
 #####################
 ## Anime selection ##
 #####################
 
-anime_selection () {
+anime_selection() {
 	search_results=$*
 	menu_format_string='[%d] %s\n'
 	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
 	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
 
 	count=1
+	menu=()
 	while read anime_id; do
 		# alternating colors for menu
 		[ $((count % 2)) -eq 0 ] &&
 			menu_format_string=$menu_format_string_c1 ||
 			menu_format_string=$menu_format_string_c2
 
-		printf "$menu_format_string" "$count" "$anime_id"
-		count=$((count+1))
+		# printf "$menu_format_string" "$count" "$anime_id"
+		menu+="$count - $anime_id\n"
+		count=$((count + 1))
 	done <<-EOF
-	$search_results
+		$search_results
 	EOF
 
+	user_input=$(printf "${menu[@]}" | rofi -dmenu -config ~/SudacodeRice/rofi/rofidmenu.rasi -l 10 -i -p "Enter number:")
+
+	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
+	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
+	insert_history "$name" "search"
+	echo "Number Chosen: $choice"
 	# User input
-	printf "$c_blue%s$c_green" "Enter number: "
-	read choice
+	# printf "$c_blue%s$c_green" "Enter number: "
+	# read choice
 	printf "$c_reset"
 
 	# Check if input is a number
@@ -146,15 +213,15 @@ anime_selection () {
 			selection_id=$anime_id
 			break
 		fi
-		count=$((count+1))
+		count=$((count + 1))
 	done <<-EOF
-	$search_results
+		$search_results
 	EOF
 
 	[ -z "$selection_id" ] && die "Invalid number entered"
 
 	read last_ep_number <<-EOF
-	$(search_eps "$selection_id")
+		$(search_eps "$selection_id")
 	EOF
 }
 
@@ -162,17 +229,21 @@ anime_selection () {
 ## Ep selection ##
 ##################
 
-episode_selection () {
+episode_selection() {
 	[ $is_download -eq 1 ] &&
 		printf "Range of episodes can be specified: start_number end_number\n"
 
-	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-	read ep_choice_start ep_choice_end
+	# printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+	choice=$(rofi -config ~/SudacodeRice/rofi/rofidmenu.rasi -dmenu -l 1 -i -p "Choose episode:")
+	ep_choice_start=$(printf '%s\n' "$choice" | awk '{print $1}')
+	ep_choice_end=$(printf '%s\n' "$choice" | awk '{print $2}')
+	# echo "$ep_choice_start $ep_choice_end"
+	# read ep_choice_start ep_choice_end
 	printf "$c_reset"
 
 }
 
-open_episode () {
+open_episode() {
 	anime_id=$1
 	episode=$2
 
@@ -180,34 +251,38 @@ open_episode () {
 	printf '\x1B[2J\x1B[1;1H'
 	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
 		err "Episode out of range"
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-		read episode
+		# printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		# read episode
+		episode=$(rofi -dmenu -l 1 -p "${c_blue}Choose episode")
 		printf "$c_reset"
 	fi
 
 	printf "Getting data for episode %d\n" $episode
 
+	insert_history "$anime_id" "$episode"
+
 	dpage_url=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_links "$dpage_url")
 
 	case $video_url in
-		*streamtape*)
-			# If direct download not available then scrape streamtape.com
-			BROWSER=${BROWSER:-firefox}
-			printf "scraping streamtape.com\n"
-			video_url=$(curl -s "$video_url" | sed -n -E '
+	*streamtape*)
+		# If direct download not available then scrape streamtape.com
+		BROWSER=${BROWSER:-firefox}
+		printf "scraping streamtape.com\n"
+		video_url=$(curl -s "$video_url" | sed -n -E '
 				/^<script>document/{
 				s/^[^"]*"([^"]*)" \+ '\''([^'\'']*).*/https:\1\2\&dl=1/p
 				q
 				}
-			');;
+			')
+		;;
 	esac
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number
 		sed -E "
-			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
-		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
+			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode + 1))/
+		" "$logfile" >"${logfile}.new" && mv "${logfile}.new" "$logfile"
 
 		setsid -f $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1
 	else
@@ -235,19 +310,23 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 
 # option parsing
 is_download=0
+list_history=0
 scrape=query
-while getopts 'hdH' OPT; do
+while getopts 'hdHl' OPT; do
 	case $OPT in
-		h)
-			help_text
-			exit 0
-			;;
-		d)
-			is_download=1
-			;;
-		H)
-			scrape=history
-			;;
+	h)
+		help_text
+		exit 0
+		;;
+	d)
+		is_download=1
+		;;
+	H)
+		scrape=history
+		;;
+	l)
+		list_history=1
+		;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -256,22 +335,31 @@ shift $((OPTIND - 1))
 # main #
 ########
 
-case $scrape in
-	query)
-		get_search_query "$*"
-		search_results=$(search_anime "$query")
-		[ -z "$search_results" ] && die "No search results found"
-		anime_selection "$search_results"
-		episode_selection
-		;;
-	history)
-		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
-		[ -z "$search_results" ] && die "History is empty"
-		anime_selection "$search_results"
-		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-		;;
-esac
+if [[ "$list_history" -eq 1 ]]; then
+	stmt="SELECT DISTINCT name FROM search_history"
+	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
+	hist=$(echo "$stmt" | sqlite3 "$history_db")
+	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
+	printf "%s\n" "${hist[@]}" | rofi -config ~/SudacodeRice/rofi/rofidmenu.rasi -dmenu -l "$cnt" -i -p "Search History"
+	exit 0
+fi
 
+case $scrape in
+query)
+
+	get_search_query "$*"
+	search_results=$(search_anime "$query")
+	[ -z "$search_results" ] && die "No search results found"
+	anime_selection "$search_results"
+	episode_selection
+	;;
+history)
+	search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+	[ -z "$search_results" ] && die "History is empty"
+	anime_selection "$search_results"
+	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+	;;
+esac
 
 { # checking input
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
@@ -286,14 +374,14 @@ esac
 
 # add anime to history file
 grep -q -w "${selection_id}" "$logfile" ||
-	printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
+	printf "%s\t%d\n" "$selection_id" $((episode + 1)) >>"$logfile"
 
-for ep in $episodes
-do
+for ep in $episodes; do
 	open_episode "$selection_id" "$ep"
 done
 episode=${ep_choice_end:-$ep_choice_start}
 
+choice=''
 while :; do
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
@@ -302,31 +390,36 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
+	printf "$c_reset"
 	read choice
+
+	# choice=$(printf '%s\n' "${args[@]}" | rofi -dmenu -l 8 -i -p "Enter choice:")
+	# choice=$(printf '%s\n' "$choice" | awk '{print $1}')
 	printf "$c_reset"
 	case $choice in
-		n)
-			episode=$((episode + 1))
-			;;
-		p)
-			episode=$((episode - 1))
-			;;
+	n)
+		episode=$((episode + 1))
+		;;
+	p)
+		episode=$((episode - 1))
+		;;
 
-		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-			read episode
-			printf "$c_reset"
-			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
-			;;
+	s)
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		read episode
+		printf "$c_reset"
+		[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
+		;;
 
-		r) ;;
+	r) ;;
 
-		q)
-			break;;
+	q)
+		break
+		;;
 
-		*)
-			die "invalid choice"
-			;;
+	*)
+		die "invalid choice"
+		;;
 	esac
-
 	open_episode "$selection_id" "$episode"
 done
