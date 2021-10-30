@@ -157,9 +157,12 @@ insert_history() {
 get_search_query() {
 	stmt="SELECT DISTINCT name FROM search_history"
 	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
-	hist=$(echo "$stmt" | sqlite3 "$history_db")
-	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
+	hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
+	echo "HISTORY: $hist"
+	echo "COUNT: $cnt"
 	if [ -z "$*" ]; then
+		echo "QUERYING"
 		query=$(printf "%s\n" "${hist[@]}" \
 			| rofi -dmenu -l "$cnt" -p "Search Anime:" \
 			-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
@@ -246,14 +249,19 @@ episode_selection() {
 	[ $is_download -eq 1 ] &&
 		printf "Range of episodes can be specified: start_number end_number\n"
 
-	stmt="SELECT DISTINCT episode_number \
-		FROM watch_history WHERE anime_name = '$anime_id'"
-	cnt_stmt="SELECT DISTINCT COUNT(*) \
-		FROM watch_history WHERE anime_name = '$anime_id'"
-	hist=$(echo "$stmt" | sqlite3 "$history_db")
-	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
-	choice=$(printf "%s\n" "${hist[@]}" | \
-		rofi -dmenu -l "$cnt" -p "Search Anime:" \
+	# stmt="SELECT DISTINCT episode_number \
+	# 	FROM watch_history WHERE anime_name = '$anime_id'"
+	# cnt_stmt="SELECT DISTINCT COUNT(*) \
+	# 	FROM watch_history WHERE anime_name = '$anime_id'"
+	# hist=$(echo "$stmt" | \
+	# 	sqlite3 "$history_db"| awk '{ if ( NR > 2 ) { print } }')
+	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
+	eplist=""
+	echo "NUM EPISODES: $last_ep_number"
+	echo "${eplist[@]}"
+	choice=$(seq 1 10 | \
+		rofi -dmenu -l "$last_ep_number" \
+		-p "Select Episode (1, $last_ep_number):" \
 		-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
 	ep_choice_start=$(printf '%s\n' "$choice" | awk '{print $1}')
 	ep_choice_end=$(printf '%s\n' "$choice" | awk '{print $2}')
@@ -275,12 +283,11 @@ open_episode() {
 			FROM watch_history WHERE anime_name = '$anime_id'"
 		cnt_stmt="SELECT DISTINCT COUNT(*) \
 			FROM watch_history WHERE anime_name = '$anime_id'"
-		hist=$(echo "$stmt" | sqlite3 "$history_db")
-		cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
-		episode=$(printf "%s\n" "${hist[@]}" \
-			| rofi -dmenu -l "$cnt" -p "Choose Episode:" \
+		hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+		cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
+		episode=$(printf "%s\n" "${hist[@]}" | \
+			rofi -dmenu -l "$cnt" -p "Choose Episode:" \
 			-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
-		# episode=$(rofi -dmenu -l 1 -p "Choose episode:")
 		printf "$c_reset"
 	fi
 

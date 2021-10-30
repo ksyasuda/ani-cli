@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DIR="$HOME"/'ani-cli'
+DIR=$HOME/.ani-cli
 DB='history.sqlite3'
 
 log() {
@@ -17,7 +17,8 @@ while getopts 'cdrq' OPT; do
 		;;
 	d)
 		log "Deleting database..."
-		rm -rf "$DIR"/"$DB"
+		echo "$DIR/$DB"
+		rm "$DIR/$DB"
 		log "Database deleted..."
 		;;
 
@@ -33,7 +34,7 @@ while getopts 'cdrq' OPT; do
 		;;
 	q)
 		log "Connecting to database..."
-		sqlite3 "$DIR"/"$DB"
+		sqlite3 "$DIR/$DB"
 		log "Ending connection to databse..."
 		;;
 	*)
