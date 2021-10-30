@@ -1,32 +1,42 @@
 #!/usr/bin/env bash
 
+DIR="$HOME"/'ani-cli/'
 DB='history.sqlite3'
 
-while getopts 'cdr' OPT; do
+log() {
+	printf "%s\n" "$1"
+}
+
+while getopts 'cdrq' OPT; do
 	case "$OPT" in
 	c)
-		printf "%s\n" "Creating database..."
-		sqlite3 "$DB" <sql/anime_search_history.sql
-		sqlite3 "$DB" <sql/watch_history.sql
-		printf "%s\n" "Created database..."
+		log "Creating database..."
+		sqlite3 "$DIR"/"$DB" <sql/anime_search_history.sql
+		sqlite3 "$DIR"/"$DB" <sql/watch_history.sql
+		log "Created database..."
 		;;
 	d)
-		printf "%s\n" "Deleting database..."
-		rm -rf "$DB"
-		printf "%s\n" "Database deleted..."
+		log "Deleting database..."
+		rm -rf "$DIR"/"$DB"
+		log "Database deleted..."
 		;;
 
 	r)
-		printf "%s\n" "Deleting database..."
-		rm -rf "$DB"
-		printf "%s\n" "Database deleted..."
-		printf "%s\n" "Creating database..."
-		sqlite3 "$DB" <sql/anime_search_history.sql
-		sqlite3 "$DB" <sql/watch_history.sql
-		printf "%s\n" "Created database..."
+		log "Deleting database..."
+		rm -rf "$DIR"/"$DB"
+		log "Database deleted..."
+		log "Creating database..."
+		sqlite3 "$DIR"/"$DB" <sql/anime_search_history.sql
+		sqlite3 "$DIR"/"$DB" <sql/watch_history.sql
+		log "Created database..."
+		;;
+	q)
+		log "Connecting to database..."
+		sqlite3 "$DIR"/"$DB"
+		log "Ending connection to databse..."
 		;;
 	*)
-		printf "%s\n" "Don't get here"
+		log "Don't get here"
 		exit 1
 		;;
 	esac

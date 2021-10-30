@@ -6,7 +6,7 @@ player_fn="mpv"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-history_db="history.sqlite3"
+history_db="${XDG_CONFIG_HOME:-$HOME/.ani-cli}/history.sqlite3"
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -16,7 +16,7 @@ c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
-rofi_cmd="rofi -config ~/SudacodeRice/rofi/rofidmenu.rasi -dmenu -l 10 -i -p 'Enter Choice:'"
+rofi_cmd="rofi -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi -dmenu -l 10 -i -p 'Enter Choice:'"
 
 help_text() {
 	while IFS= read line; do
@@ -151,7 +151,7 @@ get_search_query() {
 	hist=$(echo "$stmt" | sqlite3 "$history_db")
 	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
 	if [ -z "$*" ]; then
-		query=$(printf "%s\n" "${hist[@]}" | rofi -dmenu -l "$cnt" -p "Search Anime:" -config ~/SudacodeRice/rofi/rofidmenu.rasi)
+		query=$(printf "%s\n" "${hist[@]}" | rofi -dmenu -l "$cnt" -p "Search Anime:" -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
 		# if [[ "$query" != "" ]]; then
 		# 	insert_history "$query" "search"
 		# else
@@ -192,7 +192,7 @@ anime_selection() {
 		$search_results
 	EOF
 
-	user_input=$(printf "${menu[@]}" | rofi -dmenu -config ~/SudacodeRice/rofi/rofidmenu.rasi -l 10 -i -p "Enter number:")
+	user_input=$(printf "${menu[@]}" | rofi -dmenu -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi -l 10 -i -p "Enter number:")
 
 	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
 	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
@@ -234,7 +234,12 @@ episode_selection() {
 		printf "Range of episodes can be specified: start_number end_number\n"
 
 	# printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-	choice=$(rofi -config ~/SudacodeRice/rofi/rofidmenu.rasi -dmenu -l 1 -i -p "Choose episode:")
+	# choice=$(rofi -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi -dmenu -l 1 -i -p "Choose episode:")
+	stmt="SELECT DISTINCT episode_number FROM watch_history WHERE anime_name = '$anime_id'"
+	cnt_stmt="SELECT DISTINCT COUNT(*) FROM watch_history WHERE anime_name = '$anime_id'"
+	hist=$(echo "$stmt" | sqlite3 "$history_db")
+	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
+	choice=$(printf "%s\n" "${hist[@]}" | rofi -dmenu -l "$cnt" -p "Search Anime:" -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
 	ep_choice_start=$(printf '%s\n' "$choice" | awk '{print $1}')
 	ep_choice_end=$(printf '%s\n' "$choice" | awk '{print $2}')
 	# echo "$ep_choice_start $ep_choice_end"
@@ -253,7 +258,12 @@ open_episode() {
 		err "Episode out of range"
 		# printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 		# read episode
-		episode=$(rofi -dmenu -l 1 -p "${c_blue}Choose episode")
+		stmt="SELECT DISTINCT episode_number FROM watch_history WHERE anime_name = '$anime_id'"
+		cnt_stmt="SELECT DISTINCT COUNT(*) FROM watch_history WHERE anime_name = '$anime_id'"
+		hist=$(echo "$stmt" | sqlite3 "$history_db")
+		cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
+		episode=$(printf "%s\n" "${hist[@]}" | rofi -dmenu -l "$cnt" -p "Choose Episode:" -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
+		# episode=$(rofi -dmenu -l 1 -p "Choose episode:")
 		printf "$c_reset"
 	fi
 
@@ -340,7 +350,7 @@ if [[ "$list_history" -eq 1 ]]; then
 	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
 	hist=$(echo "$stmt" | sqlite3 "$history_db")
 	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
-	printf "%s\n" "${hist[@]}" | rofi -config ~/SudacodeRice/rofi/rofidmenu.rasi -dmenu -l "$cnt" -i -p "Search History"
+	printf "%s\n" "${hist[@]}" | rofi -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi -dmenu -l "$cnt" -i -p "Search History"
 	exit 0
 fi
 
