@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DIR="$HOME"/'ani-cli/'
+DIR="$HOME"/'ani-cli'
 DB='history.sqlite3'
 
 log() {
@@ -11,8 +11,8 @@ while getopts 'cdrq' OPT; do
 	case "$OPT" in
 	c)
 		log "Creating database..."
-		sqlite3 "$DIR"/"$DB" <sql/anime_search_history.sql
-		sqlite3 "$DIR"/"$DB" <sql/watch_history.sql
+		sqlite3 "$DIR"/"$DB" <sql/search_history_tbl.sql
+		sqlite3 "$DIR"/"$DB" <sql/watch_history_tbl.sql
 		log "Created database..."
 		;;
 	d)
@@ -24,10 +24,11 @@ while getopts 'cdrq' OPT; do
 	r)
 		log "Deleting database..."
 		rm -rf "$DIR"/"$DB"
+		mkdir -p "$DIR"
 		log "Database deleted..."
 		log "Creating database..."
-		sqlite3 "$DIR"/"$DB" <sql/anime_search_history.sql
-		sqlite3 "$DIR"/"$DB" <sql/watch_history.sql
+		sqlite3 "$DIR"/"$DB" <sql/search_history_tbl.sql
+		sqlite3 "$DIR"/"$DB" <sql/watch_history_tbl.sql
 		log "Created database..."
 		;;
 	q)
