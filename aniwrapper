@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# not a wrapper around the ani-cli-rofi
+
+options="1. Stream|2. Download|3. Continue|4. Quit|"
+
+choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' \
+	-config ~/.ani-cli/meh.rasi -l 4 -i -p "Enter choice:")
+
+[ "$choice" == "4. Quit" ] && (
+	echo 'Quitting...'
+	exit 0
+)
+
+selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
+
+if [[ "$selection" == "1." ]]; then
+	echo "STREAMING..."
+	ani-cli
+elif [[ "$selection" == "2." ]]; then
+	dl_dir=$(rofi -dmenu -config ~/.ani-cli/meh.rasi \
+		-l 1 -p "Enter downlaod dir:")
+	# if dl_dir is none set to current directory
+	[ "$dl_dir" == "" ] && dl_dir="$HOME/Videos/sauce/"
+	ani-cli -d "$dl_dir"
+elif [[ "$selection" == "3." ]]; then
+	ani-cli -H
+fi
