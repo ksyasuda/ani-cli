@@ -16,6 +16,7 @@ c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
+VERBOSE=1
 
 help_text() {
 	while IFS= read line; do
@@ -95,8 +96,17 @@ dep_ch() {
 	done
 }
 
+check_anime_name() {
+	printf "%s\n" "VAR: $1"
+	if [[ "$1" == "" ]]; then
+		printf "%s\n" "Passed in name is null"
+		return 1
+	fi
+	return 0
+}
+
 check_db() {
-	echo "$1 $2"
+	# echo "$1 $2"
 	if [[ "$2" == "search" ]]; then
 		stmt="SELECT DISTINCT COUNT(*) FROM search_history \
 			WHERE name = '$1'"
@@ -116,22 +126,27 @@ update_date() {
 	if [[ "$2" == "search" ]]; then
 		curdate=$(date +'%Y-%m-%d')
 		stmt="UPDATE search_history SET search_date = '$curdate' \
-			WHERE name = '$1'" \
-			&& return 0 || return 1
+			WHERE name = '$1'" &&
+			return 0 || return 1
 	else
 		curdate=$(date +'%Y-%m-%d')
 		stmt="UPDATE watch_history SET watch_date = '$curdate' \
 			WHERE anime_name = '$1' \
-			AND episode_number = $2" \
-			&& return 0 || return 1
+			AND episode_number = $2" &&
+			return 0 || return 1
 	fi
 }
 
 insert_history() {
+	# check_anime_name "$1"
+	# check the anime_name/id
+	if [[ "$?" -ne 0 ]]; then
+		return 1
+	fi
 	curdate=$(date +'%Y-%m-%d')
 	check_db "$@"
 	num=$?
-	echo "CHECKDB RETURNED: $num"
+	# echo "CHECKDB RETURNED: $num"
 	if [[ "$num" -gt 0 ]]; then
 		if [[ "$2" == "search" ]]; then
 			printf "%s\n" "Already in search db... Updating search_date"
@@ -157,15 +172,19 @@ insert_history() {
 get_search_query() {
 	stmt="SELECT DISTINCT name FROM search_history"
 	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
-	hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+	# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+	hist=$(echo "$stmt" | sqlite3 "$history_db")
 	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
-	echo "HISTORY: $hist"
-	echo "COUNT: $cnt"
+	if [[ "$VERBOSE" -eq 1 ]]; then
+		echo "HISTORY: ${hist[@]}"
+	fi
+	# echo "HISTORY: $hist"
+	# echo "COUNT: $cnt"
 	if [ -z "$*" ]; then
-		echo "QUERYING"
-		query=$(printf "%s\n" "${hist[@]}" \
-			| rofi -dmenu -l "$cnt" -p "Search Anime:" \
-			-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
+		# echo "QUERYING"
+		query=$(printf "%s\n" "${hist[@]}" |
+			rofi -dmenu -l "$cnt" -p "Search Anime:" \
+				-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
 		# if [[ "$query" != "" ]]; then
 		# 	insert_history "$query" "search"
 		# else
@@ -193,6 +212,7 @@ anime_selection() {
 
 	count=1
 	menu=()
+	res=()
 	while read anime_id; do
 		# alternating colors for menu
 		[ $((count % 2)) -eq 0 ] &&
@@ -201,14 +221,32 @@ anime_selection() {
 
 		# printf "$menu_format_string" "$count" "$anime_id"
 		menu+="$count - $anime_id\n"
+		idx=$((count - 1))
+		res["$idx"]="$anime_id"
 		count=$((count + 1))
 	done <<-EOF
 		$search_results
 	EOF
 
-	user_input=$(printf "${menu[@]}" | \
+	searched=()
+	cnt=0
+	for anime in "${res[@]}"; do
+		# printf "ANIME: $anime"
+		check_db "$anime" "search"
+		if [[ $? -gt 0 ]]; then
+			# printf "%s\n" "SEARCHED BEFORE"
+			searched+="$cnt, "
+		fi
+		((cnt++))
+	done
+
+	# printf "%s\n" "SEARCHED: $searched"
+
+	# get the anime from indexed list
+	user_input=$(printf "${menu[@]}" |
 		rofi -dmenu -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi \
-		-l 10 -i -p "Enter number:")
+			-a "$searched" \
+			-l 10 -i -p "Enter number:")
 
 	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
 	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
@@ -248,21 +286,37 @@ anime_selection() {
 episode_selection() {
 	[ $is_download -eq 1 ] &&
 		printf "Range of episodes can be specified: start_number end_number\n"
-
-	# stmt="SELECT DISTINCT episode_number \
-	# 	FROM watch_history WHERE anime_name = '$anime_id'"
+	printf "%s\n" "Anime ID: $anime_id"
+	stmt="SELECT DISTINCT episode_number \
+		FROM watch_history WHERE anime_name = '$anime_id'"
 	# cnt_stmt="SELECT DISTINCT COUNT(*) \
 	# 	FROM watch_history WHERE anime_name = '$anime_id'"
-	# hist=$(echo "$stmt" | \
-	# 	sqlite3 "$history_db"| awk '{ if ( NR > 2 ) { print } }')
+	hist=$(echo "$stmt" | sqlite3 "$history_db")
+	if [[ "$VERBOSE" -eq 1 ]]; then
+		echo "HISTORY: ${hist[@]}"
+	fi
+
+	# Get Watch History for $anime_id as comma separated list
+	watch_history=""
+	for i in $hist; do
+		if [[ "$watch_history" == "" ]]; then
+			watch_history="$((--i))"
+		else
+			watch_history="$watch_history, $((--i))"
+		fi
+	done
+
+	# printf "WATCH HISTORY: %s\n" "$watch_history"
 	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
-	eplist=""
-	echo "NUM EPISODES: $last_ep_number"
-	echo "${eplist[@]}"
-	choice=$(seq 1 10 | \
-		rofi -dmenu -l "$last_ep_number" \
-		-p "Select Episode (1, $last_ep_number):" \
-		-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
+	# printf "NUM EPISODES: $last_ep_number"
+	choice=$(
+		seq 1 $last_ep_number |
+			rofi -dmenu -l "$last_ep_number" \
+				-a "$watch_history" \
+				-p "Select Episode (1, $last_ep_number):" \
+				-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi
+
+	)
 	ep_choice_start=$(printf '%s\n' "$choice" | awk '{print $1}')
 	ep_choice_end=$(printf '%s\n' "$choice" | awk '{print $2}')
 	# echo "$ep_choice_start $ep_choice_end"
@@ -274,6 +328,7 @@ episode_selection() {
 open_episode() {
 	anime_id=$1
 	episode=$2
+	ddir=$3
 
 	# clear the screen
 	printf '\x1B[2J\x1B[1;1H'
@@ -283,11 +338,15 @@ open_episode() {
 			FROM watch_history WHERE anime_name = '$anime_id'"
 		cnt_stmt="SELECT DISTINCT COUNT(*) \
 			FROM watch_history WHERE anime_name = '$anime_id'"
-		hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+		# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+		hist=$(echo "$stmt" | sqlite3 "$history_db")
+		if [[ "$VERBOSE" -eq 1 ]]; then
+			echo "HISTORY: ${hist[@]}"
+		fi
 		cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
-		episode=$(printf "%s\n" "${hist[@]}" | \
+		episode=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l "$cnt" -p "Choose Episode:" \
-			-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
+				-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
 		printf "$c_reset"
 	fi
 
@@ -325,10 +384,14 @@ open_episode() {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
-				-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
-				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
-				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
+			(
+				cd "$download_dir" || return 1
+				mkdir -p "$anime_id" && cd "$anime_id" || return 1
+				ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
+					-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+					printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
+					printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
+			)
 		}
 	fi
 }
@@ -346,7 +409,8 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 list_history=0
 scrape=query
-while getopts 'hdHl' OPT; do
+download_dir="."
+while getopts 'hd:Hl' OPT; do
 	case $OPT in
 	h)
 		help_text
@@ -354,6 +418,11 @@ while getopts 'hdHl' OPT; do
 		;;
 	d)
 		is_download=1
+		download_dir="$OPTARG"
+
+		if [ "$VERBOSE" -eq 1 ]; then
+			echo "DOWNLOAD DIR: $download_dir"
+		fi
 		;;
 	H)
 		scrape=history
@@ -374,9 +443,9 @@ if [[ "$list_history" -eq 1 ]]; then
 	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
 	hist=$(echo "$stmt" | sqlite3 "$history_db")
 	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
-	printf "%s\n" "${hist[@]}" | \
+	printf "%s\n" "${hist[@]}" |
 		rofi -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi \
-		-dmenu -l "$cnt" -i -p "Search History"
+			-dmenu -l "$cnt" -i -p "Search History"
 	exit 0
 fi
 
@@ -404,7 +473,7 @@ esac
 	if [ -n "$ep_choice_end" ]; then
 		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
 		# create list of episodes to download/watch
-		episodes=$(seq $ep_choice_start $ep_choice_end)
+		episodes=$(seq 1 $ep_choice_end)
 	fi
 }
 
@@ -457,5 +526,5 @@ while :; do
 		die "invalid choice"
 		;;
 	esac
-	open_episode "$selection_id" "$episode"
+	open_episode "$selection_id" "$episode" "$download_dir"
 done
