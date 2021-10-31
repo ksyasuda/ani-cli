@@ -8,6 +8,8 @@ prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 history_db="${XDG_CONFIG_HOME:-$HOME/.ani-cli}/history.sqlite3"
 
+# sql=$(sqlite3 -noheader "$history_db")
+
 c_red="\033[1;31m"
 c_green="\033[1;32m"
 c_yellow="\033[1;33m"
@@ -110,13 +112,13 @@ check_db() {
 	if [[ "$2" == "search" ]]; then
 		stmt="SELECT DISTINCT COUNT(*) FROM search_history \
 			WHERE name = '$1'"
-		res="$(printf '%s\n' $stmt | sqlite3 $history_db | tail -1)"
+		res="$(printf '%s\n' $stmt | sqlite3 -noheader $history_db | tail -1)"
 		# echo "QUERY RESULT $res"
 		return "$res"
 	else
 		stmt="SELECT DISTINCT COUNT(*) FROM watch_history \
 			WHERE anime_name = '$1' AND episode_number = $2"
-		res="$(printf '%s\n' $stmt | sqlite3 $history_db | tail -1)"
+		res="$(printf '%s\n' $stmt | sqlite3 -noheader $history_db | tail -1)"
 		# echo "QUERY RESULT $res"
 		return "$res"
 	fi
@@ -158,12 +160,12 @@ insert_history() {
 		if [[ "$2" == "search" ]]; then
 			stmt="INSERT INTO search_history(name, search_date) \
 				VALUES('$1', '$curdate')"
-			printf "%s\n" "$stmt" | sqlite3 "$history_db"
+			printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db"
 		else
 			stmt="INSERT INTO \
 				watch_history(anime_name, episode_number, watch_date) \
 				VALUES('$1', '$2', '$curdate')"
-			printf "%s\n" "$stmt" | sqlite3 "$history_db"
+			printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db"
 		fi
 	fi
 }
@@ -172,9 +174,10 @@ insert_history() {
 get_search_query() {
 	stmt="SELECT DISTINCT name FROM search_history"
 	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
-	# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
-	hist=$(echo "$stmt" | sqlite3 "$history_db")
-	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
+	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
+	# hist=$(echo "$stmt" | sqlite3 "$history_db")
+	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db" | tail -1)
 	if [[ "$VERBOSE" -eq 1 ]]; then
 		echo "HISTORY: ${hist[@]}"
 	fi
@@ -250,6 +253,9 @@ anime_selection() {
 
 	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
 	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
+	if [[ "$VERBOSE" -eq 1 ]]; then
+		printf "%s\n" "NAME: $name"
+	fi
 	insert_history "$name" "search"
 	echo "Number Chosen: $choice"
 	# User input
@@ -291,7 +297,8 @@ episode_selection() {
 		FROM watch_history WHERE anime_name = '$anime_id'"
 	# cnt_stmt="SELECT DISTINCT COUNT(*) \
 	# 	FROM watch_history WHERE anime_name = '$anime_id'"
-	hist=$(echo "$stmt" | sqlite3 "$history_db")
+	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
+	# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
 	if [[ "$VERBOSE" -eq 1 ]]; then
 		echo "HISTORY: ${hist[@]}"
 	fi
@@ -311,7 +318,7 @@ episode_selection() {
 	# printf "NUM EPISODES: $last_ep_number"
 	choice=$(
 		seq 1 $last_ep_number |
-			rofi -dmenu -l "$last_ep_number" \
+			rofi -dmenu -l "$((last_ep_number / 2))" \
 				-a "$watch_history" \
 				-p "Select Episode (1, $last_ep_number):" \
 				-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi
@@ -339,11 +346,11 @@ open_episode() {
 		cnt_stmt="SELECT DISTINCT COUNT(*) \
 			FROM watch_history WHERE anime_name = '$anime_id'"
 		# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
-		hist=$(echo "$stmt" | sqlite3 "$history_db")
+		hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
 		if [[ "$VERBOSE" -eq 1 ]]; then
 			echo "HISTORY: ${hist[@]}"
 		fi
-		cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
+		cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db" | tail -1)
 		episode=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l "$cnt" -p "Choose Episode:" \
 				-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
@@ -441,8 +448,10 @@ shift $((OPTIND - 1))
 if [[ "$list_history" -eq 1 ]]; then
 	stmt="SELECT DISTINCT name FROM search_history"
 	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
-	hist=$(echo "$stmt" | sqlite3 "$history_db")
-	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db")
+	# hist=$(echo "$stmt" | sqlite3 "$history_db")
+	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
+	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db")
 	printf "%s\n" "${hist[@]}" |
 		rofi -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi \
 			-dmenu -l "$cnt" -i -p "Search History"
