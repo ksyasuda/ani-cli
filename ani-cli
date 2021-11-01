@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
@@ -7,6 +7,9 @@ player_fn="mpv"
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 history_db="${XDG_CONFIG_HOME:-$HOME/.ani-cli}/history.sqlite3"
+
+[ -z "$XDG_CONFIG_HOME" ] && config_dir="$HOME/.ani-cli/" ||
+	config_dir="$XDG_CONFIG_HOME"
 
 # sql=$(sqlite3 -noheader "$history_db")
 
@@ -99,6 +102,7 @@ dep_ch() {
 }
 
 check_anime_name() {
+	# Check to make sure passed in name is not empty
 	printf "%s\n" "VAR: $1"
 	if [[ "$1" == "" ]]; then
 		printf "%s\n" "Passed in name is null"
@@ -108,6 +112,7 @@ check_anime_name() {
 }
 
 check_db() {
+	# Return number of matches for anime/episode in db
 	# echo "$1 $2"
 	if [[ "$2" == "search" ]]; then
 		stmt="SELECT DISTINCT COUNT(*) FROM search_history \
@@ -125,6 +130,7 @@ check_db() {
 }
 
 update_date() {
+	# updates search/watch date for passed in anime
 	if [[ "$2" == "search" ]]; then
 		curdate=$(date +'%Y-%m-%d')
 		stmt="UPDATE search_history SET search_date = '$curdate' \
@@ -140,9 +146,11 @@ update_date() {
 }
 
 insert_history() {
-	# check_anime_name "$1"
+	# inserts into search/watch history db
+
 	# check the anime_name/id
-	if [[ "$?" -ne 0 ]]; then
+	if [[ $(check_anime_name "$1") -ne 0 ]]; then
+		printf "%s\n" "ERROR: Anime name is none"
 		return 1
 	fi
 	curdate=$(date +'%Y-%m-%d')
@@ -172,27 +180,24 @@ insert_history() {
 
 # get query
 get_search_query() {
+	# Query the anime to stream/download
+
+	# Get search history
 	stmt="SELECT DISTINCT name FROM search_history"
-	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
-	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+	# cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
 	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
-	# hist=$(echo "$stmt" | sqlite3 "$history_db")
-	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db" | tail -1)
+	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+
+	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db" | tail -1)
 	if [[ "$VERBOSE" -eq 1 ]]; then
-		echo "HISTORY: ${hist[@]}"
+		echo "HISTORY:" "${hist[@]}"
 	fi
 	# echo "HISTORY: $hist"
 	# echo "COUNT: $cnt"
 	if [ -z "$*" ]; then
-		# echo "QUERYING"
 		query=$(printf "%s\n" "${hist[@]}" |
-			rofi -dmenu -l "$cnt" -p "Search Anime:" \
-				-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
-		# if [[ "$query" != "" ]]; then
-		# 	insert_history "$query" "search"
-		# else
-		# 	echo 'Query empty... Skipping insert'
-		# fi
+			rofi -dmenu -l 12 -p "Search Anime:" \
+				-config "$config_dir"/meh.rasi)
 		# printf "Search Anime: "
 		# read -r query
 	else
@@ -208,6 +213,7 @@ get_search_query() {
 #####################
 
 anime_selection() {
+	# Select anime from query results
 	search_results=$*
 	menu_format_string='[%d] %s\n'
 	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
@@ -233,23 +239,23 @@ anime_selection() {
 
 	searched=()
 	cnt=0
+	# Get the comma separated list of indexes of anime that has been searched before
 	for anime in "${res[@]}"; do
 		# printf "ANIME: $anime"
 		check_db "$anime" "search"
 		if [[ $? -gt 0 ]]; then
 			# printf "%s\n" "SEARCHED BEFORE"
-			searched+="$cnt, "
+			searched+=("$((cnt++)), ")
 		fi
-		((cnt++))
 	done
 
 	# printf "%s\n" "SEARCHED: $searched"
 
 	# get the anime from indexed list
 	user_input=$(printf "${menu[@]}" |
-		rofi -dmenu -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi \
+		rofi -dmenu -config "$config_dir"/meh.rasi \
 			-a "$searched" \
-			-l 10 -i -p "Enter number:")
+			-l 12 -i -p "Enter number:")
 
 	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
 	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
@@ -290,6 +296,7 @@ anime_selection() {
 ##################
 
 episode_selection() {
+	# select episode number for anime
 	[ $is_download -eq 1 ] &&
 		printf "Range of episodes can be specified: start_number end_number\n"
 	printf "%s\n" "Anime ID: $anime_id"
@@ -316,13 +323,13 @@ episode_selection() {
 	# printf "WATCH HISTORY: %s\n" "$watch_history"
 	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
 	# printf "NUM EPISODES: $last_ep_number"
+	# get user choice and set the start and end
 	choice=$(
-		seq 1 $last_ep_number |
-			rofi -dmenu -l "$((last_ep_number / 2))" \
+		seq 1 "$last_ep_number" |
+			rofi -dmenu -l 12 \
 				-a "$watch_history" \
 				-p "Select Episode (1, $last_ep_number):" \
-				-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi
-
+				-config "$config_dir"/meh.rasi
 	)
 	ep_choice_start=$(printf '%s\n' "$choice" | awk '{print $1}')
 	ep_choice_end=$(printf '%s\n' "$choice" | awk '{print $2}')
@@ -343,17 +350,14 @@ open_episode() {
 		err "Episode out of range"
 		stmt="SELECT DISTINCT episode_number \
 			FROM watch_history WHERE anime_name = '$anime_id'"
-		cnt_stmt="SELECT DISTINCT COUNT(*) \
-			FROM watch_history WHERE anime_name = '$anime_id'"
 		# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
 		hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
 		if [[ "$VERBOSE" -eq 1 ]]; then
 			echo "HISTORY: ${hist[@]}"
 		fi
-		cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db" | tail -1)
 		episode=$(printf "%s\n" "${hist[@]}" |
-			rofi -dmenu -l "$cnt" -p "Choose Episode:" \
-				-config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi)
+			rofi -dmenu -l 12 -p "Choose Episode:" \
+				-config "$config_dir"/meh.rasi)
 		printf "$c_reset"
 	fi
 
@@ -392,7 +396,8 @@ open_episode() {
 		episode=$(printf "%03d" $episode)
 		{
 			(
-				cd "$download_dir" || return 1
+				echo "$DDIR"
+				cd "$ddir" || return 1
 				mkdir -p "$anime_id" && cd "$anime_id" || return 1
 				ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
 					-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
@@ -453,7 +458,7 @@ if [[ "$list_history" -eq 1 ]]; then
 	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
 	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db")
 	printf "%s\n" "${hist[@]}" |
-		rofi -config ${XDG_CONFIG_HOME:-$HOME/.ani-cli}/meh.rasi \
+		rofi -config "$config_dir"/meh.rasi \
 			-dmenu -l "$cnt" -i -p "Search History"
 	exit 0
 fi
@@ -491,7 +496,7 @@ grep -q -w "${selection_id}" "$logfile" ||
 	printf "%s\t%d\n" "$selection_id" $((episode + 1)) >>"$logfile"
 
 for ep in $episodes; do
-	open_episode "$selection_id" "$ep"
+	open_episode "$selection_id" "$ep" "$download_dir"
 done
 episode=${ep_choice_end:-$ep_choice_start}
 

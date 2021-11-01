@@ -5,10 +5,9 @@
 configuration {
     font:				"mononoki Nerd Font 14";
     show-icons:				true;
-    icon-theme:				"Arc-X-D";
     display-drun:			"Dmenu";
     scroll-method:			0;
-    disable-history:			false;
+    disable-history:		false;
     sidebar-mode:			true;
 }
 
@@ -21,8 +20,8 @@ window {
     width: 69%;
 }
 listview {
-    lines:                          10;
-    columns:                        3;
+    lines:                          12;
+    columns:                        2;
 }
 mainbox {
     border:  0;
@@ -74,7 +73,7 @@ element.selected.urgent {
 }
 element.selected.active {
     background-color: @selected-active-background;
-    text-color:       @selected-active-foreground;
+    text-color:       @active-foreground;
 }
 element.alternate.normal {
     background-color: @alternate-normal-background;
