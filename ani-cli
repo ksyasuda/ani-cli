@@ -121,14 +121,17 @@ check_db() {
 	# Return number of matches for anime/episode in db
 	# echo "$1 $2"
 	if [[ "$2" == "search" ]]; then
-		stmt="SELECT DISTINCT COUNT(*) FROM search_history \
-			WHERE anime_name = '$1'"
+		stmt="SELECT DISTINCT COUNT(*) \
+			  FROM search_history \
+			  WHERE anime_name = '$1';"
 		res="$(printf '%s\n' $stmt | sqlite3 -noheader $history_db | tail -1)"
 		# echo "QUERY RESULT $res"
 		return "$res"
 	else
-		stmt="SELECT DISTINCT COUNT(*) FROM watch_history \
-			WHERE anime_name = '$1' AND episode_number = $2"
+		stmt="SELECT DISTINCT COUNT(*) \
+			  FROM watch_history \
+			  WHERE anime_name = '$1' \
+			  AND episode_number = $2;"
 		res="$(printf '%s\n' $stmt | sqlite3 -noheader $history_db | tail -1)"
 		# echo "QUERY RESULT $res"
 		return "$res"
@@ -140,12 +143,12 @@ update_date() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	if [[ "$2" == "search" ]]; then
 		stmt="UPDATE search_history SET search_date = '$datetime' \
-			WHERE anime_name = '$1'" &&
+			WHERE anime_name = '$1';" &&
 			return 0 || return 1
 	else
 		stmt="UPDATE watch_history SET watch_date = '$datetime' \
 			WHERE anime_name = '$1' \
-			AND episode_number = $2" &&
+			AND episode_number = $2;" &&
 			return 0 || return 1
 	fi
 }
@@ -171,12 +174,12 @@ insert_history() {
 	else
 		if [[ "$2" == "search" ]]; then
 			stmt="INSERT INTO search_history(anime_name, search_date) \
-				VALUES('$1', '$datetime')"
+				VALUES('$1', '$datetime');"
 			printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db"
 		else
 			stmt="INSERT INTO \
 				watch_history(anime_name, episode_number, watch_date) \
-				VALUES('$1', '$2', '$datetime')"
+				VALUES('$1', '$2', '$datetime');"
 			printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db"
 		fi
 	fi
@@ -187,7 +190,9 @@ get_search_query() {
 	# Query the anime to stream/download
 
 	# Get search history
-	stmt="SELECT DISTINCT anime_name FROM search_history"
+	stmt="SELECT DISTINCT anime_name \
+		  FROM search_history \
+		  ORDER BY search_date DESC;"
 	# cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
 	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
 	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db" | awk '{ if ( NR > 2 ) { print } }')
@@ -305,9 +310,8 @@ episode_selection() {
 		printf "Range of episodes can be specified: start_number end_number\n"
 	printf "%s\n" "Anime ID: $anime_id"
 	stmt="SELECT DISTINCT episode_number \
-		FROM watch_history WHERE anime_name = '$anime_id'"
-	# cnt_stmt="SELECT DISTINCT COUNT(*) \
-	# 	FROM watch_history WHERE anime_name = '$anime_id'"
+		  FROM watch_history \
+		  WHERE anime_name = '$anime_id';"
 	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
 	# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
 	if [[ "$VERBOSE" -eq 1 ]]; then
@@ -324,7 +328,7 @@ episode_selection() {
 		fi
 	done
 
-	# printf "WATCH HISTORY: %s\n" "$watch_history"
+	printf "WATCH HISTORY: %s\n" "$watch_history"
 	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
 	# printf "NUM EPISODES: $last_ep_number"
 	# get user choice and set the start and end
@@ -353,7 +357,8 @@ open_episode() {
 	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
 		err "Episode out of range"
 		stmt="SELECT DISTINCT episode_number \
-			FROM watch_history WHERE anime_name = '$anime_id'"
+			FROM watch_history \
+			WHERE anime_name = '$anime_id';"
 		# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
 		hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
 		if [[ "$VERBOSE" -eq 1 ]]; then
@@ -393,6 +398,7 @@ open_episode() {
 		" "$logfile" >"${logfile}.new" && mv "${logfile}.new" "$logfile"
 
 		setsid -f $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1
+		# $player_fn --http-header-fields="Referer: $dpage_url" "$video_url"
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
@@ -455,15 +461,17 @@ shift $((OPTIND - 1))
 ########
 
 if [[ "$list_history" -eq 1 ]]; then
-	stmt="SELECT DISTINCT anime_name FROM search_history"
-	cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
+	stmt="SELECT DISTINCT anime_name \
+		  FROM search_history \
+		  ORDER BY search_date DESC"
+	# cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
 	# hist=$(echo "$stmt" | sqlite3 "$history_db")
 	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db" | awk '{ if ( NR > 2 ) { print } }')
 	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
-	cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db")
+	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db")
 	printf "%s\n" "${hist[@]}" |
 		rofi -config "$config_dir"/meh.rasi \
-			-dmenu -l "$cnt" -i -p "Search History"
+			-dmenu -l 12 -i -p "Search History"
 	exit 0
 fi
 

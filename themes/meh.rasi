@@ -88,7 +88,9 @@ element.alternate.urgent {
 }
 element.alternate.active {
     background-color: @alternate-active-background;
-    text-color:       @alternate-active-foreground;
+    /* text-color:       @alternate-active-foreground; */
+    text-color:         #51afef;
+    border-color:       #51afef;
 }
 scrollbar {
     width:        4px ;
