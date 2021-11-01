@@ -10,16 +10,20 @@ log() {
 
 # DIR="$HOME/.ani-cli/"
 DB="history.sqlite3"
-DIR="$XDG_CONFIG_HOME/ani-cli/"
-MPV_DIR="$XDG_CONFIG_HOME/mpv/"
 
-[[ -z "$XDG_CONFIG_HOME" ]] && DIR="$HOME/.ani-cli"
-[[ -z "$XDG_CONFIG_HOME" ]] && MPV_DIR="$HOME/.config/.ani-cli"
+if [[ -z "$XDG_CONFIG_HOME" ]]; then
+    DIR="$HOME/.config/ani-cli"
+    MPV_DIR="$HOME/.config/mpv"
+else
+    DIR="$XDG_CONFIG_HOME/ani-cli"
+    MPV_DIR="$XDG_CONFIG_HOME/mpv"
+fi
 
 printf "%s\n" "INSTALL DIR: $DIR"
 
 if [[ "$DIR" == "$HOME/.config" ]]; then
-    printf "%s\n" "Maybe don't wanna delete that directory"
+    # change so it prompts before deleting
+    printf "%s\n" "Maybe don't wanna delete that directory: $DIR"
     exit 1
 fi
 

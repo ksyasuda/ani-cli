@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DIR=$HOME/.ani-cli
+DIR="$XDG_CONFIG_HOME/ani-cli"
 DB='history.sqlite3'
 
 log() {

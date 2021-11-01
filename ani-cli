@@ -6,10 +6,15 @@ player_fn="mpv"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-history_db="${XDG_CONFIG_HOME:-$HOME/.ani-cli}/history.sqlite3"
 
-[ -z "$XDG_CONFIG_HOME" ] && config_dir="$HOME/.ani-cli/" ||
-	config_dir="$XDG_CONFIG_HOME"
+# Set config directory
+if [[ -z "$XDG_CONFIG_HOME" ]]; then
+	config_dir="$HOME/.config/ani-cli"
+else
+	config_dir="$XDG_CONFIG_HOME/ani-cli"
+fi
+
+history_db="$XDG_CONFIG_HOME/ani-cli/history.sqlite3"
 
 # sql=$(sqlite3 -noheader "$history_db")
 
@@ -102,9 +107,10 @@ dep_ch() {
 }
 
 check_anime_name() {
+	# Maybe change to query the db for a similar name
 	# Check to make sure passed in name is not empty
 	printf "%s\n" "VAR: $1"
-	if [[ "$1" == "" ]]; then
+	if [[ "$1" == "" ]] || [[ "$1" == " " ]] || [[ "$1" == "\n" ]]; then
 		printf "%s\n" "Passed in name is null"
 		return 1
 	fi
@@ -147,10 +153,9 @@ update_date() {
 
 insert_history() {
 	# inserts into search/watch history db
-
 	# check the anime_name/id
-	if [[ $(check_anime_name "$1") -ne 0 ]]; then
-		printf "%s\n" "ERROR: Anime name is none"
+	if [[ ! $(check_anime_name "$1") ]]; then
+		printf "%s\n" "ERROR: Anime name is none... exiting"
 		return 1
 	fi
 	curdate=$(date +'%Y-%m-%d')
@@ -256,7 +261,7 @@ anime_selection() {
 		rofi -dmenu -config "$config_dir"/meh.rasi \
 			-a "$searched" \
 			-l 12 -i -p "Enter number:")
-
+	[ "$?" -ne 0 ] && return 1
 	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
 	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
 	if [[ "$VERBOSE" -eq 1 ]]; then
