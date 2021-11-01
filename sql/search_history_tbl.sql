@@ -1,6 +1,6 @@
 CREATE TABLE search_history (
-    id integer PRIMARY KEY autoincrement,
-    name varchar(200) NOT NULL,
-    search_date date NOT NULL
+    id integer PRIMARY KEY AUTOINCREMENT,
+    anime_name varchar(200),
+    search_date datetime NOT NULL
 );
 
