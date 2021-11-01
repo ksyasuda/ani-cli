@@ -17,7 +17,7 @@ window {
     background-color: @background;
     border:           0;
     padding:          25;
-    width: 69%;
+    width:            69%;
 }
 listview {
     lines:                          12;
@@ -44,8 +44,9 @@ listview {
     padding:      2px 0px 0px ;
 }
 element {
-    border:  0;
-    padding: 8px ;
+    border:  2px;
+    border-color: #d19a66;
+    padding: 8px;
 }
 element-text {
     background-color: inherit;
@@ -61,7 +62,8 @@ element.normal.urgent {
 }
 element.normal.active {
     background-color: @active-background;
-    text-color:       @active-foreground;
+    text-color:         #51afef;
+    border-color:       #51afef;
 }
 element.selected.normal {
     background-color: @selected-normal-background;
@@ -73,7 +75,8 @@ element.selected.urgent {
 }
 element.selected.active {
     background-color: @selected-active-background;
-    text-color:       @active-foreground;
+    border-color:     #1E90FF;
+    text-color:       #1E90FF;
 }
 element.alternate.normal {
     background-color: @alternate-normal-background;
@@ -121,7 +124,7 @@ entry {
 }
 prompt {
     spacing:    0;
-    text-color: dodgerblue;
+    text-color: #51afef;
 }
 inputbar {
     children:   [ prompt,textbox-prompt-colon,entry,case-indicator ];
@@ -130,5 +133,5 @@ textbox-prompt-colon {
     expand:     false;
     str:        ":";
     margin:     0px 0.3em 0em 0em ;
-    text-color: @normal-foreground;
+    text-color: #51afef;
 }

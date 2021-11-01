@@ -21,25 +21,25 @@ fi
 
 printf "%s\n" "INSTALL DIR: $DIR"
 
-if [[ "$DIR" == "$HOME/.config" ]]; then
-    # change so it prompts before deleting
-    printf "%s\n" "Maybe don't wanna delete that directory: $DIR"
-    exit 1
+# log "Deleting old directory..."
+# rm -rf "$DIR"
+# log "Directory deleted..."
+
+if [[ ! -d "$DIR" ]]; then
+    log "Creating directory $DIR"
+    mkdir -p "$DIR"
+    log "Directory created"
 fi
 
-log "Deleting old directory..."
-rm -rf "$DIR"
-log "Directory deleted..."
+if [[ ! -f "$DIR"/"$DB" ]]; then
+    # Create the DB if not exists
+    log "Creating history database..."
+    sqlite3 "$DIR"/"$DB" <sql/watch_history_tbl.sql
+    sqlite3 "$DIR"/"$DB" <sql/search_history_tbl.sql
+    log "History database created..."
+fi
 
-log "Creating directory $DIR"
-mkdir -p "$DIR"
-log "Directory created"
-
-log "Creating history database..."
-sqlite3 "$DIR"/"$DB" <sql/watch_history_tbl.sql
-sqlite3 "$DIR"/"$DB" <sql/search_history_tbl.sql
-log "History database created..."
-
+# Move theme files and skip-intro script to correct locations
 log "Moving theme files..."
 cp themes/meh.rasi "$DIR"/
 cp themes/arc_dark_transparent_colors.rasi "$DIR"/
