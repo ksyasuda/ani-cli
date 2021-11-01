@@ -109,7 +109,7 @@ dep_ch() {
 check_anime_name() {
 	# Maybe change to query the db for a similar name
 	# Check to make sure passed in name is not empty
-	printf "%s\n" "VAR: $1"
+	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "VAR: $1"
 	if [[ "$1" == "" ]] || [[ "$1" == " " ]] || [[ "$1" == "\n" ]]; then
 		printf "%s\n" "Passed in name is null"
 		return 1
@@ -328,7 +328,7 @@ episode_selection() {
 		fi
 	done
 
-	printf "WATCH HISTORY: %s\n" "$watch_history"
+	[ "$VERBOSE" -eq 1 ] && printf "WATCH HISTORY: %s\n" "$watch_history"
 	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
 	# printf "NUM EPISODES: $last_ep_number"
 	# get user choice and set the start and end
@@ -370,7 +370,7 @@ open_episode() {
 		printf "$c_reset"
 	fi
 
-	printf "Getting data for episode %d\n" $episode
+	[ "$VERBOSE" -eq 1 ] && printf "Getting data for episode %d\n" $episode
 
 	insert_history "$anime_id" "$episode"
 
