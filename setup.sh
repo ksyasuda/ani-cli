@@ -8,22 +8,17 @@ log() {
     printf "%s\n" "$1"
 }
 
-# DIR="$HOME/.ani-cli/"
 DB="history.sqlite3"
 
+# Set the XDG_CONFIG_HOME locally if not set
 if [[ -z "$XDG_CONFIG_HOME" ]]; then
-    DIR="$HOME/.config/ani-cli"
-    MPV_DIR="$HOME/.config/mpv"
-else
-    DIR="$XDG_CONFIG_HOME/ani-cli"
-    MPV_DIR="$XDG_CONFIG_HOME/mpv"
+    XDG_CONFIG_HOME="$HOME/.config"
 fi
 
-printf "%s\n" "INSTALL DIR: $DIR"
+DIR="$XDG_CONFIG_HOME/ani-cli"
+MPV_DIR="$XDG_CONFIG_HOME/mpv"
 
-# log "Deleting old directory..."
-# rm -rf "$DIR"
-# log "Directory deleted..."
+printf "%s\n" "INSTALL DIR: $DIR"
 
 if [[ ! -d "$DIR" ]]; then
     log "Creating directory $DIR"

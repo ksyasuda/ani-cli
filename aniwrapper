@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 
+[ -z "$XDG_CONFIG_HOME" ] && XDG_CONFIG_HOME="$HOME/.config"
+
 CMD=/usr/local/bin/ani-cli
 DEFAULT="$HOME/Videos/sauce/"
 CFG_DIR="$XDG_CONFIG_HOME/ani-cli"
+
+echo "CONFIG DIR: $CFG_DIR"
 
 # not a wrapper around the ani-cli-rofi
 
 options="1. Stream|2. Download|3. Continue|4. Quit"
 
-choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' \
-	-config "$CFG_DIR/meh.rasi" -l 4 -i -p "Enter choice:")
+choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/meh.rasi" -l 4 -i -p "Enter choice:")
 
 [ "$choice" == "4. Quit" ] && (
 	echo 'Quitting...'

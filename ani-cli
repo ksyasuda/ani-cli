@@ -9,11 +9,10 @@ logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 
 # Set config directory
 if [[ -z "$XDG_CONFIG_HOME" ]]; then
-	config_dir="$HOME/.config/ani-cli"
-else
-	config_dir="$XDG_CONFIG_HOME/ani-cli"
+	XDG_CONFIG_HOME="$HOME/.config"
 fi
 
+config_dir="$XDG_CONFIG_HOME/ani-cli"
 history_db="$XDG_CONFIG_HOME/ani-cli/history.sqlite3"
 
 # sql=$(sqlite3 -noheader "$history_db")
@@ -386,17 +385,17 @@ open_episode() {
 	video_url=$(get_links "$dpage_url")
 
 	case $video_url in
-	*streamtape*)
-		# If direct download not available then scrape streamtape.com
-		BROWSER=${BROWSER:-firefox}
-		printf "scraping streamtape.com\n"
-		video_url=$(curl -s "$video_url" | sed -n -E '
+		*streamtape*)
+			# If direct download not available then scrape streamtape.com
+			BROWSER=${BROWSER:-firefox}
+			printf "scraping streamtape.com\n"
+			video_url=$(curl -s "$video_url" | sed -n -E '
 				/^<script>document/{
 				s/^[^"]*"([^"]*)" \+ '\''([^'\'']*).*/https:\1\2\&dl=1/p
 				q
 				}
 			')
-		;;
+			;;
 	esac
 
 	if [ $is_download -eq 0 ]; then
@@ -442,24 +441,24 @@ scrape=query
 download_dir="."
 while getopts 'hd:Hl' OPT; do
 	case $OPT in
-	h)
-		help_text
-		exit 0
-		;;
-	d)
-		is_download=1
-		download_dir="$OPTARG"
+		h)
+			help_text
+			exit 0
+			;;
+		d)
+			is_download=1
+			download_dir="$OPTARG"
 
-		if [ "$VERBOSE" -eq 1 ]; then
-			echo "DOWNLOAD DIR: $download_dir"
-		fi
-		;;
-	H)
-		scrape=history
-		;;
-	l)
-		list_history=1
-		;;
+			if [ "$VERBOSE" -eq 1 ]; then
+				echo "DOWNLOAD DIR: $download_dir"
+			fi
+			;;
+		H)
+			scrape=history
+			;;
+		l)
+			list_history=1
+			;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -480,26 +479,26 @@ if [[ "$list_history" -eq 1 ]]; then
 fi
 
 case $scrape in
-query)
+	query)
 
-	get_search_query "$*"
-	search_results=$(search_anime "$query")
-	[ -z "$search_results" ] && die "No search results found"
-	anime_selection "$search_results"
-	episode_selection
-	;;
-history)
-	# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
-	stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
-	search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db")
-	[ -z "$search_results" ] && die "History is empty"
-	anime_selection "${search_results[@]}"
-	stmt="SELECT episode_number FROM watch_history ORDER BY watch_date DESC LIMIT 1"
-	run_stmt "$stmt"
-	ep_choice_start=$?
-	echo "EPISODE: $ep_choice_start"
-	# ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-	;;
+		get_search_query "$*"
+		search_results=$(search_anime "$query")
+		[ -z "$search_results" ] && die "No search results found"
+		anime_selection "$search_results"
+		episode_selection
+		;;
+	history)
+		# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+		stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
+		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db")
+		[ -z "$search_results" ] && die "History is empty"
+		anime_selection "${search_results[@]}"
+		stmt="SELECT episode_number FROM watch_history ORDER BY watch_date DESC LIMIT 1"
+		run_stmt "$stmt"
+		ep_choice_start=$?
+		echo "EPISODE: $ep_choice_start"
+		# ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+		;;
 esac
 
 { # checking input
@@ -538,29 +537,29 @@ while :; do
 	# choice=$(printf '%s\n' "$choice" | awk '{print $1}')
 	printf "$c_reset"
 	case $choice in
-	n)
-		episode=$((episode + 1))
-		;;
-	p)
-		episode=$((episode - 1))
-		;;
+		n)
+			episode=$((episode + 1))
+			;;
+		p)
+			episode=$((episode - 1))
+			;;
 
-	s)
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-		read episode
-		printf "$c_reset"
-		[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
-		;;
+		s)
+			printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+			read episode
+			printf "$c_reset"
+			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
+			;;
 
-	r) ;;
+		r) ;;
 
-	q)
-		break
-		;;
+		q)
+			break
+			;;
 
-	*)
-		die "invalid choice"
-		;;
+		*)
+			die "invalid choice"
+			;;
 	esac
 	open_episode "$selection_id" "$episode" "$download_dir"
 done
