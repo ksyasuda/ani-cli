@@ -5,14 +5,15 @@
 CMD=/usr/local/bin/ani-cli
 DEFAULT="$HOME/Videos/sauce/"
 CFG_DIR="$XDG_CONFIG_HOME/ani-cli"
+CFG_FILE="meh.rasi"
 
-echo "CONFIG DIR: $CFG_DIR"
+# echo "CONFIG DIR: $CFG_DIR"
 
 # not a wrapper around the ani-cli-rofi
 
 options="1. Stream|2. Download|3. Continue|4. Quit"
 
-choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/meh.rasi" -l 4 -i -p "Enter choice:")
+choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
 
 [ "$choice" == "4. Quit" ] && (
 	echo 'Quitting...'
@@ -25,7 +26,7 @@ if [[ "$selection" == "1." ]]; then
 	echo "STREAMING..."
 	$CMD
 elif [[ "$selection" == "2." ]]; then
-	dl_dir=$(rofi -dmenu -config "$CFG_DIR/meh.rasi" \
+	dl_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
 		-l 1 -p "Enter downlaod dir:")
 	# if dl_dir is none set to current directory
 	[ "$dl_dir" == "" ] && dl_dir="$DEFAULT"

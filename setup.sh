@@ -36,15 +36,15 @@ fi
 
 # Move theme files and skip-intro script to correct locations
 log "Moving theme files..."
-cp themes/meh.rasi "$DIR"/
-cp themes/arc_dark_transparent_colors.rasi "$DIR"/
+cp themes/* "$DIR"/
 log "Theme files moved..."
 
 log "Creating mpv/scripts/ directory if it doesn't exist..."
 mkdir -p "$MPV_DIR/scripts/"
 log "Created mpv scripts directory..."
 log "Moving skip-intro.lua into mpv scripts directory..."
-cp skip-intro.lua "$MPV_DIR/scripts/skip-intro.lua"
+cp scripts/* "$MPV_DIR/scripts/"
+# cp skip-intro.lua "$MPV_DIR/scripts/skip-intro.lua"
 log "Moved skip-intro.lua into scripts directory..."
 
 log "Setup Complete...."

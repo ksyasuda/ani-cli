@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+# Set config directory if not already set
+if [[ -z "$XDG_CONFIG_HOME" ]]; then
+	XDG_CONFIG_HOME="$HOME/.config"
+fi
+
+CFG_DIR="$XDG_CONFIG_HOME/ani-cli"
+CFG_FILE="meh.rasi"
+
+HISTORY_DB="$XDG_CONFIG_HOME/ani-cli/history.sqlite3"
+
 # dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
@@ -7,15 +17,7 @@ player_fn="mpv"
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 
-# Set config directory
-if [[ -z "$XDG_CONFIG_HOME" ]]; then
-	XDG_CONFIG_HOME="$HOME/.config"
-fi
-
-config_dir="$XDG_CONFIG_HOME/ani-cli"
-history_db="$XDG_CONFIG_HOME/ani-cli/history.sqlite3"
-
-# sql=$(sqlite3 -noheader "$history_db")
+# sql=$(sqlite3 -noheader "$HISTORY_DB")
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -117,7 +119,7 @@ check_anime_name() {
 }
 
 run_stmt() {
-	printf "%s\n" "$1" | sqlite3 -noheader "$history_db"
+	printf "%s\n" "$1" | sqlite3 -noheader "$HISTORY_DB"
 }
 
 check_db() {
@@ -195,13 +197,13 @@ get_search_query() {
 	stmt="SELECT DISTINCT anime_name \
 		  FROM search_history \
 		  ORDER BY search_date DESC;"
-	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
+	# hist=$(echo "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 	hist=$(run_stmt "$stmt")
 
 	if [ -z "$*" ]; then
 		query=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l 12 -p "Search Anime:" \
-				-config "$config_dir"/meh.rasi)
+				-config "$CFG_DIR/${CFG_FILE}")
 		# printf "Search Anime: "
 		# read -r query
 	else
@@ -261,7 +263,7 @@ anime_selection() {
 
 	# get the anime from indexed list
 	user_input=$(printf "${menu[@]}" |
-		rofi -dmenu -config "$config_dir"/meh.rasi \
+		rofi -dmenu -config "$CFG_DIR/${CFG_FILE}" \
 			-a "$searched" \
 			-l 12 -i -p "Enter number:")
 	[ "$?" -ne 0 ] && return 1
@@ -336,7 +338,7 @@ episode_selection() {
 				-a "$watch_history" \
 				-p "Select Episode [1, $last_ep_number]:" \
 				-mesg "$msg" \
-				-config "$config_dir"/meh.rasi
+				-config "$CFG_DIR/${CFG_FILE}"
 	)
 	ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
 	ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
@@ -366,14 +368,14 @@ open_episode() {
 			FROM watch_history \
 			WHERE anime_name = '$anime_id' \
 			ORDER BY episode_number ASC;"
-		# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+		# hist=$(echo "$stmt" | sqlite3 "$HISTORY_DB" | awk '{ if ( NR > 2 ) { print } }')
 		hist=$(run_stmt "$stmt")
 		if [[ "$VERBOSE" -eq 1 ]]; then
 			echo "HISTORY: ${hist[*]}"
 		fi
 		episode=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l 12 -p "Choose Episode:" \
-				-config "$config_dir"/meh.rasi)
+				-config "$CFG_DIR/${CFG_FILE}")
 		printf "$c_reset"
 	fi
 
@@ -473,7 +475,7 @@ if [[ "$list_history" -eq 1 ]]; then
 		  ORDER BY search_date DESC"
 	hist=$(run_stmt "$stmt")
 	printf "%s\n" "${hist[@]}" |
-		rofi -config "$config_dir"/meh.rasi \
+		rofi -config "$CFG_DIR/${CFG_FILE}" \
 			-dmenu -l 12 -i -p "Search History"
 	exit 0
 fi
@@ -490,7 +492,7 @@ case $scrape in
 	history)
 		# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 		stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
-		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db")
+		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 		[ -z "$search_results" ] && die "History is empty"
 		anime_selection "${search_results[@]}"
 		stmt="SELECT episode_number FROM watch_history ORDER BY watch_date DESC LIMIT 1"
