@@ -117,6 +117,10 @@ check_anime_name() {
 	return 0
 }
 
+run_stmt() {
+	printf "%s\n" "$1" | sqlite3 -noheader "$history_db"
+}
+
 check_db() {
 	# Return number of matches for anime/episode in db
 	# echo "$1 $2"
@@ -124,7 +128,7 @@ check_db() {
 		stmt="SELECT DISTINCT COUNT(*) \
 			  FROM search_history \
 			  WHERE anime_name = '$1';"
-		res="$(printf '%s\n' $stmt | sqlite3 -noheader $history_db | tail -1)"
+		res=$(run_stmt "$stmt")
 		# echo "QUERY RESULT $res"
 		return "$res"
 	else
@@ -132,7 +136,7 @@ check_db() {
 			  FROM watch_history \
 			  WHERE anime_name = '$1' \
 			  AND episode_number = $2;"
-		res="$(printf '%s\n' $stmt | sqlite3 -noheader $history_db | tail -1)"
+		res=$(run_stmt "$stmt")
 		# echo "QUERY RESULT $res"
 		return "$res"
 	fi
@@ -141,16 +145,16 @@ check_db() {
 update_date() {
 	# updates search/watch date for passed in anime
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
+	stmt=""
 	if [[ "$2" == "search" ]]; then
 		stmt="UPDATE search_history SET search_date = '$datetime' \
-			WHERE anime_name = '$1';" &&
-			return 0 || return 1
+			WHERE anime_name = '$1';"
 	else
 		stmt="UPDATE watch_history SET watch_date = '$datetime' \
 			WHERE anime_name = '$1' \
-			AND episode_number = $2;" &&
-			return 0 || return 1
+			AND episode_number = $2;"
 	fi
+	run_stmt "$stmt"
 }
 
 insert_history() {
@@ -162,9 +166,8 @@ insert_history() {
 	fi
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	check_db "$@"
-	num=$?
 	# echo "CHECKDB RETURNED: $num"
-	if [[ "$num" -gt 0 ]]; then
+	if [[ "$?" -gt 0 ]]; then
 		if [[ "$2" == "search" ]]; then
 			printf "%s\n" "Already in search db... Updating search_date"
 		else
@@ -175,12 +178,12 @@ insert_history() {
 		if [[ "$2" == "search" ]]; then
 			stmt="INSERT INTO search_history(anime_name, search_date) \
 				VALUES('$1', '$datetime');"
-			printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db"
+			run_stmt "$stmt"
 		else
 			stmt="INSERT INTO \
 				watch_history(anime_name, episode_number, watch_date) \
 				VALUES('$1', '$2', '$datetime');"
-			printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db"
+			run_stmt "$stmt"
 		fi
 	fi
 }
@@ -193,16 +196,9 @@ get_search_query() {
 	stmt="SELECT DISTINCT anime_name \
 		  FROM search_history \
 		  ORDER BY search_date DESC;"
-	# cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
-	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
-	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
+	hist=$(run_stmt "$stmt")
 
-	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db" | tail -1)
-	if [[ "$VERBOSE" -eq 1 ]]; then
-		echo "HISTORY:" "${hist[@]}"
-	fi
-	# echo "HISTORY: $hist"
-	# echo "COUNT: $cnt"
 	if [ -z "$*" ]; then
 		query=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l 12 -p "Search Anime:" \
@@ -246,19 +242,23 @@ anime_selection() {
 		$search_results
 	EOF
 
-	searched=()
+	searched=""
 	cnt=0
 	# Get the comma separated list of indexes of anime that has been searched before
 	for anime in "${res[@]}"; do
-		# printf "ANIME: $anime"
+		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "ANIME: $anime"
 		check_db "$anime" "search"
 		if [[ $? -gt 0 ]]; then
-			# printf "%s\n" "SEARCHED BEFORE"
-			searched+=("$((cnt++)), ")
+			[ "$VERBOSE" -eq 1 ] && printf "%s\n" "SEARCHED BEFORE"
+			if [[ "$searched" == "" ]]; then
+				searched="$((cnt++))"
+			else
+				searched="$searched, $((cnt++))"
+			fi
 		fi
 	done
 
-	# printf "%s\n" "SEARCHED: $searched"
+	printf "%s\n" "SEARCHED: $searched"
 
 	# get the anime from indexed list
 	user_input=$(printf "${menu[@]}" |
@@ -312,10 +312,9 @@ episode_selection() {
 	stmt="SELECT DISTINCT episode_number \
 		  FROM watch_history \
 		  WHERE anime_name = '$anime_id';"
-	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
-	# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
+	hist=$(run_stmt "$stmt")
 	if [[ "$VERBOSE" -eq 1 ]]; then
-		echo "HISTORY: ${hist[@]}"
+		printf "%s\n" "HISTORY: ${hist[*]}"
 	fi
 
 	# Get Watch History for $anime_id as comma separated list
@@ -329,19 +328,25 @@ episode_selection() {
 	done
 
 	[ "$VERBOSE" -eq 1 ] && printf "WATCH HISTORY: %s\n" "$watch_history"
-	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 "$history_db" | tail -1)
 	# printf "NUM EPISODES: $last_ep_number"
 	# get user choice and set the start and end
+	msg='<span foreground="peachpuff" style="italic" size="small" weight="light">Range of episodes can be provided as: START_EPISODE - END_EPISODE</span>'
 	choice=$(
 		seq 1 "$last_ep_number" |
 			rofi -dmenu -l 12 \
 				-a "$watch_history" \
-				-p "Select Episode (1, $last_ep_number):" \
+				-p "Select Episode [1, $last_ep_number]:" \
+				-mesg "$msg" \
 				-config "$config_dir"/meh.rasi
 	)
-	ep_choice_start=$(printf '%s\n' "$choice" | awk '{print $1}')
-	ep_choice_end=$(printf '%s\n' "$choice" | awk '{print $2}')
-	# echo "$ep_choice_start $ep_choice_end"
+	ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
+	ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
+
+	# if only one episode was entered, set ep_choice_end to empty string so only selected episode plays
+	# otherwise plays from ep 1 - ep_choice_start
+	[ "$ep_choice_start" -eq "$ep_choice_end" ] && ep_choice_end=""
+
+	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "START: $ep_choice_start | END: $ep_choice_end"
 	# read ep_choice_start ep_choice_end
 	printf "$c_reset"
 
@@ -360,9 +365,9 @@ open_episode() {
 			FROM watch_history \
 			WHERE anime_name = '$anime_id';"
 		# hist=$(echo "$stmt" | sqlite3 "$history_db" | awk '{ if ( NR > 2 ) { print } }')
-		hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
+		hist=$(run_stmt "$stmt")
 		if [[ "$VERBOSE" -eq 1 ]]; then
-			echo "HISTORY: ${hist[@]}"
+			echo "HISTORY: ${hist[*]}"
 		fi
 		episode=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l 12 -p "Choose Episode:" \
@@ -378,17 +383,17 @@ open_episode() {
 	video_url=$(get_links "$dpage_url")
 
 	case $video_url in
-	*streamtape*)
-		# If direct download not available then scrape streamtape.com
-		BROWSER=${BROWSER:-firefox}
-		printf "scraping streamtape.com\n"
-		video_url=$(curl -s "$video_url" | sed -n -E '
+		*streamtape*)
+			# If direct download not available then scrape streamtape.com
+			BROWSER=${BROWSER:-firefox}
+			printf "scraping streamtape.com\n"
+			video_url=$(curl -s "$video_url" | sed -n -E '
 				/^<script>document/{
 				s/^[^"]*"([^"]*)" \+ '\''([^'\'']*).*/https:\1\2\&dl=1/p
 				q
 				}
 			')
-		;;
+			;;
 	esac
 
 	if [ $is_download -eq 0 ]; then
@@ -434,24 +439,24 @@ scrape=query
 download_dir="."
 while getopts 'hd:Hl' OPT; do
 	case $OPT in
-	h)
-		help_text
-		exit 0
-		;;
-	d)
-		is_download=1
-		download_dir="$OPTARG"
+		h)
+			help_text
+			exit 0
+			;;
+		d)
+			is_download=1
+			download_dir="$OPTARG"
 
-		if [ "$VERBOSE" -eq 1 ]; then
-			echo "DOWNLOAD DIR: $download_dir"
-		fi
-		;;
-	H)
-		scrape=history
-		;;
-	l)
-		list_history=1
-		;;
+			if [ "$VERBOSE" -eq 1 ]; then
+				echo "DOWNLOAD DIR: $download_dir"
+			fi
+			;;
+		H)
+			scrape=history
+			;;
+		l)
+			list_history=1
+			;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -464,11 +469,7 @@ if [[ "$list_history" -eq 1 ]]; then
 	stmt="SELECT DISTINCT anime_name \
 		  FROM search_history \
 		  ORDER BY search_date DESC"
-	# cnt_stmt="SELECT DISTINCT COUNT(*) FROM search_history"
-	# hist=$(echo "$stmt" | sqlite3 "$history_db")
-	# hist=$(echo "$stmt" | sqlite3 -noheader "$history_db" | awk '{ if ( NR > 2 ) { print } }')
-	hist=$(echo "$stmt" | sqlite3 -noheader "$history_db")
-	# cnt=$(printf "%s\n" "$cnt_stmt" | sqlite3 -noheader "$history_db")
+	hist=$(run_stmt "$stmt")
 	printf "%s\n" "${hist[@]}" |
 		rofi -config "$config_dir"/meh.rasi \
 			-dmenu -l 12 -i -p "Search History"
@@ -476,20 +477,22 @@ if [[ "$list_history" -eq 1 ]]; then
 fi
 
 case $scrape in
-query)
+	query)
 
-	get_search_query "$*"
-	search_results=$(search_anime "$query")
-	[ -z "$search_results" ] && die "No search results found"
-	anime_selection "$search_results"
-	episode_selection
-	;;
-history)
-	search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
-	[ -z "$search_results" ] && die "History is empty"
-	anime_selection "$search_results"
-	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-	;;
+		get_search_query "$*"
+		search_results=$(search_anime "$query")
+		[ -z "$search_results" ] && die "No search results found"
+		anime_selection "$search_results"
+		episode_selection
+		;;
+	history)
+		# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+		stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
+		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$history_db")
+		[ -z "$search_results" ] && die "History is empty"
+		anime_selection "${search_results[@]}"
+		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+		;;
 esac
 
 { # checking input
@@ -528,29 +531,29 @@ while :; do
 	# choice=$(printf '%s\n' "$choice" | awk '{print $1}')
 	printf "$c_reset"
 	case $choice in
-	n)
-		episode=$((episode + 1))
-		;;
-	p)
-		episode=$((episode - 1))
-		;;
+		n)
+			episode=$((episode + 1))
+			;;
+		p)
+			episode=$((episode - 1))
+			;;
 
-	s)
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-		read episode
-		printf "$c_reset"
-		[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
-		;;
+		s)
+			printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+			read episode
+			printf "$c_reset"
+			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
+			;;
 
-	r) ;;
+		r) ;;
 
-	q)
-		break
-		;;
+		q)
+			break
+			;;
 
-	*)
-		die "invalid choice"
-		;;
+		*)
+			die "invalid choice"
+			;;
 	esac
 	open_episode "$selection_id" "$episode" "$download_dir"
 done
