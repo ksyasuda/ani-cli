@@ -344,7 +344,9 @@ episode_selection() {
 
 	# if only one episode was entered, set ep_choice_end to empty string so only selected episode plays
 	# otherwise plays from ep 1 - ep_choice_start
-	[ "$ep_choice_start" -eq "$ep_choice_end" ] && ep_choice_end=""
+	if [[ "$ep_choice_start" -eq "$ep_choice_end" ]]; then
+		ep_choice_end=""
+	fi
 
 	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "START: $ep_choice_start | END: $ep_choice_end"
 	# read ep_choice_start ep_choice_end
@@ -507,7 +509,7 @@ esac
 	if [ -n "$ep_choice_end" ]; then
 		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
 		# create list of episodes to download/watch
-		episodes=$(seq 1 $ep_choice_end)
+		episodes=$(seq $ep_choice_start $ep_choice_end)
 	fi
 }
 
