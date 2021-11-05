@@ -197,7 +197,7 @@ get_search_query() {
 	# Construct string "<id>. <anime_name>"
 	stmt="SELECT DISTINCT id || '. ' || anime_name \
 		  FROM search_history \
-		  ORDER BY search_date DESC;"
+		  ORDER BY id DESC;"
 	# hist=$(echo "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 	hist=$(run_stmt "$stmt")
 
@@ -509,6 +509,7 @@ while getopts 'hd:HlpadP:' OPT; do
 			[ -z "$playlist_file" ] && die "Eneter in path to playlist"
 			mpv "$playlist_file"
 			exit 0
+			;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -584,8 +585,8 @@ case $scrape in
 		[ $? -ne 0 ] && die "No anime selection found"
 		episode_selection
 		;;
-	delete)
-		;;
+	delete) ;;
+
 esac
 
 { # checking input
@@ -603,12 +604,11 @@ esac
 grep -q -w "${selection_id}" "$logfile" ||
 	printf "%s\t%d\n" "$selection_id" $((episode + 1)) >>"$logfile"
 
-
 for ep in $episodes; do
 	if [[ "$is_add" -eq 1 ]]; then
 		echo "ID: $selection_id"
 		echo "EPISODES: $episodes"
-		printf "%s\n" "$selection_id $ep" >> "$playlist_file"
+		printf "%s\n" "$selection_id $ep" >>"$playlist_file"
 		echo "Added to playlist file"
 		exit 0
 	else

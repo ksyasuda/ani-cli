@@ -12,7 +12,7 @@ CFG_FILE="meh.rasi"
 
 # not a wrapper around the ani-cli-rofi
 
-options="1. Stream|2. Download|3. Continue|4. Queue|5. Quit"
+options="1. Stream|2. Download|3. Continue|4. Playlist|5. Quit"
 
 choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Enter choice:")
 
@@ -43,7 +43,7 @@ elif [[ "$selection" == "4." ]]; then
 	)
 	selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 	if [[ "$selection" == "1." ]]; then
-		options="1. Streaming|2. From file|3. Quit"
+		options="1. From file|2. Streaming|3. Quit"
 		choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
 		[ "$choice" == "4. Quit" ] && (
 			echo 'Quitting...'
@@ -51,11 +51,14 @@ elif [[ "$selection" == "4." ]]; then
 		)
 		selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 		if [[ "$selection" == "1." ]]; then
-			"$CMD" -p
+			# TODO: Change directory to variable set at install
+			PLAYLIST_DIR="$HOME/Videos/sauce"
+			choice=$(ls "$PLAYLIST_DIR" | rofi -dmenu -config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Choose playlist:")
+			# choice=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" -l 1 -i -p "Enter path to playlist")
+			# [ -z "$choice" ] && choice="$HOME/Videos/sauce/"
+			"$CMD" -P "$PLAYLIST_DIR/$choice"
 		elif [[ "$selection" == "2." ]]; then
-			choice=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" -l 1 -i -p "Enter path to playlist")
-			[ -z "$choice" ] && choice="$HOME/Videos/sauce/"
-			"$CMD" -P "$choice"
+			"$CMD" -p
 		fi
 	# selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 	elif [[ "$selection" == "2." ]]; then
