@@ -6,7 +6,7 @@ if [[ -z "$XDG_CONFIG_HOME" ]]; then
 fi
 
 CFG_DIR="$XDG_CONFIG_HOME/ani-cli"
-CFG_FILE="meh.rasi"
+ROFI_CFG="meh.rasi"
 
 HISTORY_DB="$XDG_CONFIG_HOME/ani-cli/history.sqlite3"
 
@@ -194,16 +194,21 @@ get_search_query() {
 	# Query the anime to stream/download
 
 	# Get search history
-	stmt="SELECT DISTINCT anime_name \
+	# Construct string "<id>. <anime_name>"
+	stmt="SELECT DISTINCT id || '. ' || anime_name \
 		  FROM search_history \
 		  ORDER BY search_date DESC;"
 	# hist=$(echo "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 	hist=$(run_stmt "$stmt")
 
+	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
+	span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
 	if [ -z "$*" ]; then
 		query=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l 12 -p "Search Anime:" \
-				-config "$CFG_DIR/${CFG_FILE}")
+				-mesg "$span" \
+				-config "$CFG_DIR/${ROFI_CFG}" | awk '{print $NF}')
+		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Query: $query"
 		# printf "Search Anime: "
 		# read -r query
 	else
@@ -235,7 +240,7 @@ anime_selection() {
 			menu_format_string=$menu_format_string_c2
 
 		# printf "$menu_format_string" "$count" "$anime_id"
-		menu+="$count - $anime_id\n"
+		menu+="$count. $anime_id\n"
 		idx=$((count - 1))
 		res["$idx"]="$anime_id"
 		count=$((count + 1))
@@ -263,24 +268,31 @@ anime_selection() {
 
 	# get the anime from indexed list
 	user_input=$(printf "${menu[@]}" |
-		rofi -dmenu -config "$CFG_DIR/${CFG_FILE}" \
+		rofi -dmenu -config "$CFG_DIR/${ROFI_CFG}" \
 			-a "$searched" \
 			-l 12 -i -p "Enter number:")
 	[ "$?" -ne 0 ] && return 1
+
 	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
+	# Remove period after number
+	choice="${choice::-1}"
 	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
+
 	if [[ "$VERBOSE" -eq 1 ]]; then
+		printf "%s\n" "CHOICE: $name"
 		printf "%s\n" "NAME: $name"
 	fi
-	insert_history "$name" "search"
-	echo "Number Chosen: $choice"
-	# User input
-	# printf "$c_blue%s$c_green" "Enter number: "
-	# read choice
-	printf "$c_reset"
 
+	# check both choice and name are set
+	if [[ ! "$choice" ]] || [[ ! "$name" ]]; then
+		die "Invalid choice... committing seppuku"
+	fi
 	# Check if input is a number
 	[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
+
+	insert_history "$name" "search"
+
+	printf "$c_reset"
 
 	# Select respective anime_id
 	count=1
@@ -338,18 +350,20 @@ episode_selection() {
 				-a "$watch_history" \
 				-p "Select Episode [1, $last_ep_number]:" \
 				-mesg "$msg" \
-				-config "$CFG_DIR/${CFG_FILE}"
+				-config "$CFG_DIR/${ROFI_CFG}"
 	)
 	ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
 	ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
-
+	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "START: $ep_choice_start | END: $ep_choice_end"
+	if [[ -z "$ep_choice_start" ]] && [[ -z "$ep_choice_end" ]]; then
+		die "No episode range entered"
+	fi
 	# if only one episode was entered, set ep_choice_end to empty string so only selected episode plays
 	# otherwise plays from ep 1 - ep_choice_start
 	if [[ "$ep_choice_start" -eq "$ep_choice_end" ]]; then
 		ep_choice_end=""
 	fi
 
-	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "START: $ep_choice_start | END: $ep_choice_end"
 	# read ep_choice_start ep_choice_end
 	printf "$c_reset"
 
@@ -360,23 +374,25 @@ open_episode() {
 	episode=$2
 	ddir=$3
 
-	# clear the screen
-	printf '\x1B[2J\x1B[1;1H'
-	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
-		err "Episode out of range"
-		stmt="SELECT DISTINCT episode_number \
-			FROM watch_history \
-			WHERE anime_name = '$anime_id' \
-			ORDER BY episode_number ASC;"
-		# hist=$(echo "$stmt" | sqlite3 "$HISTORY_DB" | awk '{ if ( NR > 2 ) { print } }')
-		hist=$(run_stmt "$stmt")
-		if [[ "$VERBOSE" -eq 1 ]]; then
-			echo "HISTORY: ${hist[*]}"
+	if [[ ! "$is_playlist" ]]; then
+		# clear the screen
+		printf '\x1B[2J\x1B[1;1H'
+		if [[ $episode -lt 1 ]] || [[ $episode -gt $last_ep_number ]]; then
+			err "Episode out of range"
+			stmt="SELECT DISTINCT episode_number \
+				FROM watch_history \
+				WHERE anime_name = '$anime_id' \
+				ORDER BY episode_number ASC;"
+			# hist=$(echo "$stmt" | sqlite3 "$HISTORY_DB" | awk '{ if ( NR > 2 ) { print } }')
+			hist=$(run_stmt "$stmt")
+			if [[ "$VERBOSE" -eq 1 ]]; then
+				echo "HISTORY: ${hist[*]}"
+			fi
+			episode=$(printf "%s\n" "${hist[@]}" |
+				rofi -dmenu -l 12 -p "Choose Episode:" \
+					-config "$CFG_DIR/${ROFI_CFG}")
+			printf "$c_reset"
 		fi
-		episode=$(printf "%s\n" "${hist[@]}" |
-			rofi -dmenu -l 12 -p "Choose Episode:" \
-				-config "$CFG_DIR/${CFG_FILE}")
-		printf "$c_reset"
 	fi
 
 	[ "$VERBOSE" -eq 1 ] && printf "Getting data for episode %d\n" $episode
@@ -414,14 +430,23 @@ open_episode() {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
+			# (
+			# 	echo "$DDIR"
+			# 	cd "$ddir" || return 1
+			# 	mkdir -p "$anime_id" && cd "$anime_id" || return 1
+			# 	ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
+			# 		-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			# 		printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
+			# 		printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
+			# )
 			(
 				echo "$DDIR"
 				cd "$ddir" || return 1
 				mkdir -p "$anime_id" && cd "$anime_id" || return 1
 				ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
 					-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
-					printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
-					printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
+					notify-send "Downloaded episode: $episode" ||
+					notify-send "Download failed episode: $episode"
 			)
 		}
 	fi
@@ -441,7 +466,11 @@ is_download=0
 list_history=0
 scrape=query
 download_dir="."
-while getopts 'hd:Hl' OPT; do
+is_playlist=0
+playlist_remove=0
+playlist_add=0
+playlist_file="$CFG_DIR/playlists/playlist.txt"
+while getopts 'hd:Hlpad' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -461,6 +490,18 @@ while getopts 'hd:Hl' OPT; do
 		l)
 			list_history=1
 			;;
+		p)
+			scrape=playlist
+			is_playlist=1
+			;;
+		a)
+			is_add=1
+			scrape=add
+			;;
+		d)
+			is_delete=1
+			scrape=delete
+			;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -475,7 +516,7 @@ if [[ "$list_history" -eq 1 ]]; then
 		  ORDER BY search_date DESC"
 	hist=$(run_stmt "$stmt")
 	printf "%s\n" "${hist[@]}" |
-		rofi -config "$CFG_DIR/${CFG_FILE}" \
+		rofi -config "$CFG_DIR/${ROFI_CFG}" \
 			-dmenu -l 12 -i -p "Search History"
 	exit 0
 fi
@@ -487,6 +528,7 @@ case $scrape in
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
+		[ $? -ne 0 ] && die "No anime selection found"
 		episode_selection
 		;;
 	history)
@@ -500,6 +542,42 @@ case $scrape in
 		ep_choice_start=$?
 		echo "EPISODE: $ep_choice_start"
 		# ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+		;;
+	playlist)
+		lines=$(cat "$playlist_file" | wc -l)
+		[ "$VERBOSE" -eq 1 ] && printf "%s%d\n" "Num lines in playlist: " "$lines"
+		if [[ "$lines" -eq 0 ]]; then
+			get_search_query "$*"
+			search_results=$(search_anime "$query")
+			[ -z "$search_results" ] && die "No search results found"
+			anime_selection "$search_results"
+			[ $? -ne 0 ] && die "No anime selection found"
+			episode_selection
+		else
+			line=($(sed '1q;d' "$playlist_file"))
+			if [[ "${#line[@]}" -ne 2 ]]; then
+				die "Something went wrong with the playlist file... exiting"
+			fi
+			selection_id="${line[0]}"
+			episodes=($selection_id)
+			ep_choice_start="${line[1]}"
+			ep_choice_end=""
+			read last_ep_number <<-EOF
+				$(search_eps "$selection_id")
+			EOF
+			[ "$VERBOSE" -eq 1 ] && printf "Anime: %s Episode: %d\n" "$episodes" "$ep_choice_start"
+			[ "$VERBOSE" -eq 1 ] && printf "Episodes: %s\n" "${episodes[@]}"
+		fi
+		;;
+	add)
+		get_search_query "$*"
+		search_results=$(search_anime "$query")
+		[ -z "$search_results" ] && die "No search results found"
+		anime_selection "$search_results"
+		[ $? -ne 0 ] && die "No anime selection found"
+		episode_selection
+		;;
+	delete)
 		;;
 esac
 
@@ -518,8 +596,20 @@ esac
 grep -q -w "${selection_id}" "$logfile" ||
 	printf "%s\t%d\n" "$selection_id" $((episode + 1)) >>"$logfile"
 
+
 for ep in $episodes; do
-	open_episode "$selection_id" "$ep" "$download_dir"
+	if [[ "$is_add" -eq 1 ]]; then
+		echo "ID: $selection_id"
+		echo "EPISODES: $episodes"
+		printf "%s\n" "$selection_id $ep" >> "$playlist_file"
+		echo "Added to playlist file"
+		exit 0
+	else
+		open_episode "$selection_id" "$ep" "$download_dir"
+		if [[ "$is_playlist" -eq 1 ]]; then
+			sed -i '1d' "$playlist_file"
+		fi
+	fi
 done
 episode=${ep_choice_end:-$ep_choice_start}
 
