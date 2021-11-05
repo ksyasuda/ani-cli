@@ -207,10 +207,11 @@ get_search_query() {
 		query=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l 12 -p "Search Anime:" \
 				-mesg "$span" \
-				-config "$CFG_DIR/${ROFI_CFG}" | awk '{print $NF}')
+				-config "$CFG_DIR/${ROFI_CFG}")
+
+		# Strip the list entry number from string
+		query="${query//[1-9]\. /}"
 		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Query: $query"
-		# printf "Search Anime: "
-		# read -r query
 	else
 		query=$*
 	fi
@@ -470,7 +471,7 @@ is_playlist=0
 playlist_remove=0
 playlist_add=0
 playlist_file="$CFG_DIR/playlists/playlist.txt"
-while getopts 'hd:Hlpad' OPT; do
+while getopts 'hd:HlpadP:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -502,6 +503,11 @@ while getopts 'hd:Hlpad' OPT; do
 			is_delete=1
 			scrape=delete
 			;;
+		P)
+			is_playlist=1
+			playlist_file="$OPTARG"
+			[ -z "$playlist_file" ] && die "Eneter in path to playlist"
+			mpv "$playlist_file"
 	esac
 done
 shift $((OPTIND - 1))

@@ -14,7 +14,7 @@ CFG_FILE="meh.rasi"
 
 options="1. Stream|2. Download|3. Continue|4. Queue|5. Quit"
 
-choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
+choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Enter choice:")
 
 [ "$choice" == "5. Quit" ] && (
 	echo 'Quitting...'
@@ -43,7 +43,19 @@ elif [[ "$selection" == "4." ]]; then
 	)
 	selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 	if [[ "$selection" == "1." ]]; then
-	   "$CMD" -p
+		options="1. Streaming|2. From file|3. Quit"
+		choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
+		[ "$choice" == "4. Quit" ] && (
+			echo 'Quitting...'
+			exit 0
+		)
+		selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
+		if [[ "$selection" == "1." ]]; then
+			"$CMD" -p
+		elif [[ "$selection" == "2." ]]; then
+			"$CMD" -P
+		fi
+	# selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 	elif [[ "$selection" == "2." ]]; then
 		"$CMD" -a
 	elif [[ "$selection" == "3." ]]; then
