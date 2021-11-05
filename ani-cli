@@ -508,6 +508,7 @@ while getopts 'hd:HlpadP:' OPT; do
 			playlist_file="$OPTARG"
 			[ -z "$playlist_file" ] && die "Eneter in path to playlist"
 			mpv "$playlist_file"
+			exit 0
 	esac
 done
 shift $((OPTIND - 1))

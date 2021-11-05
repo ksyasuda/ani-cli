@@ -53,7 +53,9 @@ elif [[ "$selection" == "4." ]]; then
 		if [[ "$selection" == "1." ]]; then
 			"$CMD" -p
 		elif [[ "$selection" == "2." ]]; then
-			"$CMD" -P
+			choice=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" -l 1 -i -p "Enter path to playlist")
+			[ -z "$choice" ] && choice="$HOME/Videos/sauce/"
+			"$CMD" -P "$choice"
 		fi
 	# selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 	elif [[ "$selection" == "2." ]]; then
