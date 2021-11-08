@@ -6,19 +6,17 @@ if [[ -z "$XDG_CONFIG_HOME" ]]; then
 fi
 
 BASE_URL="https://gogoanime.cm"
-CFG_DIR="$XDG_CONFIG_HOME/ani-cli"
+CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 ROFI_CFG="meh.rasi"
 
-HISTORY_DB="$XDG_CONFIG_HOME/ani-cli/history.sqlite3"
+HISTORY_DB="$XDG_CONFIG_HOME/aniwrapper/history.sqlite3"
 
-# dependencies: grep sed curl video_player
+# dependencies: grep, sed, curl, video_player, rofi, sqlite3
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-
-# sql=$(sqlite3 -noheader "$HISTORY_DB")
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -56,7 +54,7 @@ search_anime() {
 	curl -s "$BASE_URL//search.html" \
 		-G \
 		-d "keyword=$search" |
-	sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p' 
+		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
 }
 
 search_eps() {
@@ -127,7 +125,6 @@ check_db() {
 			  FROM search_history \
 			  WHERE anime_name = '$1';"
 		res=$(run_stmt "$stmt")
-		# echo "QUERY RESULT $res"
 		return "$res"
 	else
 		stmt="SELECT DISTINCT COUNT(*) \
@@ -135,7 +132,6 @@ check_db() {
 			  WHERE anime_name = '$1' \
 			  AND episode_number = $2;"
 		res=$(run_stmt "$stmt")
-		# echo "QUERY RESULT $res"
 		return "$res"
 	fi
 }
@@ -158,14 +154,14 @@ update_date() {
 insert_history() {
 	# inserts into search/watch history db
 	# check the anime_name/id
-	if [[ ! $(check_anime_name "$1") ]]; then
+	check_anime_name "$1"
+	if [[ $? -ne 0 ]]; then
 		printf "%s\n" "ERROR: Anime name is none... exiting"
 		return 1
 	fi
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	check_db "$@"
-	# echo "CHECKDB RETURNED: $num"
-	if [[ "$?" -gt 0 ]]; then
+	if [[ $? -gt 0 ]]; then
 		if [[ "$2" == "search" ]]; then
 			printf "%s\n" "Already in search db... Updating search_date"
 		else
@@ -195,7 +191,6 @@ get_search_query() {
 	stmt="SELECT DISTINCT id || '. ' || anime_name \
 		  FROM search_history \
 		  ORDER BY id DESC;"
-	# hist=$(echo "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 	hist=$(run_stmt "$stmt")
 
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
@@ -339,7 +334,6 @@ episode_selection() {
 	done
 
 	[ "$VERBOSE" -eq 1 ] && printf "WATCH HISTORY: %s\n" "$watch_history"
-	# printf "NUM EPISODES: $last_ep_number"
 	# get user choice and set the start and end
 	msg='<span foreground="peachpuff" style="italic" size="small" weight="light">Range of episodes can be provided as: START_EPISODE - END_EPISODE</span>'
 	choice=$(
@@ -370,7 +364,7 @@ episode_selection() {
 open_episode() {
 	anime_id=$1
 	episode=$2
-	ddir=$3
+	ddir="$3"
 
 	if [[ ! "$is_playlist" ]]; then
 		# clear the screen
@@ -416,36 +410,24 @@ open_episode() {
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number
-		sed -E "
-			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode + 1))/
-		" "$logfile" >"${logfile}.new" && mv "${logfile}.new" "$logfile"
+		# sed -E "
+		# 	s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode + 1))/
+		# " "$logfile" >"${logfile}.new" && mv "${logfile}.new" "$logfile"
 
 		setsid -f $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1
-		# $player_fn --http-header-fields="Referer: $dpage_url" "$video_url"
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			# (
-			# 	echo "$DDIR"
-			# 	cd "$ddir" || return 1
-			# 	mkdir -p "$anime_id" && cd "$anime_id" || return 1
-			# 	ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
-			# 		-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
-			# 		printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
-			# 		printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
-			# )
-			(
-				echo "$DDIR"
-				cd "$ddir" || return 1
-				mkdir -p "$anime_id" && cd "$anime_id" || return 1
-				ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
-					-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
-					notify-send "Downloaded episode: $episode" ||
-					notify-send "Download failed episode: $episode"
-			)
+			cd "${ddir/ //}" || die "Could not enter directory $ddir"
+			mkdir -p "$anime_id" || die "Could not create directory"
+			cd "$anime_id" || die "Could not enter subdirectory $ddir/$anime_id"
+			ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
+				-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+				notify-send "Downloaded episode: $episode" ||
+				notify-send "Download failed episode: $episode"
 		}
 	fi
 }
@@ -457,7 +439,7 @@ open_episode() {
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
-dep_ch "$player_fn" "curl" "sed" "grep"
+dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi"
 
 # option parsing
 is_download=0
@@ -542,6 +524,7 @@ case $scrape in
 		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 		[ -z "$search_results" ] && die "History is empty"
 		anime_selection "${search_results[@]}"
+		[ $? -ne 0 ] && die "No anime selection found"
 		stmt="SELECT episode_number FROM watch_history ORDER BY watch_date DESC LIMIT 1"
 		run_stmt "$stmt"
 		ep_choice_start=$?
@@ -598,15 +581,17 @@ esac
 }
 
 # add anime to history file
-grep -q -w "${selection_id}" "$logfile" ||
-	printf "%s\t%d\n" "$selection_id" $((episode + 1)) >>"$logfile"
+# grep -q -w "${selection_id}" "$logfile" ||
+# 	printf "%s\t%d\n" "$selection_id" $((episode + 1)) >>"$logfile"
 
 for ep in $episodes; do
 	if [[ "$is_add" -eq 1 ]]; then
-		echo "ID: $selection_id"
-		echo "EPISODES: $episodes"
+		if [[ "$VERBOSE" -eq 1 ]]; then
+			printf "%s\n" "ID: $selection_id"
+			printf "%s\n" "EPISODES: $episodes"
+		fi
 		printf "%s\n" "$selection_id $ep" >>"$playlist_file"
-		echo "Added to playlist file"
+		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Added to playlist file"
 		exit 0
 	else
 		open_episode "$selection_id" "$ep" "$download_dir"
@@ -629,8 +614,6 @@ while :; do
 	printf "$c_reset"
 	read choice
 
-	# choice=$(printf '%s\n' "${args[@]}" | rofi -dmenu -l 8 -i -p "Enter choice:")
-	# choice=$(printf '%s\n' "$choice" | awk '{print $1}')
 	printf "$c_reset"
 	case $choice in
 		n)
