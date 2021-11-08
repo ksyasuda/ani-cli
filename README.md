@@ -1,4 +1,57 @@
-# ani-cli
+<div align="center">
+
+# Aniwrapper
+
+[Setup](#setup) | [Usage](#usage) | [Screenshots](#screenshots)
+
+![Aniwrapper screenshot](./screenshots/aniwrapper_home.png)
+
+</div>
+
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
+
+**Table of Contents**
+
+- [Aniwrapper](#aniwrapper)
+- [Setup](#setup)
+  - [Dependencies](#dependencies)
+    - [Arch Linux](#arch-linux)
+  - [Usage](#usage)
+    - [aniwrapper](#aniwrapper)
+    - [ani-cli Script](#ani-cli-script)
+
+<!-- markdown-toc end -->
+
+# Setup
+
+## Dependencies
+
+These are the minimum dependences required to run `aniwrapper`
+
+- grep
+- curl
+- sed
+- mpv
+  - skip-intro.lua (installed in setup.sh)
+- ffmpeg
+- rofi
+  - meh.rasi (installed in setup.sh)
+- sqlite3
+
+### Arch Linux
+
+```sh
+pacman -S --needed grep curl sed mpv ffmpeg rofi sqlite3
+```
+
+## Installing
+
+```sh
+git clone https://github.com/ksyasuda/aniwrapper
+cd aniwrapper
+```
+
+After cloning the repository
 
 This is a fork of [Dink4n's ani-cli](https://github.com/Dink4n/ani-cli),
 which itself is a fork of
@@ -21,9 +74,9 @@ however using the ani-cli script itself is also possible
 
 ## Usage
 
-### Wrapper Script `aniwrapper`
+### aniwrapper
 
-    # Launch Menu (Contains same options as below, but in a rofi menu)
+    # Launch aniwrapper menu
     aniwrapper
 
 ### ani-cli Script
@@ -40,23 +93,17 @@ however using the ani-cli script itself is also possible
     # list searched anime
     ani-cli -l
 
-    # play a playlist :soon:
-    ani-cli -p
+    # add to playlist
+    ani-cli -a
+
+    # delete from playlist
+    ani-cli -d
+
+    # playlist mode
+    ani-cli -P
 
 Multiple episodes can be viewed/downloaded by giving the episode range like so
 
-    Choose episode [1-13]: 1 - 6
+    Choose episode [1-13]: 1 6
 
 This would open/download episodes 1 2 3 4 5 6
-
-## Dependencies
-
-- grep
-- curl
-- sed
-- mpv
-  - skip-intro.lua (installed in setup.sh)
-- ffmpeg
-- rofi
-  - meh.rasi (installed in setup.sh)
-- sqlite3
