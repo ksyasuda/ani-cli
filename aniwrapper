@@ -60,6 +60,7 @@ elif [[ "$selection" == "4." ]]; then
 	choice=$(printf "%s\n" "${options[@]}" |
 		rofi -dmenu -sep '|' \
 			-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
+	[ -z "$choice" ] && seppuku "No choice selected"
 	[ "$choice" == "5. Quit" ] && quit
 	selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 	if [[ "$selection" == "1." ]]; then
@@ -70,6 +71,7 @@ elif [[ "$selection" == "4." ]]; then
 		choice=$(printf "%s\n" "${options[@]}" |
 			rofi -dmenu -sep '|' \
 				-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
+		[ -z "$choice" ] && seppuku "No choice selected"
 		[ "$choice" == "5. Quit" ] && quit
 		selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 		if [[ "$selection" == "1." ]]; then
@@ -81,6 +83,7 @@ elif [[ "$selection" == "4." ]]; then
 			choice=$(find "$PLAYLIST_DIR" -type d |
 				rofi -dmenu \
 					-config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Choose playlist:")
+			[ -z "$choice" ] && seppuku "No choice selected"
 			[ -z "$choice" ] &&
 				run -P "$PLAYLIST_DIR/$choice"
 		elif [[ "$selection" == "2." ]]; then
