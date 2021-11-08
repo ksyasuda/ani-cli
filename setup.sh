@@ -15,7 +15,7 @@ if [[ -z "$XDG_CONFIG_HOME" ]]; then
     XDG_CONFIG_HOME="$HOME/.config"
 fi
 
-DIR="$XDG_CONFIG_HOME/ani-cli"
+DIR="$XDG_CONFIG_HOME/aniwrapper"
 MPV_DIR="$XDG_CONFIG_HOME/mpv"
 
 printf "%s\n" "INSTALL DIR: $DIR"
