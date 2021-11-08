@@ -1,5 +1,5 @@
 configuration {
-    font:				"Open Sans 35";
+    font:				"Open Sans 15";
     display-drun:			"Dmenu";
     scroll-method:			0;
     disable-history:		false;
@@ -8,25 +8,25 @@ configuration {
 
 * {
     selected-normal-foreground:  rgba ( 255, 147, 5, 100 % );
+    selected-normal-foreground:  rgba ( 255, 147, 5, 100 % );
     /* foreground:                  rgba ( 196, 203, 212, 100 % ); */
     foreground:                  #ecbe7b;
     normal-foreground:           @foreground;
     alternate-normal-background: rgba ( 45, 48, 59, 1 % );
     red:                         #ff6c6b;
     selected-urgent-foreground:  rgba ( 249, 249, 249, 100 % );
-    blue:                        #51afef;
+    blue:                        #1E90FF;
     urgent-foreground:           rgba ( 204, 102, 102, 100 % );
     alternate-urgent-background: rgba ( 75, 81, 96, 90 % );
     active-foreground:           #51afef;
     lightbg:                     rgba ( 238, 232, 213, 100 % );
     selected-active-foreground:  #1E90FF;
-    alternate-active-background: rgba ( 45, 48, 59, 88 % );
-    background:                  rgba ( 45, 48, 59, 88 % );
+    alternate-active-background: rgba ( 45, 48, 59, 95 % );
+    background:                  #282c34;
     alternate-normal-foreground: @foreground;
     normal-background:           rgba ( 45, 48, 59, 1 % );
     lightfg:                     rgba ( 88, 104, 117, 100 % );
-    selected-normal-background:  rgba ( 24, 26, 32, 100 % );
-    border-color:                rgba ( 124, 131, 137, 100 % );
+    selected-normal-background:  rgba ( 24, 26, 32, 80 % );
     spacing:                     2;
     separatorcolor:              rgba ( 45, 48, 59, 1 % );
     urgent-background:           rgba ( 45, 48, 59, 15 % );
@@ -34,19 +34,22 @@ configuration {
     alternate-urgent-foreground: @urgent-foreground;
     background-color:            rgba ( 0, 0, 0, 0 % );
     alternate-active-foreground: @active-foreground;
-    active-background:           rgba ( 29, 31, 33, 17 % );
+    active-background:           rgba ( 29, 31, 33, 24 % );
     selected-active-background:  rgba ( 26, 28, 35, 100 % );
     black: #464b55;
     blackwidget: #262626;
+    magenta: #c678dd;
+    blue2: #51afef;
 }
 
 
 window {
     background-color: @background;
-    border: 0;
-    anchor: north;
-    location: north;
-    y-offset: 25%;
+    border: 5px;
+    border-radius: 7px;
+    border-color: #2C4762;
+    anchor: center;
+    location: center;
     padding: 25;
     width: 69%;
 }
@@ -57,26 +60,26 @@ listview {
 
 mainbox {
     border:  0;
-    padding: 12;
+    padding: 2px;
 }
 
 message {
-    border:       2px 0px 0px ;
+    border: 0;
     border-color: @separatorcolor;
     padding:      1px ;
     text-color:   @active-foreground;
-    padding: 6px 10px;
 }
 
 textbox {
+    border: 0;
     text-color: @foreground;
     background-color: @blackwidget;
 }
+
 listview {
+    border: 0;
     dynamic: true;
     fixed-height: 0;
-    border:       8px 0px 0px ;
-    border-color: @separatorcolor;
     spacing:      10px ;
     scrollbar:    false;
     padding:      2px 0px 0px 0px;
@@ -101,12 +104,13 @@ element.normal.urgent {
 }
 element.normal.active {
     background-color: @active-background;
-    text-color:         #51afef;
-    border-color:       #51afef;
+    border-color:     @blue;
+    text-color:       @blue;
 }
 element.selected.normal {
     background-color: @selected-normal-background;
-    text-color:       @selected-normal-foreground;
+    border-color: #ecbe7b;
+    text-color: #1E90FF;
 }
 element.selected.urgent {
     background-color: @selected-urgent-background;
@@ -114,8 +118,9 @@ element.selected.urgent {
 }
 element.selected.active {
     background-color: @selected-active-background;
-    border-color:     #1E90FF;
-    text-color:       #1E90FF;
+    text-color:         @blue2;
+    border-color:       @blue2;
+    text-color: #1E90FF;
 }
 element.alternate.normal {
     background-color: @alternate-normal-background;
@@ -127,9 +132,8 @@ element.alternate.urgent {
 }
 element.alternate.active {
     background-color: @alternate-active-background;
-    /* text-color:       @alternate-active-foreground; */
-    text-color:         #51afef;
-    border-color:       #51afef;
+    border-color:     @blue;
+    text-color:       @blue;
 }
 
 scrollbar {
@@ -167,14 +171,14 @@ case-indicator {
 }
 
 entry {
-    padding: 6px 10px;
+    padding: 4px 8px;
     spacing:    0;
-    text-color: @normal-foreground;
+    text-color: #1E90FF;
 }
 
 prompt {
     spacing: 0;
-    text-color: #51afef;
+    text-color: #c678dd;
     padding: 4px 0px;
 }
 
@@ -187,6 +191,6 @@ textbox-prompt-colon {
     expand:     false;
     str:        ":";
     margin:     0px 0.3em 0em 0em ;
-    text-color: #51afef;
+    text-color: #1E90FF;
     padding: 4px 0px;
 }

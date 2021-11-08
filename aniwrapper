@@ -14,7 +14,7 @@ CFG_FILE="meh.rasi"
 
 options="1. Stream|2. Download|3. Continue|4. Playlist|5. Quit"
 
-choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Enter choice:")
+choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Aniwrapper")
 
 [ "$choice" == "5. Quit" ] && (
 	echo 'Quitting...'
