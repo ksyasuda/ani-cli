@@ -136,6 +136,6 @@ Aniwrapper Main Menu
 ![aniwrapper frontpage](./screenshots/aniwrapper_home.png)
 Aniwrapper Streaming Menu
 ![aniwrapper streaming options](./screenshots/aniwrapper_stream.png)
-Move to come soon... maybe
+More to come soon... maybe
 
 </div>
