@@ -5,6 +5,8 @@ if [[ -z "$XDG_CONFIG_HOME" ]]; then
 	XDG_CONFIG_HOME="$HOME/.config"
 fi
 
+VERBOSE=0
+
 BASE_URL="https://gogoanime.cm"
 CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 ROFI_CFG="meh.rasi"
@@ -25,8 +27,6 @@ c_blue="\033[1;34m"
 c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
-
-VERBOSE=1
 
 help_text() {
 	while IFS= read line; do
@@ -107,7 +107,8 @@ check_anime_name() {
 	# Check to make sure passed in name is not empty
 	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "VAR: $1"
 	if [[ "$1" == "" ]] || [[ "$1" == " " ]] || [[ "$1" == "\n" ]]; then
-		printf "%s\n" "Passed in name is null"
+		[ "$VERBOSE" -eq 1 ] &&
+			printf "%s\n" "Passed in name is nothing"
 		return 1
 	fi
 	return 0
@@ -156,16 +157,19 @@ insert_history() {
 	# check the anime_name/id
 	check_anime_name "$1"
 	if [[ $? -ne 0 ]]; then
-		printf "%s\n" "ERROR: Anime name is none... exiting"
+		[ "$VERBOSE" -eq 1 ] &&
+			printf "%s\n" "ERROR: Anime name is none... exiting"
 		return 1
 	fi
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	check_db "$@"
 	if [[ $? -gt 0 ]]; then
 		if [[ "$2" == "search" ]]; then
-			printf "%s\n" "Already in search db... Updating search_date"
+			[ "$VERBOSE" -eq 1 ] &&
+				printf "%s\n" "Already in search db... Updating search_date"
 		else
-			printf "%s\n" "Already in search db... Updating watch_date"
+			[ "$VERBOSE" -eq 1 ] &&
+				printf "%s\n" "Already in search db... Updating watch_date"
 		fi
 		update_date "$@"
 	else
@@ -257,7 +261,7 @@ anime_selection() {
 		fi
 	done
 
-	printf "%s\n" "SEARCHED: $searched"
+	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "SEARCHED: $searched"
 
 	# get the anime from indexed list
 	user_input=$(printf "${menu[@]}" |
@@ -312,9 +316,9 @@ anime_selection() {
 
 episode_selection() {
 	# select episode number for anime
-	[ $is_download -eq 1 ] &&
+	[ "$is_download" -eq 1 ] &&
 		printf "Range of episodes can be specified: start_number end_number\n"
-	printf "%s\n" "Anime ID: $anime_id"
+	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Anime ID: $anime_id"
 	stmt="SELECT DISTINCT episode_number \
 		  FROM watch_history \
 		  WHERE anime_name = '$anime_id';"
@@ -395,17 +399,17 @@ open_episode() {
 	video_url=$(get_links "$dpage_url")
 
 	case $video_url in
-		*streamtape*)
-			# If direct download not available then scrape streamtape.com
-			BROWSER=${BROWSER:-firefox}
-			printf "scraping streamtape.com\n"
-			video_url=$(curl -s "$video_url" | sed -n -E '
+	*streamtape*)
+		# If direct download not available then scrape streamtape.com
+		BROWSER=${BROWSER:-firefox}
+		printf "scraping streamtape.com\n"
+		video_url=$(curl -s "$video_url" | sed -n -E '
 				/^<script>document/{
 				s/^[^"]*"([^"]*)" \+ '\''([^'\'']*).*/https:\1\2\&dl=1/p
 				q
 				}
 			')
-			;;
+		;;
 	esac
 
 	if [ $is_download -eq 0 ]; then
@@ -452,45 +456,45 @@ playlist_add=0
 playlist_file="$CFG_DIR/playlists/playlist.txt"
 while getopts 'hd:HlpadP:' OPT; do
 	case $OPT in
-		h)
-			help_text
-			exit 0
-			;;
-		d)
-			is_download=1
-			download_dir="$OPTARG"
+	h)
+		help_text
+		exit 0
+		;;
+	d)
+		is_download=1
+		download_dir="$OPTARG"
 
-			if [ "$VERBOSE" -eq 1 ]; then
-				echo "DOWNLOAD DIR: $download_dir"
-			fi
-			;;
-		H)
-			scrape=history
-			;;
-		l)
-			list_history=1
-			;;
-		p)
-			scrape=playlist
-			is_playlist=1
-			;;
-		a)
-			is_add=1
-			scrape=add
-			;;
-		d)
-			is_delete=1
-			scrape=delete
-			;;
-		P)
-			is_playlist=1
-			# remove spaces from $OPTARG
-			playlist_file="${OPTARG/ //}"
-			[ -z "$playlist_file" ] && die "Enter in path to playlist"
-			[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$playlist_file"
-			$player_fn "$playlist_file"
-			exit 0
-			;;
+		if [ "$VERBOSE" -eq 1 ]; then
+			echo "DOWNLOAD DIR: $download_dir"
+		fi
+		;;
+	H)
+		scrape=history
+		;;
+	l)
+		list_history=1
+		;;
+	p)
+		scrape=playlist
+		is_playlist=1
+		;;
+	a)
+		is_add=1
+		scrape=add
+		;;
+	d)
+		is_delete=1
+		scrape=delete
+		;;
+	P)
+		is_playlist=1
+		# remove spaces from $OPTARG
+		playlist_file="${OPTARG/ //}"
+		[ -z "$playlist_file" ] && die "Enter in path to playlist"
+		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$playlist_file"
+		$player_fn "$playlist_file"
+		exit 0
+		;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -511,63 +515,63 @@ if [[ "$list_history" -eq 1 ]]; then
 fi
 
 case $scrape in
-	query)
+query)
 
+	get_search_query "$*"
+	search_results=$(search_anime "$query")
+	[ -z "$search_results" ] && die "No search results found"
+	anime_selection "$search_results"
+	[ $? -ne 0 ] && die "No anime selection found"
+	episode_selection
+	;;
+history)
+	# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+	stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
+	search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
+	[ -z "$search_results" ] && die "History is empty"
+	anime_selection "${search_results[@]}"
+	[ $? -ne 0 ] && die "No anime selection found"
+	stmt="SELECT episode_number FROM watch_history ORDER BY watch_date DESC LIMIT 1"
+	run_stmt "$stmt"
+	ep_choice_start=$?
+	echo "EPISODE: $ep_choice_start"
+	# ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+	;;
+playlist)
+	lines=$(cat "$playlist_file" | wc -l)
+	[ "$VERBOSE" -eq 1 ] && printf "%s%d\n" "Num lines in playlist: " "$lines"
+	if [[ "$lines" -eq 0 ]]; then
 		get_search_query "$*"
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
 		[ $? -ne 0 ] && die "No anime selection found"
 		episode_selection
-		;;
-	history)
-		# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
-		stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
-		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
-		[ -z "$search_results" ] && die "History is empty"
-		anime_selection "${search_results[@]}"
-		[ $? -ne 0 ] && die "No anime selection found"
-		stmt="SELECT episode_number FROM watch_history ORDER BY watch_date DESC LIMIT 1"
-		run_stmt "$stmt"
-		ep_choice_start=$?
-		echo "EPISODE: $ep_choice_start"
-		# ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-		;;
-	playlist)
-		lines=$(cat "$playlist_file" | wc -l)
-		[ "$VERBOSE" -eq 1 ] && printf "%s%d\n" "Num lines in playlist: " "$lines"
-		if [[ "$lines" -eq 0 ]]; then
-			get_search_query "$*"
-			search_results=$(search_anime "$query")
-			[ -z "$search_results" ] && die "No search results found"
-			anime_selection "$search_results"
-			[ $? -ne 0 ] && die "No anime selection found"
-			episode_selection
-		else
-			line=($(sed '1q;d' "$playlist_file"))
-			if [[ "${#line[@]}" -ne 2 ]]; then
-				die "Something went wrong with the playlist file... exiting"
-			fi
-			selection_id="${line[0]}"
-			episodes=($selection_id)
-			ep_choice_start="${line[1]}"
-			ep_choice_end=""
-			read last_ep_number <<-EOF
-				$(search_eps "$selection_id")
-			EOF
-			[ "$VERBOSE" -eq 1 ] && printf "Anime: %s Episode: %d\n" "$episodes" "$ep_choice_start"
-			[ "$VERBOSE" -eq 1 ] && printf "Episodes: %s\n" "${episodes[@]}"
+	else
+		line=($(sed '1q;d' "$playlist_file"))
+		if [[ "${#line[@]}" -ne 2 ]]; then
+			die "Something went wrong with the playlist file... exiting"
 		fi
-		;;
-	add)
-		get_search_query "$*"
-		search_results=$(search_anime "$query")
-		[ -z "$search_results" ] && die "No search results found"
-		anime_selection "$search_results"
-		[ $? -ne 0 ] && die "No anime selection found"
-		episode_selection
-		;;
-	delete) ;;
+		selection_id="${line[0]}"
+		episodes=($selection_id)
+		ep_choice_start="${line[1]}"
+		ep_choice_end=""
+		read last_ep_number <<-EOF
+			$(search_eps "$selection_id")
+		EOF
+		[ "$VERBOSE" -eq 1 ] && printf "Anime: %s Episode: %d\n" "$episodes" "$ep_choice_start"
+		[ "$VERBOSE" -eq 1 ] && printf "Episodes: %s\n" "${episodes[@]}"
+	fi
+	;;
+add)
+	get_search_query "$*"
+	search_results=$(search_anime "$query")
+	[ -z "$search_results" ] && die "No search results found"
+	anime_selection "$search_results"
+	[ $? -ne 0 ] && die "No anime selection found"
+	episode_selection
+	;;
+delete) ;;
 
 esac
 
@@ -618,29 +622,29 @@ while :; do
 
 	printf "$c_reset"
 	case $choice in
-		n)
-			episode=$((episode + 1))
-			;;
-		p)
-			episode=$((episode - 1))
-			;;
+	n)
+		episode=$((episode + 1))
+		;;
+	p)
+		episode=$((episode - 1))
+		;;
 
-		s)
-			printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-			read episode
-			printf "$c_reset"
-			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
-			;;
+	s)
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		read episode
+		printf "$c_reset"
+		[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
+		;;
 
-		r) ;;
+	r) ;;
 
-		q)
-			break
-			;;
+	q)
+		break
+		;;
 
-		*)
-			die "invalid choice"
-			;;
+	*)
+		die "invalid choice"
+		;;
 	esac
 	open_episode "$selection_id" "$episode" "$download_dir"
 done

@@ -7,7 +7,7 @@ DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 DEFAULT_PLAYLIST="$HOME/Videos/sauce/playlists/playlist.txt"
 CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 CFG_FILE="meh.rasi"
-VERBOSE=1
+VERBOSE=0
 
 # printf "%s\n" "CONFIG DIR: $CFG_DIR"
 
@@ -44,7 +44,6 @@ if [[ "$selection" == "1." ]]; then
 	# streaming
 	# ---------------------------------------------------------------------------
 	log "Streaming mode"
-	printf "%s\n" "STREAMING..."
 	run
 elif [[ "$selection" == "2." ]]; then
 	# ---------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 
 [Setup](#setup) | [Usage](#usage) | [Screenshots](#screenshots)
 
-![Aniwrapper screenshot](./screenshots/aniwrapper_home.png)
+![Aniwrapper screenshot](./assets/screenshots/aniwrapper_home.png)
 
 </div>
 
@@ -20,10 +20,13 @@
   - [Installing](#installing)
 - [Usage](#usage)
   - [aniwrapper](#aniwrapper)
+    - [Option 1: Streaming (Default)](#option-1-streaming-default)
   - [ani-cli Script](#ani-cli-script)
 - [Screenshots](#screenshots)
 
 <!-- markdown-toc end -->
+
+---
 
 # Introduction
 
@@ -92,12 +95,58 @@ The setup process consists of:
 
 Running `sudo make install` copies the `ani-cli` as well as the `aniwrapper` scripts to `/usr/local/bin/`
 
+## `aniwrapper` Menus
+
+There are several menus used to drive the program forward
+
+### Search Anime
+
+The first menu consists of a search box and a list of anime titles corresponding to past valid searches. Choose an option from the menu, or enter in a unique search query to search for a new anime. The result from this will be used to query against `gogoanime` and return similar named anime
+
+### Anime Selection
+
+The next menu is where you select the anime to watch from a narrowed down list. Elements that have a blue border and text color indicate which anime have been watched before
+
+- _In the future, I'd like to make it so if you select an option from the list of previously searched anime, then it will skip this and go on to episode selection_
+
+### Episode Selection
+
+In the episode selection menu, you can select an individual episode from the list, provide a single episode, or provide a range of episodes as two space separated integers `start_episode end_episode`. Like in the previous menu, any element with a blue border and text-color indicates that episode has been watched before
+
 # Usage
 
 ## aniwrapper
 
     # Launch aniwrapper menu
     aniwrapper
+
+### Option 1: Streaming
+
+<div align="center">
+
+![streaming gif select from menu](./assets/gifs/streaming.gif)
+Streaming a previously watched anime
+[click here](./assets/gifs/streaming_new.gif) for an example showing streaming a new anime
+
+</div>
+
+Streaming is the default option for the `aniwrapper` script and will prompt you with each of the menus specified in the _[aniwrapper Menus](#aniwrapper-menus)_ section
+
+### Option 2: Download
+
+The default download location is `$HOME/Videos/sauce` and will be chosen as the download directory unless otherwise specified
+
+After specifying the download directory (or leaving it blank for the default), you will be presented with the menus from the _[aniwrapper Menus](#aniwrapper-menus)_ section for selecting the anime and episode(s) to download
+
+### Option 3: Continue
+
+**CURRENTLY BROKEN. WORKING ON FIX**
+
+The continue option queries the `sqlite3` history databse and pulls the list of distinct anime names from the `watch_history` table. Select an option from the list and the most recently watched episode of the selected anime will play
+
+### Option 4: Playlist
+
+_description coming soon_
 
 ## ani-cli Script
 
@@ -133,9 +182,9 @@ This would open/download episodes 1 2 3 4 5 6
 <div align="center">
 
 Aniwrapper Main Menu
-![aniwrapper frontpage](./screenshots/aniwrapper_home.png)
+![aniwrapper frontpage](./assets/screenshots/aniwrapper_home.png)
 Aniwrapper Streaming Menu
-![aniwrapper streaming options](./screenshots/aniwrapper_stream.png)
+![aniwrapper streaming options](./assets/screenshots/aniwrapper_stream.png)
 More to come soon... maybe
 
 </div>
