@@ -484,9 +484,11 @@ while getopts 'hd:HlpadP:' OPT; do
 			;;
 		P)
 			is_playlist=1
-			playlist_file="$OPTARG"
-			[ -z "$playlist_file" ] && die "Eneter in path to playlist"
-			mpv "$playlist_file"
+			# remove spaces from $OPTARG
+			playlist_file="${OPTARG/ //}"
+			[ -z "$playlist_file" ] && die "Enter in path to playlist"
+			[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$playlist_file"
+			$player_fn "$playlist_file"
 			exit 0
 			;;
 	esac
