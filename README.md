@@ -92,16 +92,6 @@ chmod +x setup.sh
 ./setup.sh && sudo make install
 ```
 
-The setup process consists of:
-
-- Creating the necessary configuration directories (if they don't already exist)
-  - Aniwrapper config:`$XDG_CONFIG_HOME/aniwrapper/`
-  - mpv config:`$XDG_CONFIG_HOME/mpv/`
-- Moving the configuration files and scripts to their respective directories
-- Creating the `sqlite3` database with tables for search and watch history
-
-Running `sudo make install` copies the `ani-cli` as well as the `aniwrapper` scripts to `/usr/local/bin/`
-
 ## `aniwrapper` Menus
 
 There are several menus used to drive the program forward
