@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+[ -z "$XDG_CONFIG_HOME" ] && XDG_CONFIG_HOME="$HOME/.config"
+
 DIR="$XDG_CONFIG_HOME/aniwrapper"
 DB='history.sqlite3'
 
