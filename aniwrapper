@@ -43,7 +43,11 @@ quit() {
 }
 
 run() {
-	"$CMD" "$*"
+	if [[ "$VERBOSE" -eq 0 ]]; then
+		"$CMD" "$*"
+	else
+		"$CMD" -v "$*"
+	fi
 }
 
 log() {

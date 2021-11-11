@@ -251,7 +251,7 @@ get_search_query() {
 				-config "$CFG_DIR/${ROFI_CFG}")
 
 		# Strip the list entry number from string
-		query="${query//[1-9]+\. /}"
+		query="$(awk '{print $NF}' <<< ${query//[1-9]+\. /})"
 		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Query: $query"
 	else
 		query=$*
@@ -499,7 +499,7 @@ is_playlist=0
 playlist_remove=0
 playlist_add=0
 playlist_file="$CFG_DIR/playlists/playlist.txt"
-while getopts 'hd:HlpadP:s' OPT; do
+while getopts 'hd:HlpadP:sv' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -542,6 +542,9 @@ while getopts 'hd:HlpadP:s' OPT; do
 			;;
 		s)
 			scrape=sync
+			;;
+		v)
+			VERBOSE=1
 			;;
 		*)
 			printf "%s\n" "Invalid option"
