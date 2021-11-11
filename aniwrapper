@@ -9,11 +9,28 @@ CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 CFG_FILE="meh.rasi"
 VERBOSE=0
 
-# printf "%s\n" "CONFIG DIR: $CFG_DIR"
+while getopts 'vh' OPT; do
+	case "$OPT" in
+		h)
+			help_text
+			;;
+		v)
+			VERBOSE=1
+			;;
+		*)
+			log "Invalid option"
+			exit 1
+			;;
+	esac
+done
 
-options="1. Stream|2. Download|3. Continue|4. Playlist|5. Quit"
+quit="6. Quit"
+options="1. Stream|2. Download|3. Continue|4. Playlist|5. Sync History|$quit"
 
-choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' -config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Aniwrapper")
+[ "$VERBOSE" -eq 1 ] && printf "%s\n" "CONFIG DIR: $CFG_DIR"
+
+choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' \
+	-config "$CFG_DIR/$CFG_FILE" -l 6 -i -p "Aniwrapper")
 
 seppuku() {
 	printf "%s\n" "$*"
@@ -35,90 +52,135 @@ log() {
 	fi
 }
 
-[ "$choice" == "5. Quit" ] && quit
+[ "$choice" == "$quit" ] && quit
 
 selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 
-if [[ "$selection" == "1." ]]; then
-	# ---------------------------------------------------------------------------
-	# streaming
-	# ---------------------------------------------------------------------------
-	log "Streaming mode"
-	run
-elif [[ "$selection" == "2." ]]; then
-	# ---------------------------------------------------------------------------
-	# download
-	# ---------------------------------------------------------------------------
-	log "Download anime"
-	dl_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-		-l 1 -p "Enter download dir:")
-	# if dl_dir is none set to current directory
-	[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
-	run -d "$dl_dir"
-elif [[ "$selection" == "3." ]]; then
-	# ---------------------------------------------------------------------------
-	# continue
-	# ---------------------------------------------------------------------------
-	log "Continue watching"
-	run -H
-elif [[ "$selection" == "4." ]]; then
-	# ---------------------------------------------------------------------------
-	# playlist mode
-	# ---------------------------------------------------------------------------
-	log "Playlist mode"
-	options="1. Play playlist|2. Add to playlist|3. Delete from playlist|4. Quit"
-	choice=$(printf "%s\n" "${options[@]}" |
-		rofi -dmenu -sep '|' \
-			-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
-	[ -z "$choice" ] && seppuku "No choice selected"
-	[ "$choice" == "5. Quit" ] && quit
-	selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
-	if [[ "$selection" == "1." ]]; then
-		# -----------------------------------------------------------------------
-		# watch playlist
-		# -----------------------------------------------------------------------
+case "$selection" in
+	1.)
+		# ---------------------------------------------------------------------------
+		# streaming
+		# ---------------------------------------------------------------------------
+		log "Streaming mode"
+		run
+		;;
+	2.)
+		# ---------------------------------------------------------------------------
+		# download
+		# ---------------------------------------------------------------------------
+		log "Download anime"
+		dl_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter download dir:")
+		# if dl_dir is none set to current directory
+		[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
+		run -d "$dl_dir"
+		;;
+	3.)
+
+		# ---------------------------------------------------------------------------
+		# continue
+		# ---------------------------------------------------------------------------
+		log "Continue watching"
+		run -H
+		;;
+	4.)
+		# ---------------------------------------------------------------------------
+		# playlist mode
+		# ---------------------------------------------------------------------------
 		log "Playlist mode"
-		options="1. From file|2. Streaming|3. Quit"
+		options="1. Play playlist|2. Add to playlist|3. Delete from playlist|4. Quit"
 		choice=$(printf "%s\n" "${options[@]}" |
 			rofi -dmenu -sep '|' \
 				-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
 		[ -z "$choice" ] && seppuku "No choice selected"
-		[ "$choice" == "5. Quit" ] && quit
-		log "Selection: $choice"
+		[ "$choice" == "$quit" ] && quit
 		selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 		if [[ "$selection" == "1." ]]; then
-			# -------------------------------------------------------------------
-			# watch playlist from file (downloaded videos)
-			# -------------------------------------------------------------------
-			# TODO: Change directory to variable set at install
-			log "Watching playlist from file"
-			PLAYLIST_DIR="$HOME/Videos/sauce"
-			log "Default playlist directory: $PLAYLIST_DIR"
-			choice=$(cd "$PLAYLIST_DIR" && find . -mindepth 1 -type d |
-				cut -c 3- |
-				rofi -dmenu \
-					-config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Choose playlist:")
+			# -----------------------------------------------------------------------
+			# watch playlist
+			# -----------------------------------------------------------------------
+			log "Playlist mode"
+			options="1. From file|2. Streaming|3. Quit"
+			choice=$(printf "%s\n" "${options[@]}" |
+				rofi -dmenu -sep '|' \
+					-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
 			[ -z "$choice" ] && seppuku "No choice selected"
-			log "Choice" "$choice"
-			run -P "$PLAYLIST_DIR/$choice"
+			[ "$choice" == "$quit" ] && quit
+			log "Selection: $choice"
+			selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
+			if [[ "$selection" == "1." ]]; then
+				# -------------------------------------------------------------------
+				# watch playlist from file (downloaded videos)
+				# -------------------------------------------------------------------
+				log "Watching playlist from file"
+				PLAYLIST_DIR="$HOME/Videos/sauce"
+				log "Default playlist directory: $PLAYLIST_DIR"
+				choice=$(cd "$PLAYLIST_DIR" && find . -mindepth 1 -type d |
+					cut -c 3- |
+					rofi -dmenu \
+						-config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Choose playlist:")
+				[ -z "$choice" ] && seppuku "No choice selected"
+				log "Choice" "$choice"
+				run -P "$PLAYLIST_DIR/$choice"
+			elif [[ "$selection" == "2." ]]; then
+				# -------------------------------------------------------------------
+				# watch playlist of 'queued' videos to stream
+				# -------------------------------------------------------------------
+				log "Watching from 'queue'"
+				run -p
+			fi
 		elif [[ "$selection" == "2." ]]; then
-			# -------------------------------------------------------------------
-			# watch playlist of 'queued' videos to stream
-			# -------------------------------------------------------------------
-			log "Watching from 'queue'"
-			run -p
+			# -----------------------------------------------------------------------
+			# add to playlist
+			# -----------------------------------------------------------------------
+			log "Add to playlist"
+			run -a
+		elif [[ "$selection" == "3." ]]; then
+			# -----------------------------------------------------------------------
+			# delete from playlist
+			# -----------------------------------------------------------------------
+			log "Not implemented yet"
+			run -r
 		fi
-	elif [[ "$selection" == "2." ]]; then
-		# -----------------------------------------------------------------------
-		# add to playlist
-		# -----------------------------------------------------------------------
-		log "Add to playlist"
-		run -a
-	elif [[ "$selection" == "3." ]]; then
-		# -----------------------------------------------------------------------
-		# delete from playlist
-		# -----------------------------------------------------------------------
-		log "Not implemented yet"
-		run -r
-	fi
-fi
+		;;
+	5.)
+		log "Sync history database"
+		username=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter the username of the remote user:")
+		if [[ -z "$username" ]] || [[ "$username" == "" ]]; then
+			log "No username provided... exiting"
+			exit 1
+		fi
+		host=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter the host for the remote machine (eg 192.168.1.99):")
+		if [[ -z "$host" ]] || [[ "$host" == "" ]]; then
+			log "No host provided... exiting"
+			exit 1
+		fi
+		port=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter in the ssh port for remote machine or leave blank for default [22]:")
+		if [[ -z "$port" ]] || [[ "$port" == "" ]]; then
+			port=22
+		fi
+		printf "%s\n%s\n%d\n" "$username" "$host" "$port" | ani-cli -s
+		if [[ "$?" -ne 0 ]]; then
+			log "Aniwrapper was unable to sync the databases..."
+			exit 1
+		else
+			log "Databases synced successfully"
+			exit 0
+		fi
+		;;
+	6.)
+		# ---------------------------------------------------------------------------
+		# get out
+		# ---------------------------------------------------------------------------
+		printf "%s\n" "Quitting..."
+		exit 0
+		;;
+	*)
+		log "Invalid choice..."
+		exit 1
+		;;
+
+esac
