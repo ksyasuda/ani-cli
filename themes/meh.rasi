@@ -191,6 +191,6 @@ textbox-prompt-colon {
     expand:     false;
     str:        ":";
     margin:     0px 0.3em 0em 0em ;
-    text-color: #1E90FF;
+    text-color: #c678dd;
     padding: 4px 0px;
 }

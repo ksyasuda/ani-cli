@@ -162,7 +162,14 @@ case "$selection" in
 		if [[ -z "$port" ]] || [[ "$port" == "" ]]; then
 			port=22
 		fi
-		printf "%s\n%s\n%d\n" "$username" "$host" "$port" | ani-cli -s
+		keypath=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter path to private key (leave blank if not needed or if unsure):")
+
+		if [[ -z "$keypath" ]]; then
+			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | ani-cli -s
+		else
+			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | ani-cli -s
+		fi
 		if [[ "$?" -ne 0 ]]; then
 			log "Aniwrapper was unable to sync the databases..."
 			exit 1

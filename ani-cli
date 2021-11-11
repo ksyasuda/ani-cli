@@ -541,37 +541,7 @@ while getopts 'hd:HlpadP:s' OPT; do
 			exit 0
 			;;
 		s)
-			printf "%s" "Enter username for remote user: "
-			read -r username
-			printf "%s" "Enter host for remote user: "
-			read -r host
-
-			# printf "%s" "Enter connection string for remote user in the form user@host: "
-			# read -r connection_str
-			connection_str="$username@$host"
-			printf "%s" "Enter port to connect to remote host with or leave blank for default (22): "
-			read -r port
-			if [[ "${port/ //}" == "" ]]; then
-				PORT=22
-			else
-				PORT="$port"
-			fi
-
-			if [[ ! "@" != *"$connection_str" ]]; then
-				printf "%s\n" "Enter in full connection string to remote user in the form: user@host"
-				exit 1
-			fi
-
-			printf "%s\n" "Syncing database with: $connection_str on port $PORT"
-
-			temp_db="/tmp/aniwrapper_tmp_history.sqlite3"
-			scp -P "$PORT" "$connection_str:$XDG_CONFIG_HOME/aniwrapper/history.sqlite3" "$temp_db"
-			if [[ "$?" -ne 0 ]]; then
-				printf "%s\n" "Error getting database file from remote host"
-				exit 1
-			fi
-			sync_search_history && sync_watch_history
-			exit 0
+			scrape=sync
 			;;
 		*)
 			printf "%s\n" "Invalid option"
@@ -654,7 +624,41 @@ case $scrape in
 		episode_selection
 		;;
 	delete) ;;
+	sync)
+		printf "%s" "Enter username for remote user: "
+		read -r username
+		printf "%s" "Enter host for remote user: "
+		read -r host
 
+		# printf "%s" "Enter connection string for remote user in the form user@host: "
+		# read -r connection_str
+		connection_str="$username@$host"
+		printf "%s" "Enter port to connect to remote host with or leave blank for default (22): "
+		read -r port
+		if [[ "${port/ //}" == "" ]]; then
+			PORT=22
+		else
+			PORT="$port"
+		fi
+
+		printf "%s" "Enter path to private key (leave blank if unsure or not needed): "
+		read -r key_path
+
+		printf "%s\n" "Syncing database with: $connection_str on port $PORT"
+		temp_db="/tmp/aniwrapper_tmp_history.sqlite3"
+
+		if [[ -z "$key_path" ]]; then
+			scp -P "$PORT" "$connection_str:$XDG_CONFIG_HOME/aniwrapper/history.sqlite3" "$temp_db"
+		else
+			scp -P "$PORT" -i "$key_path" "$connection_str:$XDG_CONFIG_HOME/aniwrapper/history.sqlite3" "$temp_db"
+		fi
+		if [[ "$?" -ne 0 ]]; then
+			printf "%s\n" "Error getting database file from remote host"
+			exit 1
+		fi
+		sync_search_history && sync_watch_history
+		exit 0
+		;;
 esac
 
 { # checking input
