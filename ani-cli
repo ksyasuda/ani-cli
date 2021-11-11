@@ -196,8 +196,8 @@ sync_search_history() {
 		anime_name=$(awk -F '|' '{print $2}' <<<"$line")
 		res=$(sqlite3 -noheader "$HISTORY_DB" <<<"SELECT anime_name FROM search_history WHERE anime_name = '$anime_name'")
 		if [[ "${res/ //}" == "" ]]; then
-			printf "%s\n" "Adding $line to search history..."
 			search_date=$(awk -F '|' '{print $3}' <<<"$line")
+			printf "%s\n" "Adding ($anime_name|$search_date) to watch history..."
 			sqlite3 "$HISTORY_DB" <<<"INSERT INTO search_history(anime_name, search_date) VALUES('$anime_name', '$search_date')"
 			if [[ "$?" -ne 0 ]]; then
 				err "Error inserting row $line"
@@ -214,9 +214,9 @@ sync_watch_history() {
 		anime_name=$(awk -F '|' '{print $2}' <<<"$line")
 		res=$(sqlite3 -noheader "$HISTORY_DB" <<<"SELECT anime_name FROM watch_history WHERE anime_name = '$anime_name'")
 		if [[ "${res/ //}" == "" ]]; then
-			printf "%s\n" "Adding $line to watch history..."
 			episode_num=$(awk -F '|' '{print $3}' <<<"$line")
 			watch_date=$(awk -F '|' '{print $NF}' <<<"$line")
+			printf "%s\n" "Adding ($anime_name|$episode_num|$watch_date) to watch history..."
 			sqlite3 "$HISTORY_DB" <<<"INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$anime_name', '$episode_num', '$watch_date')"
 			if [[ "$?" -ne 0 ]]; then
 				err "Error inserting row $line"
@@ -251,7 +251,7 @@ get_search_query() {
 				-config "$CFG_DIR/${ROFI_CFG}")
 
 		# Strip the list entry number from string
-		query="$(awk '{print $NF}' <<< ${query//[1-9]+\. /})"
+		query="$(awk '{print $NF}' <<<${query//[1-9]+\. /})"
 		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Query: $query"
 	else
 		query=$*
