@@ -137,13 +137,21 @@ After specifying the download directory (or leaving it blank for the default), y
 
 ### Option 3: Continue
 
-**CURRENTLY BROKEN. WORKING ON FIX**
-
 The continue option queries the `sqlite3` history databse and pulls the list of distinct anime names from the `watch_history` table. Select an option from the list and the most recently watched episode of the selected anime will play
 
 ### Option 4: Playlist
 
 _description coming soon_
+
+### Option 5: Sync History
+
+This option allows you to sync your search/watch history across devices. It queries the database on the remote machine and inserts/updates the necessary rows
+
+At the moment, the requirements are as follows:
+
+- You must be able to `ssh` into the remote machine
+- The username must be the same across both devices
+- The `history.sqlite3` file must be in the default location: `$XDG_CONFIG_HOME/aniwrapper/history.sqlite3`
 
 ## ani-cli Script
 
@@ -159,14 +167,14 @@ _description coming soon_
     # list searched anime
     ani-cli -l
 
+    # playlist mode
+    ani-cli -P
+
     # add to playlist
     ani-cli -a
 
-    # delete from playlist
-    ani-cli -d
-
-    # playlist mode
-    ani-cli -P
+    # sync history across devices
+    ani-cli -s
 
 Multiple episodes can be viewed/downloaded by giving the episode range like so
 
