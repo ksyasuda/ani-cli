@@ -251,7 +251,7 @@ get_search_query() {
 				-config "$CFG_DIR/${ROFI_CFG}")
 
 		# Strip the list entry number from string
-		query="$(awk '{print $NF}' <<<${query//[1-9]+\. /})"
+		query="${query//[1-9]+\. /}"
 		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Query: $query"
 	else
 		query=$*
