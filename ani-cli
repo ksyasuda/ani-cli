@@ -498,8 +498,7 @@ download_dir="."
 is_playlist=0
 playlist_remove=0
 playlist_add=0
-playlist_file="$CFG_DIR/playlists/playlist.txt"
-while getopts 'hd:HlpadP:sv' OPT; do
+while getopts 'hd:Hlpa:P:sv' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -526,10 +525,7 @@ while getopts 'hd:HlpadP:sv' OPT; do
 		a)
 			is_add=1
 			scrape=add
-			;;
-		d)
-			is_delete=1
-			scrape=delete
+			playlist_file="${OPTARG/ //}"
 			;;
 		P)
 			is_playlist=1
@@ -580,16 +576,21 @@ case $scrape in
 		episode_selection
 		;;
 	history)
-		# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 		stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
 		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 		[ -z "$search_results" ] && die "History is empty"
 		anime_selection "${search_results[@]}"
 		[ $? -ne 0 ] && die "No anime selection found"
-		stmt="SELECT episode_number FROM watch_history ORDER BY watch_date DESC LIMIT 1"
-		run_stmt "$stmt"
-		ep_choice_start=$?
-		echo "EPISODE: $ep_choice_start"
+		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "SELECTION: $selection_id"
+
+		stmt="SELECT episode_number \
+			FROM watch_history \
+			WHERE anime_name = '$selection_id' \
+			ORDER BY watch_date DESC \
+			LIMIT 1"
+		ep_choice_start=$(run_stmt "$stmt")
+		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Most recently watched episode: $ep_choice_start"
+		# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 		# ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
 	playlist)
@@ -626,7 +627,6 @@ case $scrape in
 		[ $? -ne 0 ] && die "No anime selection found"
 		episode_selection
 		;;
-	delete) ;;
 	sync)
 		printf "%s" "Enter username for remote user: "
 		read -r username
@@ -687,7 +687,6 @@ for ep in $episodes; do
 		fi
 		printf "%s\n" "$selection_id $ep" >>"$playlist_file"
 		[ "$VERBOSE" -eq 1 ] && printf "%s\n" "Added to playlist file"
-		exit 0
 	else
 		open_episode "$selection_id" "$ep" "$download_dir"
 		if [[ "$is_playlist" -eq 1 ]]; then
@@ -695,6 +694,12 @@ for ep in $episodes; do
 		fi
 	fi
 done
+
+if [[ "$is_add" -eq 1 ]]; then
+	printf "%s\n" "Finished adding to playlist file... exiting"
+	exit 0
+fi
+
 episode=${ep_choice_end:-$ep_choice_start}
 
 choice=''

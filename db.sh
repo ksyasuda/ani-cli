@@ -80,10 +80,10 @@ while getopts 'cdrqCs' OPT; do
 			;;
 		C)
 			log "Cleaning up database..."
-			stmt="DELETE FROM search_history WHERE anime_name IS NULL or anime_name = ''"
+			stmt="DELETE FROM search_history WHERE anime_name IS NULL OR anime_name = ''"
 			log "Cleaning up search history..."
 			sqlite3 "$DIR/$DB" <<<"$stmt"
-			stmt="DELETE FROM watch_history WHERE anime_name IS NULL or anime_name = ''"
+			stmt="DELETE FROM watch_history WHERE anime_name IS NULL OR anime_name = '' OR episode_number = 0"
 			log "Cleaning up watch history..."
 			sqlite3 "$DIR/$DB" <<<"$stmt"
 			;;
