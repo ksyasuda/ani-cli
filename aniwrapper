@@ -171,21 +171,20 @@ case "$selection" in
 			[ "$VERBOSE" -eq 1 ] && log "playlist file: $PLAYLIST_FILE"
 			lines=""
 			cnt=0
-			while read -r line
-			do
+			while read -r line; do
 				if [[ "$cnt" -eq 0 ]]; then
 					lines="$((cnt + 1)). $line"
 				else
 					lines="$lines|$((cnt + 1)). $line"
 				fi
 				((cnt++))
-			done < "$PLAYLIST_FILE"
+			done <"$PLAYLIST_FILE"
 			choice=$(rofi -dmenu -l 12 \
 				-sep '|' \
 				-config "$CFG_DIR/$CFG_FILE" -p "Choose episode to delete:" \
-				<<< "${lines[*]}")
+				<<<"${lines[*]}")
 			log "choice: $choice"
-			selection=$(awk '{print $1}' <<< "$choice")
+			selection=$(awk '{print $1}' <<<"$choice")
 			idx=${selection//\./}
 			log "index selected: $idx"
 			log "deleting entry: $idx"
@@ -205,31 +204,32 @@ case "$selection" in
 		;;
 	5.)
 		log "Sync history database"
-		username=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -p "Enter the username of the remote user:")
-		if [[ -z "$username" ]] || [[ "$username" == "" ]]; then
-			log "No username provided... exiting"
-			exit 1
-		fi
-		host=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -p "Enter the host for the remote machine (eg 192.168.1.99):")
-		if [[ -z "$host" ]] || [[ "$host" == "" ]]; then
-			log "No host provided... exiting"
-			exit 1
-		fi
-		port=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -p "Enter in the ssh port for remote machine or leave blank for default [22]:")
-		if [[ -z "$port" ]] || [[ "$port" == "" ]]; then
-			port=22
-		fi
-		keypath=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -p "Enter path to private key (leave blank if not needed or if unsure):")
+		# username=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		# 	-l 1 -p "Enter the username of the remote user:")
+		# if [[ -z "$username" ]] || [[ "$username" == "" ]]; then
+		# 	log "No username provided... exiting"
+		# 	exit 1
+		# fi
+		# host=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		# 	-l 1 -p "Enter the host for the remote machine (eg 192.168.1.99):")
+		# if [[ -z "$host" ]] || [[ "$host" == "" ]]; then
+		# 	log "No host provided... exiting"
+		# 	exit 1
+		# fi
+		# port=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		# 	-l 1 -p "Enter in the ssh port for remote machine or leave blank for default [22]:")
+		# if [[ -z "$port" ]] || [[ "$port" == "" ]]; then
+		# 	port=22
+		# fi
+		# keypath=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		# 	-l 1 -p "Enter path to private key (leave blank if not needed or if unsure):")
 
-		if [[ -z "$keypath" ]]; then
-			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | ani-cli -s
-		else
-			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | ani-cli -s
-		fi
+		printf "%s\n%s\n%d\n%s\n" "sudacode" "sudacode" 3005 "" | ani-cli -s
+		# if [[ -z "$keypath" ]]; then
+		# 	printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | ani-cli -s
+		# else
+		# 	printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | ani-cli -s
+		# fi
 		if [[ "$?" -ne 0 ]]; then
 			log "Aniwrapper was unable to sync the databases..."
 			exit 1
