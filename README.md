@@ -16,18 +16,20 @@
 - [Introduction](#introduction)
 - [Setup](#setup)
   - [Dependencies](#dependencies)
-    - [Arch Linux](#arch-linux)
   - [Installing](#installing)
-  - [`aniwrapper` Menus](#aniwrapper-menus)
-    - [Search Anime](#search-anime)
-    - [Anime Selection](#anime-selection)
-    - [Episode Selection](#episode-selection)
+    - [Arch Linux](#arch-linux)
+    - [Manual Install](#manual-install)
+- [Aniwrapper Menus](#aniwrapper-menus)
+  - [Search Anime](#search-anime)
+  - [Anime Selection](#anime-selection)
+  - [Episode Selection](#episode-selection)
 - [Usage](#usage)
   - [aniwrapper](#aniwrapper)
     - [Option 1: Streaming](#option-1-streaming)
     - [Option 2: Download](#option-2-download)
     - [Option 3: Continue](#option-3-continue)
     - [Option 4: Playlist](#option-4-playlist)
+    - [Option 5: Sync History](#option-5-sync-history)
   - [ani-cli Script](#ani-cli-script)
 - [Screenshots](#screenshots)
 
@@ -72,41 +74,57 @@ These are the minimum dependences required to run `aniwrapper`
   - meh.rasi (installed in setup.sh)
 - sqlite3
 
+## Installing
+
 ### Arch Linux
+
+`aniwrapper-git` is available on the AUR for Arch users
+
+```sh
+paru -S aniwrapper-git
+or
+yay -S aniwrapper-git
+```
+
+### Manual Install
+
+To install manually, make sure the dependencies are installed first
+
+The folowing command can be used on Arch Linux to ensure the prereqisites are installed
 
 ```sh
 pacman -S --needed grep curl sed mpv ffmpeg rofi sqlite3
 ```
 
-## Installing
+Next, clone the Git repository and switch directories into the cloned repo
 
 ```sh
 git clone https://github.com/ksyasuda/aniwrapper
 cd aniwrapper
 ```
 
-After cloning and switching into the `aniwrapper` directory, run the following commands to set up and install the script
+After switching into the `aniwrapper` directory, run the following commands to set up and install the script
 
 ```sh
 chmod +x setup.sh
 ./setup.sh && sudo make install
 ```
 
-## `aniwrapper` Menus
+# Aniwrapper Menus
 
 There are several menus used to drive the program forward
 
-### Search Anime
+## Search Anime
 
 The first menu consists of a search box and a list of anime titles corresponding to past valid searches. Choose an option from the menu, or enter in a unique search query to search for a new anime. The result from this will be used to query against `gogoanime` and return similar named anime
 
-### Anime Selection
+## Anime Selection
 
 The next menu is where you select the anime to watch from a narrowed down list. Elements that have a blue border and text color indicate which anime have been watched before
 
 - _In the future, I'd like to make it so if you select an option from the list of previously searched anime, then it will skip this and go on to episode selection_
 
-### Episode Selection
+## Episode Selection
 
 In the episode selection menu, you can select an individual episode from the list, provide a single episode, or provide a range of episodes as two space separated integers `start_episode end_episode`. Like in the previous menu, any element with a blue border and text-color indicates that episode has been watched before
 
