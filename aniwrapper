@@ -11,16 +11,16 @@ VERBOSE=0
 
 while getopts 'vh' OPT; do
 	case "$OPT" in
-	h)
-		help_text
-		;;
-	v)
-		VERBOSE=1
-		;;
-	*)
-		log "Invalid option"
-		exit 1
-		;;
+		h)
+			help_text
+			;;
+		v)
+			VERBOSE=1
+			;;
+		*)
+			log "Invalid option"
+			exit 1
+			;;
 	esac
 done
 
@@ -61,76 +61,91 @@ log() {
 selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 
 case "$selection" in
-1.)
-	# ---------------------------------------------------------------------------
-	# streaming
-	# ---------------------------------------------------------------------------
-	log "Streaming mode"
-	run
-	;;
-2.)
-	# ---------------------------------------------------------------------------
-	# download
-	# ---------------------------------------------------------------------------
-	log "Download anime"
-	dl_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-		-l 1 -p "Enter download dir:")
-	# if dl_dir is none set to current directory
-	[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
-	run -d "$dl_dir"
-	;;
-3.)
+	1.)
+		# ---------------------------------------------------------------------------
+		# streaming
+		# ---------------------------------------------------------------------------
+		log "Streaming mode"
+		run
+		;;
+	2.)
+		# ---------------------------------------------------------------------------
+		# download
+		# ---------------------------------------------------------------------------
+		log "Download anime"
+		dl_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter download dir:")
+		# if dl_dir is none set to current directory
+		[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
+		run -d "$dl_dir"
+		;;
+	3.)
 
-	# ---------------------------------------------------------------------------
-	# continue
-	# ---------------------------------------------------------------------------
-	log "Continue watching"
-	run -H
-	;;
-4.)
-	# ---------------------------------------------------------------------------
-	# playlist mode
-	# ---------------------------------------------------------------------------
-	log "Playlist mode"
-	options="1. Play playlist|2. Add to playlist|3. Delete from playlist|4. Quit"
-	choice=$(printf "%s\n" "${options[@]}" |
-		rofi -dmenu -sep '|' \
-			-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
-	[ -z "$choice" ] && seppuku "No choice selected"
-	[ "$choice" == "$quit" ] && quit
-	selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
-	if [[ "$selection" == "1." ]]; then
-		# ------------------------------------------------------------------
-		# watch playlist
-		# ------------------------------------------------------------------
+		# ---------------------------------------------------------------------------
+		# continue
+		# ---------------------------------------------------------------------------
+		log "Continue watching"
+		run -H
+		;;
+	4.)
+		# ---------------------------------------------------------------------------
+		# playlist mode
+		# ---------------------------------------------------------------------------
 		log "Playlist mode"
-		options="1. From file|2. Streaming|3. Quit"
+		options="1. Play playlist|2. Add to playlist|3. Delete from playlist|4. Quit"
 		choice=$(printf "%s\n" "${options[@]}" |
 			rofi -dmenu -sep '|' \
 				-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
 		[ -z "$choice" ] && seppuku "No choice selected"
 		[ "$choice" == "$quit" ] && quit
-		log "Selection: $choice"
 		selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 		if [[ "$selection" == "1." ]]; then
-			# --------------------------------------------------------------
-			# watch playlist from file (downloaded videos)
-			# --------------------------------------------------------------
-			log "Watching playlist from file"
-			PLAYLIST_DIR="$HOME/Videos/sauce"
-			log "Default playlist directory: $PLAYLIST_DIR"
-			choice=$(cd "$PLAYLIST_DIR" && find . -mindepth 1 -type d |
-				cut -c 3- |
-				rofi -dmenu \
-					-config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Choose playlist:")
+			# ------------------------------------------------------------------
+			# watch playlist
+			# ------------------------------------------------------------------
+			log "Playlist mode"
+			options="1. From file|2. Streaming|3. Quit"
+			choice=$(printf "%s\n" "${options[@]}" |
+				rofi -dmenu -sep '|' \
+					-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
 			[ -z "$choice" ] && seppuku "No choice selected"
-			log "Choice" "$choice"
-			run -P "$PLAYLIST_DIR/$choice"
+			[ "$choice" == "$quit" ] && quit
+			log "Selection: $choice"
+			selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
+			if [[ "$selection" == "1." ]]; then
+				# --------------------------------------------------------------
+				# watch playlist from file (downloaded videos)
+				# --------------------------------------------------------------
+				log "Watching playlist from file"
+				PLAYLIST_DIR="$HOME/Videos/sauce"
+				log "Default playlist directory: $PLAYLIST_DIR"
+				choice=$(cd "$PLAYLIST_DIR" && find . -mindepth 1 -type d |
+					cut -c 3- |
+					rofi -dmenu \
+						-config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Choose playlist:")
+				[ -z "$choice" ] && seppuku "No choice selected"
+				log "Choice" "$choice"
+				run -P "$PLAYLIST_DIR/$choice"
+			elif [[ "$selection" == "2." ]]; then
+				# --------------------------------------------------------------
+				# watch playlist of 'queued' videos to stream
+				# --------------------------------------------------------------
+				log "Watching from 'queue'"
+				choice=$(rofi -dmenu \
+					-config "$CFG_DIR/$CFG_FILE" \
+					-l 1 -p "Enter path to playlist file (or leave blank for default):")
+				if [[ "$choice" ]]; then
+					PLAYLIST_FILE="$choice"
+				else
+					PLAYLIST_FILE="$DEFAULT_PLAYLIST"
+				fi
+				run -p
+			fi
 		elif [[ "$selection" == "2." ]]; then
-			# --------------------------------------------------------------
-			# watch playlist of 'queued' videos to stream
-			# --------------------------------------------------------------
-			log "Watching from 'queue'"
+			# ------------------------------------------------------------------
+			# add to playlist
+			# ------------------------------------------------------------------
+			log "Add to playlist"
 			choice=$(rofi -dmenu \
 				-config "$CFG_DIR/$CFG_FILE" \
 				-l 1 -p "Enter path to playlist file (or leave blank for default):")
@@ -139,115 +154,102 @@ case "$selection" in
 			else
 				PLAYLIST_FILE="$DEFAULT_PLAYLIST"
 			fi
-			run -p
-		fi
-	elif [[ "$selection" == "2." ]]; then
-		# ------------------------------------------------------------------
-		# add to playlist
-		# ------------------------------------------------------------------
-		log "Add to playlist"
-		choice=$(rofi -dmenu \
-			-config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -p "Enter path to playlist file (or leave blank for default):")
-		if [[ "$choice" ]]; then
-			PLAYLIST_FILE="$choice"
-		else
-			PLAYLIST_FILE="$DEFAULT_PLAYLIST"
-		fi
-		run -a "$PLAYLIST_FILE"
-	elif [[ "$selection" == "3." ]]; then
-		# -----------------------------------------------------------------------
-		# delete from playlist
-		# -----------------------------------------------------------------------
-		log "Delete from playlist"
-		choice=$(rofi -dmenu \
-			-config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -p "Enter path to playlist file (or leave blank for default):")
-		if [[ "$choice" ]]; then
-			PLAYLIST_FILE="$choice"
-		else
-			PLAYLIST_FILE="$DEFAULT_PLAYLIST"
-		fi
-		[ "$VERBOSE" -eq 1 ] && log "playlist file: $PLAYLIST_FILE"
-		lines=""
-		cnt=0
-		while read -r line; do
-			if [[ "$cnt" -eq 0 ]]; then
-				lines="$((cnt + 1)). $line"
+			run -a "$PLAYLIST_FILE"
+		elif [[ "$selection" == "3." ]]; then
+			# -----------------------------------------------------------------------
+			# delete from playlist
+			# -----------------------------------------------------------------------
+			log "Delete from playlist"
+			choice=$(rofi -dmenu \
+				-config "$CFG_DIR/$CFG_FILE" \
+				-l 1 -p "Enter path to playlist file (or leave blank for default):")
+			if [[ "$choice" ]]; then
+				PLAYLIST_FILE="$choice"
 			else
-				lines="$lines|$((cnt + 1)). $line"
+				PLAYLIST_FILE="$DEFAULT_PLAYLIST"
 			fi
-			((cnt++))
-		done <"$PLAYLIST_FILE"
-		choice=$(rofi -dmenu -l 12 \
-			-sep '|' \
-			-config "$CFG_DIR/$CFG_FILE" -p "Choose episode to delete:" \
-			<<<"${lines[*]}")
-		log "choice: $choice"
-		selection=$(awk '{print $1}' <<<"$choice")
-		idx=${selection//\./}
-		log "index selected: $idx"
-		log "deleting entry: $idx"
-		if [[ -z "$idx" ]]; then
-			log "no entry selected"
+			[ "$VERBOSE" -eq 1 ] && log "playlist file: $PLAYLIST_FILE"
+			lines=""
+			cnt=0
+			while read -r line; do
+				if [[ "$cnt" -eq 0 ]]; then
+					lines="$((cnt + 1)). $line"
+				else
+					lines="$lines|$((cnt + 1)). $line"
+				fi
+				((cnt++))
+			done <"$PLAYLIST_FILE"
+			choice=$(rofi -dmenu -l 12 \
+				-sep '|' \
+				-config "$CFG_DIR/$CFG_FILE" -p "Choose episode to delete:" \
+				<<<"${lines[*]}")
+			log "choice: $choice"
+			selection=$(awk '{print $1}' <<<"$choice")
+			idx=${selection//\./}
+			log "index selected: $idx"
+			log "deleting entry: $idx"
+			if [[ -z "$idx" ]]; then
+				log "no entry selected"
+				exit 1
+			fi
+			sed -ie "$idx"d "$PLAYLIST_FILE"
+			if [ "$?" -eq 0 ]; then
+				log "$selection deleted from playlist"
+				exit 0
+			else
+				log "there was a problem deleting $choice"
+				exit 1
+			fi
+		fi
+		;;
+	5.)
+		log "Sync history database"
+		username=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter the username of the remote user:")
+		if [[ -z "$username" ]] || [[ "$username" == "" ]]; then
+			log "No username provided... exiting"
 			exit 1
 		fi
-		sed -ie "$idx"d "$PLAYLIST_FILE"
-		if [ "$?" -eq 0 ]; then
-			log "$selection deleted from playlist"
-			exit 0
+		host=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter the host for the remote machine (eg 192.168.1.99):")
+		if [[ -z "$host" ]] || [[ "$host" == "" ]]; then
+			log "No host provided... exiting"
+			exit 1
+		fi
+		port=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter in the ssh port for remote machine or leave blank for default [22]:")
+		if [[ -z "$port" ]] || [[ "$port" == "" ]]; then
+			port=22
+		fi
+		keypath=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter path to private key (leave blank if not needed or if unsure):")
+
+		if [[ -z "$keypath" ]]; then
+			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | run -s
+			# printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | ani-cli -s
 		else
-			log "there was a problem deleting $choice"
-			exit 1
+			# printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | ani-cli -s
+			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | run -s
 		fi
-	fi
-	;;
-5.)
-	log "Sync history database"
-	username=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-		-l 1 -p "Enter the username of the remote user:")
-	if [[ -z "$username" ]] || [[ "$username" == "" ]]; then
-		log "No username provided... exiting"
-		exit 1
-	fi
-	host=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-		-l 1 -p "Enter the host for the remote machine (eg 192.168.1.99):")
-	if [[ -z "$host" ]] || [[ "$host" == "" ]]; then
-		log "No host provided... exiting"
-		exit 1
-	fi
-	port=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-		-l 1 -p "Enter in the ssh port for remote machine or leave blank for default [22]:")
-	if [[ -z "$port" ]] || [[ "$port" == "" ]]; then
-		port=22
-	fi
-	keypath=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-		-l 1 -p "Enter path to private key (leave blank if not needed or if unsure):")
 
-	if [[ -z "$keypath" ]]; then
-		printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | ani-cli -s
-	else
-		printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | ani-cli -s
-	fi
-
-	if [[ "$?" -ne 0 ]]; then
-		log "Aniwrapper was unable to sync the databases..."
-		exit 1
-	else
-		log "Databases synced successfully"
+		if [[ "$?" -ne 0 ]]; then
+			log "Aniwrapper was unable to sync the databases..."
+			exit 1
+		else
+			log "Databases synced successfully"
+			exit 0
+		fi
+		;;
+	6.)
+		# ---------------------------------------------------------------------------
+		# get out
+		# ---------------------------------------------------------------------------
+		printf "%s\n" "Quitting..."
 		exit 0
-	fi
-	;;
-6.)
-	# ---------------------------------------------------------------------------
-	# get out
-	# ---------------------------------------------------------------------------
-	printf "%s\n" "Quitting..."
-	exit 0
-	;;
-*)
-	log "Invalid choice..."
-	exit 1
-	;;
+		;;
+	*)
+		log "Invalid choice..."
+		exit 1
+		;;
 
 esac
