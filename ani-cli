@@ -29,7 +29,7 @@ c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
 help_text() {
-	while IFS= read line; do
+	while IFS= read -r line; do
 		printf "%s\n" "$line"
 	done <<-EOF
 		USAGE: $prog <query>
@@ -125,8 +125,8 @@ run_stmt() {
 ##  Database Code  ##
 #####################
 
+# Return number of matches for anime/episode in db
 check_db() {
-	# Return number of matches for anime/episode in db
 	if [[ "$2" == "search" ]]; then
 		stmt="SELECT DISTINCT COUNT(*) \
 			  FROM search_history \
@@ -143,8 +143,8 @@ check_db() {
 	fi
 }
 
+# updates search/watch date for passed in anime
 update_date() {
-	# updates search/watch date for passed in anime
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	stmt=""
 	if [[ "$2" == "search" ]]; then
@@ -161,14 +161,15 @@ update_date() {
 insert_history() {
 	# inserts into search/watch history db
 	# check the anime_name/id
-	check_anime_name "$1"
-	if [[ $? -ne 0 ]]; then
+
+	if ! check_anime_name "$1"; then
 		log "ERROR: Anime name is none... exiting"
 		return 1
 	fi
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	check_db "$@"
-	if [[ $? -gt 0 ]]; then
+	res="$?"
+	if [[ "$res" -gt 0 ]]; then
 		if [[ "$2" == "search" ]]; then
 			log "Already in search db... Updating search_date"
 		else
@@ -197,8 +198,7 @@ sync_search_history() {
 		if [[ "${res/ //}" == "" ]]; then
 			search_date=$(awk -F '|' '{print $3}' <<<"$line")
 			log "Adding ($anime_name|$search_date) to search history..."
-			sqlite3 "$HISTORY_DB" <<<"INSERT INTO search_history(anime_name, search_date) VALUES('$anime_name', '$search_date')"
-			if [[ "$?" -ne 0 ]]; then
+			if ! sqlite3 "$HISTORY_DB" <<<"INSERT INTO search_history(anime_name, search_date) VALUES('$anime_name', '$search_date')"; then
 				err "Error inserting row $line"
 			fi
 			((++cnt))
@@ -225,8 +225,7 @@ sync_watch_history() {
 				log "NOT IN DB"
 				watch_date=$(awk -F '|' '{print $NF}' <<<"$ep")
 				log "Adding ($anime_name|$episode_num|$watch_date) to watch history..."
-				sqlite3 "$HISTORY_DB" <<<"INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$anime_name', '$episode_num', '$watch_date')"
-				if [[ "$?" -ne 0 ]]; then
+				if ! sqlite3 "$HISTORY_DB" <<<"INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$anime_name', '$episode_num', '$watch_date')"; then
 					err "Error inserting row $ep"
 				fi
 				((++cnt))
@@ -278,18 +277,18 @@ get_search_query() {
 anime_selection() {
 	# Select anime from query results
 	search_results=$*
-	menu_format_string='[%d] %s\n'
-	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
-	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
+	# menu_format_string='[%d] %s\n'
+	# menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
+	# menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
 
 	count=1
 	menu=()
 	res=()
-	while read anime_id; do
+	while read -r anime_id; do
 		# alternating colors for menu
-		[ $((count % 2)) -eq 0 ] &&
-			menu_format_string=$menu_format_string_c1 ||
-			menu_format_string=$menu_format_string_c2
+		# [ $((count % 2)) -eq 0 ] &&
+			# menu_format_string=$menu_format_string_c1 ||
+			# menu_format_string=$menu_format_string_c2
 
 		menu+="$count. $anime_id\n"
 		idx=$((count - 1))
@@ -322,7 +321,7 @@ anime_selection() {
 		rofi -dmenu -config "$CFG_DIR/${ROFI_CFG}" \
 			-a "$searched" \
 			-l 12 -i -p "Enter number:")
-	[ "$?" -ne 0 ] && return 1
+	[ -z "$user_input" ] && return 1
 
 	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
 	# Remove period after number
@@ -345,8 +344,8 @@ anime_selection() {
 
 	# Select respective anime_id
 	count=1
-	while read anime_id; do
-		if [ $count -eq $choice ]; then
+	while read -r anime_id; do
+		if [ "$count" -eq "$choice" ]; then
 			selection_id=$anime_id
 			break
 		fi
@@ -357,7 +356,7 @@ anime_selection() {
 
 	[ -z "$selection_id" ] && die "Invalid number entered"
 
-	read last_ep_number <<-EOF
+	read -r last_ep_number <<-EOF
 		$(search_eps "$selection_id")
 	EOF
 }
@@ -438,7 +437,7 @@ open_episode() {
 		fi
 	fi
 
-	log "Getting data for episode %d\n" $episode
+	log "Getting data for episode $episode"
 
 	insert_history "$anime_id" "$episode"
 
@@ -459,14 +458,14 @@ open_episode() {
 			;;
 	esac
 
-	if [ $is_download -eq 0 ]; then
+	if [ "$is_download" -eq 0 ]; then
 		# setsid -f $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1
 		nohup $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1 &
 	else
 		log "Downloading episode $episode ..."
 		log "$video_url"
 		# add 0 padding to the episode name
-		episode=$(printf "%03d" $episode)
+		episode=$(printf "%03d" "$episode")
 		{
 			cd "${ddir/ //}" || die "Could not enter directory $ddir"
 			mkdir -p "$anime_id" || die "Could not create directory"
@@ -551,16 +550,18 @@ case $scrape in
 		get_search_query "$*"
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
-		anime_selection "$search_results"
-		[ $? -ne 0 ] && die "No anime selection found"
+		if ! anime_selection "$search_results"; then
+			die "No anime selection found"
+		fi
 		episode_selection
 		;;
 	history)
 		stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
 		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 		[ -z "$search_results" ] && die "History is empty"
-		anime_selection "${search_results[@]}"
-		[ $? -ne 0 ] && die "No anime selection found"
+		if ! anime_selection "${search_results[@]}"; then
+			die "No anime selection found"
+		fi
 		log "SELECTION: $selection_id"
 
 		stmt="SELECT episode_number \
@@ -572,14 +573,15 @@ case $scrape in
 		log "Most recently watched episode: $ep_choice_start"
 		;;
 	playlist)
-		lines=$(cat "$playlist_file" | wc -l)
+		lines=$(wc -l < "$playlist_file" )
 		log "Num lines in playlist: " "$lines"
 		if [[ "$lines" -eq 0 ]]; then
 			get_search_query "$*"
 			search_results=$(search_anime "$query")
 			[ -z "$search_results" ] && die "No search results found"
-			anime_selection "$search_results"
-			[ $? -ne 0 ] && die "No anime selection found"
+			if ! anime_selection "$search_results"; then
+				die "No anime selection found"
+			fi
 			episode_selection
 		else
 			line=($(sed '1q;d' "$playlist_file"))
@@ -587,10 +589,10 @@ case $scrape in
 				die "Something went wrong with the playlist file... exiting"
 			fi
 			selection_id="${line[0]}"
-			episodes=($selection_id)
+			episodes=("$selection_id")
 			ep_choice_start="${line[1]}"
 			ep_choice_end=""
-			read last_ep_number <<-EOF
+			read -r last_ep_number <<-EOF
 				$(search_eps "$selection_id")
 			EOF
 			[ "$VERBOSE" -eq 1 ] && printf "Anime: %s Episode: %d\n" "$episodes" "$ep_choice_start"
@@ -682,7 +684,7 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
 	printf "$c_reset"
-	read choice
+	read -r choice
 
 	printf "$c_reset"
 	case $choice in
@@ -694,8 +696,8 @@ while :; do
 			;;
 
 		s)
-			printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-			read episode
+			printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
+			read -r episode
 			printf "$c_reset"
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
 			;;
