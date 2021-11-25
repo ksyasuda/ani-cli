@@ -49,6 +49,7 @@ err() {
 }
 
 log() {
+	# prints passed in args to stdout if $VERBOSE is set to 1
 	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$*" >&2
 }
 
@@ -107,7 +108,6 @@ dep_ch() {
 }
 
 check_anime_name() {
-	# Maybe change to query the db for a similar name
 	# Check to make sure passed in name is not empty
 	log "VAR: $1"
 	if [[ "$1" == "" ]] || [[ "$1" == " " ]] || [[ "$1" == "\n" ]]; then
@@ -127,7 +127,6 @@ run_stmt() {
 
 check_db() {
 	# Return number of matches for anime/episode in db
-	# echo "$1 $2"
 	if [[ "$2" == "search" ]]; then
 		stmt="SELECT DISTINCT COUNT(*) \
 			  FROM search_history \
@@ -262,11 +261,8 @@ get_search_query() {
 				-mesg "$span" \
 				-config "$CFG_DIR/${ROFI_CFG}")
 
-		# Strip the list entry number from string
-		# query="$(awk '{print $NF}' <<<${query//[1-9]+\. /})"
 		query="${query//[1-9]*\. /}"
 		log "Query: $query"
-		# [ "$VERBOSE" -eq 1 ] && printf "%s\n" "Query: $query"
 	else
 		query=$*
 	fi
@@ -295,7 +291,6 @@ anime_selection() {
 			menu_format_string=$menu_format_string_c1 ||
 			menu_format_string=$menu_format_string_c2
 
-		# printf "$menu_format_string" "$count" "$anime_id"
 		menu+="$count. $anime_id\n"
 		idx=$((count - 1))
 		res["$idx"]="$anime_id"
@@ -334,10 +329,8 @@ anime_selection() {
 	choice="${choice::-1}"
 	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
 
-	if [[ "$VERBOSE" -eq 1 ]]; then
-		printf "%s\n" "CHOICE: $name"
-		printf "%s\n" "NAME: $name"
-	fi
+	log "CHOICE: $name"
+	log "NAME: $name"
 
 	# check both choice and name are set
 	if [[ ! "$choice" ]] || [[ ! "$name" ]]; then
@@ -382,9 +375,7 @@ episode_selection() {
 		  FROM watch_history \
 		  WHERE anime_name = '$anime_id';"
 	hist=$(run_stmt "$stmt")
-	if [[ "$VERBOSE" -eq 1 ]]; then
-		printf "%s\n" "HISTORY: ${hist[*]}"
-	fi
+	log "HISTORY: ${hist[*]}"
 
 	# Get Watch History for $anime_id as comma separated list
 	watch_history=""
@@ -438,11 +429,8 @@ open_episode() {
 				FROM watch_history \
 				WHERE anime_name = '$anime_id' \
 				ORDER BY episode_number ASC;"
-			# hist=$(echo "$stmt" | sqlite3 "$HISTORY_DB" | awk '{ if ( NR > 2 ) { print } }')
 			hist=$(run_stmt "$stmt")
-			if [[ "$VERBOSE" -eq 1 ]]; then
-				echo "HISTORY: ${hist[*]}"
-			fi
+			log "HISTORY: ${hist[*]}"
 			episode=$(printf "%s\n" "${hist[@]}" |
 				rofi -dmenu -l 12 -p "Choose Episode:" \
 					-config "$CFG_DIR/${ROFI_CFG}")
@@ -472,16 +460,11 @@ open_episode() {
 	esac
 
 	if [ $is_download -eq 0 ]; then
-		# write anime and episode number
-		# sed -E "
-		# 	s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode + 1))/
-		# " "$logfile" >"${logfile}.new" && mv "${logfile}.new" "$logfile"
-
 		# setsid -f $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1
 		nohup $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1 &
 	else
-		printf "Downloading episode $episode ...\n"
-		printf "%s\n" "$video_url"
+		log "Downloading episode $episode ..."
+		log "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
@@ -507,13 +490,12 @@ dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi"
 
 # option parsing
 is_download=0
-list_history=0
 scrape=query
 download_dir="."
 is_playlist=0
 playlist_remove=0
 playlist_add=0
-while getopts 'hd:Hlpa:P:sv' OPT; do
+while getopts 'hd:Hpa:P:sv' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -523,15 +505,10 @@ while getopts 'hd:Hlpa:P:sv' OPT; do
 			is_download=1
 			download_dir="$OPTARG"
 
-			if [ "$VERBOSE" -eq 1 ]; then
-				printf "%s\n" "DOWNLOAD DIR: $download_dir"
-			fi
+			log "DOWNLOAD DIR: $download_dir"
 			;;
 		H)
 			scrape=history
-			;;
-		l)
-			list_history=1
 			;;
 		p)
 			scrape=playlist
@@ -569,20 +546,8 @@ shift $((OPTIND - 1))
 # main #
 ########
 
-if [[ "$list_history" -eq 1 ]]; then
-	stmt="SELECT DISTINCT anime_name \
-		  FROM search_history \
-		  ORDER BY search_date DESC"
-	hist=$(run_stmt "$stmt")
-	printf "%s\n" "${hist[@]}" |
-		rofi -config "$CFG_DIR/${ROFI_CFG}" \
-			-dmenu -l 12 -i -p "Search History"
-	exit 0
-fi
-
 case $scrape in
 	query)
-
 		get_search_query "$*"
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
@@ -605,12 +570,10 @@ case $scrape in
 			LIMIT 1"
 		ep_choice_start=$(run_stmt "$stmt")
 		log "Most recently watched episode: $ep_choice_start"
-		# search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
-		# ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
 	playlist)
 		lines=$(cat "$playlist_file" | wc -l)
-		[ "$VERBOSE" -eq 1 ] && printf "%s%d\n" "Num lines in playlist: " "$lines"
+		log "Num lines in playlist: " "$lines"
 		if [[ "$lines" -eq 0 ]]; then
 			get_search_query "$*"
 			search_results=$(search_anime "$query")
@@ -648,8 +611,6 @@ case $scrape in
 		printf "%s" "Enter host for remote user: "
 		read -r host
 
-		# printf "%s" "Enter connection string for remote user in the form user@host: "
-		# read -r connection_str
 		connection_str="$username@$host"
 		printf "%s" "Enter port to connect to remote host with or leave blank for default (22): "
 		read -r port
@@ -671,8 +632,7 @@ case $scrape in
 			scp -P "$PORT" -i "$key_path" "$connection_str:$XDG_CONFIG_HOME/aniwrapper/history.sqlite3" "$temp_db"
 		fi
 		if [[ "$?" -ne 0 ]]; then
-			printf "%s\n" "Error getting database file from remote host"
-			exit 1
+			die "Error getting database file from remote host"
 		fi
 		sync_search_history && sync_watch_history
 		exit 0
@@ -690,16 +650,11 @@ esac
 	fi
 }
 
-# add anime to history file
-# grep -q -w "${selection_id}" "$logfile" ||
-# 	printf "%s\t%d\n" "$selection_id" $((episode + 1)) >>"$logfile"
-
+# plays selected episode(s)
 for ep in $episodes; do
 	if [[ "$is_add" -eq 1 ]]; then
-		if [[ "$VERBOSE" -eq 1 ]]; then
-			printf "%s\n" "ID: $selection_id"
-			printf "%s\n" "EPISODES: $episodes"
-		fi
+		log "ID: $selection_id"
+		log "EPISODES: $episodes"
 		printf "%s\n" "$selection_id $ep" >>"$playlist_file"
 		log "Added to playlist file"
 	else
@@ -711,7 +666,7 @@ for ep in $episodes; do
 done
 
 if [[ "$is_add" -eq 1 ]]; then
-	printf "%s\n" "Finished adding to playlist file... exiting"
+	log "Finished adding to playlist file... exiting"
 	exit 0
 fi
 
