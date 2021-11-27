@@ -19,6 +19,9 @@
   - [Installing](#installing)
     - [Arch Linux](#arch-linux)
     - [Manual Install](#manual-install)
+    - [Install the Dependencies](#install-the-dependencies)
+    - [Clone the repo](#clone-the-repo)
+    - [Run setup script](#run-setup-script)
 - [Aniwrapper Menus](#aniwrapper-menus)
   - [Search Anime](#search-anime)
   - [Anime Selection](#anime-selection)
@@ -90,18 +93,25 @@ yay -S aniwrapper-git
 
 To install manually, make sure the dependencies are installed first
 
-The folowing command can be used on Arch Linux to ensure the prereqisites are installed
+### Install the Dependencies
 
 ```sh
+# Arch
 pacman -S --needed grep curl sed mpv ffmpeg rofi sqlite3
+
+# Debian
+apt-get install grep curl sed mpv ffmpeg rofi sqlite3
 ```
 
-Next, clone the Git repository and switch directories into the cloned repo
+### Clone the repo
+
+Use the following command to clone the Git repository locally and switch into the cloned directory
 
 ```sh
-git clone https://github.com/ksyasuda/aniwrapper
-cd aniwrapper
+git clone https://github.com/ksyasuda/aniwrapper && cd aniwrapper
 ```
+
+### Run setup script
 
 After switching into the `aniwrapper` directory, run the following commands to set up and install the script
 
