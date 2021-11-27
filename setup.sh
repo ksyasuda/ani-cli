@@ -2,11 +2,10 @@
 
 # Setup script to move the rofi theme files to the correct location
 # As well as set up the history database
-# DO NOT RUN AS ROOT
-
-log() {
-    printf "%s\n" "$1"
-}
+######################
+# DO NOT RUN AS ROOT #
+######################
+VERBOSE=0
 
 DB="history.sqlite3"
 
@@ -18,33 +17,56 @@ fi
 DIR="$XDG_CONFIG_HOME/aniwrapper"
 MPV_DIR="$XDG_CONFIG_HOME/mpv"
 
-printf "%s\n" "INSTALL DIR: $DIR"
+log() {
+    if [[ "$VERBOSE" -eq 1 ]]; then
+        printf "%s\n" "$*"
+    fi
+}
+
+# executes aniwrapper setup
+# 1. create the aniwrapper directory in $XDG_CONFIG_HOME
+# 2. create history databases in $DIR
+# 3. move theme files to $DIR
+# 4. move skip-intro.lua into mpv/scripts folder
+run_setup() {
+    log "INSTALL DIR: $DIR"
+
+    if [[ ! -d "$DIR" ]]; then
+        log "Creating directory $DIR"
+        mkdir -p "$DIR"
+        log "Directory created"
+    fi
+
+    if [[ ! -f "$DIR"/"$DB" ]]; then
+        # Create the DB if not exists
+        log "Creating history database..."
+        sqlite3 "$DIR"/"$DB" <sql/watch_history_tbl.sql
+        sqlite3 "$DIR"/"$DB" <sql/search_history_tbl.sql
+        log "History database created..."
+    fi
+
+    # Move theme files and skip-intro script to correct locations
+    log "Moving theme files..."
+    cp themes/* "$DIR"/
+    log "Theme files moved..."
+
+    log "Creating mpv/scripts/ directory if it doesn't exist..."
+    mkdir -p "$MPV_DIR/scripts/"
+    log "Created mpv scripts directory..."
+    log "Moving .lua into mpv scripts directory..."
+    cp lua/* "$MPV_DIR/scripts/"
+    # cp skip-intro.lua "$MPV_DIR/scripts/skip-intro.lua"
+    log "Moved skip-intro.lua into scripts directory..."
+}
 
 if [[ ! -d "$DIR" ]]; then
-    log "Creating directory $DIR"
-    mkdir -p "$DIR"
-    log "Directory created"
+    if run_setup; then
+        log "Setup Complete...."
+    else
+        printf "%s\n" "There was an error during setup"
+        exit 1
+    fi
+else
+    log "Directory exists... skipping setup"
+    exit 0
 fi
-
-if [[ ! -f "$DIR"/"$DB" ]]; then
-    # Create the DB if not exists
-    log "Creating history database..."
-    sqlite3 "$DIR"/"$DB" <sql/watch_history_tbl.sql
-    sqlite3 "$DIR"/"$DB" <sql/search_history_tbl.sql
-    log "History database created..."
-fi
-
-# Move theme files and skip-intro script to correct locations
-log "Moving theme files..."
-cp themes/* "$DIR"/
-log "Theme files moved..."
-
-log "Creating mpv/scripts/ directory if it doesn't exist..."
-mkdir -p "$MPV_DIR/scripts/"
-log "Created mpv scripts directory..."
-log "Moving .lua into mpv scripts directory..."
-cp lua/* "$MPV_DIR/scripts/"
-# cp skip-intro.lua "$MPV_DIR/scripts/skip-intro.lua"
-log "Moved skip-intro.lua into scripts directory..."
-
-log "Setup Complete...."
