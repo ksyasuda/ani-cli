@@ -4,6 +4,7 @@ configuration {
     scroll-method:			0;
     disable-history:		false;
     sidebar-mode:			true;
+    steal-focus:            true;
 }
 
 * {
