@@ -75,8 +75,8 @@ search_eps() {
 		'
 }
 
+# get the download page url - no longer used (use get_embedded_video_link)
 get_dpage_link() {
-	# get the download page url
 	anime_id=$1
 	ep_no=$2
 
@@ -88,15 +88,67 @@ get_dpage_link() {
 		}'
 }
 
-get_links() {
-	dpage_url="$1"
+get_embedded_video_link() {
+	# get the download page url
+	anime_id=$1
+	ep_no=$2
 
-	curl -s "$dpage_url" |
-		sed -n -E '
-		/href="([^"]*)" download>Download/{
-		s/href="([^"]*)" download>Download/\1/p
+	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
+	# dub prefix takes the value "-dub" when dub is needed else is empty
+	curl -s "$BASE_URL/$anime_id${dub_prefix}-episode-$ep_no" |
+	sed -n -E '
+		/^[[:space:]]*<a href="#" rel="100"/{
+		s/.*data-video="([^"]*)".*/https:\1/p
 		q
-		}' | tr -d ' '
+		}'
+}
+
+get_video_quality() {
+	embedded_video_url=$1
+	video_url=$2
+
+	video_file=$(curl -s --referer "$embedded_video_url" "$video_url")
+	available_qualities=$(printf '%s' "$video_file" | sed -n -E 's/.*NAME="([^p]*)p"/\1/p')
+	case $quality in
+		best)
+			printf '%s' "$available_qualities" | tail -n 1
+			;;
+
+		worst)
+			printf '%s' "$available_qualities" | head -n 1
+			;;
+
+		*)
+			is_quality_avail=$(printf '%s' "$available_qualities" | grep "$quality")
+			video_quality="$quality"
+			if [ -z "$is_quality_avail" ]; then
+				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+				quality=best
+				video_quality=$(printf '%s' "$available_qualities" | tail -n 1)
+			fi
+			printf '%s' "$video_quality"
+			;;
+	esac
+
+}
+
+get_links() {
+	embedded_video_url="$1"
+	video_url=$(curl -s "$embedded_video_url" |
+	sed -n -E '
+		/^[[:space:]]*sources:/{
+		s/.*(https[^'\'']*).*/\1/p
+		q
+		}
+		')
+	printf '%s' "$video_url"
+
+	# TODO: implement quality selection
+	# tmp_url=$(printf '%s' "$video_url" | sed -n -E 's/(.*)\.([0-9]+\.[0-9]+)\.[0-9]+\.m3u8/\1.\2.m3u8/p')
+	# [ -z "$tmp_url" ] || video_url="$tmp_url"
+	# video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
+	# # Replace the video with highest quality video
+	# printf '%s' "$video_url" | sed -n -E "s/(.*)\.m3u8/\1.$video_quality.m3u8/p"
 }
 
 dep_ch() {
@@ -441,8 +493,10 @@ open_episode() {
 
 	insert_history "$anime_id" "$episode"
 
-	dpage_url=$(get_dpage_link "$anime_id" "$episode")
-	video_url=$(get_links "$dpage_url")
+	# dpage_url=$(get_dpage_link "$anime_id" "$episode")
+	# video_url=$(get_links "$dpage_url")
+	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
+	video_url=$(get_links "$embedded_video_url")
 
 	case $video_url in
 	*streamtape*)
@@ -459,8 +513,11 @@ open_episode() {
 	esac
 
 	if [ "$is_download" -eq 0 ]; then
+		log "embedded video url: $embedded_video_url"
+		log "video url: $video_url"
 		# setsid -f $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1
-		nohup $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1 &
+		# nohup $player_fn --http-header-fields="Referer: $dpage_url" "$video_url" >/dev/null 2>&1 &
+		setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
 	else
 		log "Downloading episode $episode ..."
 		log "$video_url"
