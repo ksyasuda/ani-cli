@@ -527,7 +527,7 @@ open_episode() {
 			cd "${ddir/ //}" || die "Could not enter directory $ddir"
 			mkdir -p "$anime_id" || die "Could not create directory"
 			cd "$anime_id" || die "Could not enter subdirectory $ddir/$anime_id"
-			ffmpeg -headers "Referer: $dpage_url" -i "$video_url" \
+			ffmpeg -headers "Referer: $embedded_video_url" -i "$video_url" \
 				-codec copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
 				notify-send "Downloaded episode: $episode" ||
 				notify-send "Download failed episode: $episode"
