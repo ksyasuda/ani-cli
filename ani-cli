@@ -141,14 +141,12 @@ get_links() {
 		q
 		}
 		')
-	printf '%s' "$video_url"
 
-	# TODO: implement quality selection
-	# tmp_url=$(printf '%s' "$video_url" | sed -n -E 's/(.*)\.([0-9]+\.[0-9]+)\.[0-9]+\.m3u8/\1.\2.m3u8/p')
-	# [ -z "$tmp_url" ] || video_url="$tmp_url"
-	# video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
-	# # Replace the video with highest quality video
-	# printf '%s' "$video_url" | sed -n -E "s/(.*)\.m3u8/\1.$video_quality.m3u8/p"
+	tmp_url=$(printf '%s' "$video_url" | sed -n -E 's/(.*)\.([0-9]+\.[0-9]+)\.[0-9]+\.m3u8/\1.\2.m3u8/p')
+	[ -z "$tmp_url" ] || video_url="$tmp_url"
+	video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
+	# Replace the video with highest quality video
+	printf '%s' "$video_url" | sed -n -E "s/(.*)\.m3u8/\1.$video_quality.m3u8/p"
 }
 
 dep_ch() {
@@ -551,7 +549,8 @@ download_dir="."
 is_playlist=0
 playlist_remove=0
 playlist_add=0
-while getopts 'hd:Hpa:P:sv' OPT; do
+quality=best
+while getopts 'hd:Hpa:P:svq:' OPT; do
 	case "$OPT" in
 	h)
 		help_text
@@ -590,6 +589,10 @@ while getopts 'hd:Hpa:P:sv' OPT; do
 	v)
 		VERBOSE=1
 		;;
+  q)
+    quality="$OPTARG"
+    log "passed in quality: $quality"
+    ;;
 	*)
 		printf "%s\n" "Invalid option"
 		exit 1

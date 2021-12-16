@@ -1,36 +1,39 @@
 #!/usr/bin/env bash
 
-[ -z "$XDG_CONFIG_HOME" ] && XDG_CONFIG_HOME="$HOME/.config"
+set -Eeuo pipefail
 
-CMD=/usr/bin/ani-cli
+#############
+#  Globals  #
+#############
+[ -z "$XDG_CONFIG_HOME" ] && XDG_CONFIG_HOME="$HOME/.config"
+CMD="/usr/bin/ani-cli"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 DEFAULT_PLAYLIST="$CFG_DIR/playlists/playlist.txt"
 CFG_FILE="meh.rasi"
+QUALITIES="1. best|2. worst"
+QUALITY="best"
+CHECK_QUALITY=0
 VERBOSE=0
-
-while getopts 'vh' OPT; do
-	case "$OPT" in
-		h)
-			help_text
-			;;
-		v)
-			VERBOSE=1
-			;;
-		*)
-			log "Invalid option"
-			exit 1
-			;;
-	esac
-done
 
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Playlist|5. Sync History|$quit"
 
-[ "$VERBOSE" -eq 1 ] && printf "%s\n" "CONFIG DIR: $CFG_DIR"
 
-choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' \
-	-config "$CFG_DIR/$CFG_FILE" -l 6 -i -p "Aniwrapper")
+#############
+# Functions #
+#############
+get_quality() {
+  selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+    -l 1 -p "Choose video quality:" -sep '|' <<< "$QUALITIES")
+  QUALITY=$(awk '{print $2}' <<< "$selection")
+  log "selected quality: $QUALITY"
+  if [[ "$QUALITY" == 'best' || "$QUALITY" == 'worst' ]]; then
+    log "QUALITY: $QUALITY"
+  else
+    seppuku "Something went wrong getting the quality: $QUALITY... exiting"
+  fi
+}
 
 seppuku() {
 	printf "%s\n" "$*"
@@ -43,10 +46,15 @@ quit() {
 }
 
 run() {
+  if [[ "$CHECK_QUALITY" -eq 1 ]]; then
+    get_quality
+  else
+    log "CHECK_QUALITY disabled... using default: $QUALITY"
+  fi
 	if [[ "$VERBOSE" -eq 0 ]]; then
-		"$CMD" "$*"
+		"$CMD" -q "$QUALITY" "$*"
 	else
-		"$CMD" -v "$*"
+		"$CMD" -q "$QUALITY" -v "$*"
 	fi
 }
 
@@ -55,6 +63,33 @@ log() {
 		printf "%s\n" "$*"
 	fi
 }
+
+########
+# Main #
+########
+while getopts 'vhq' OPT; do
+	case "$OPT" in
+		h)
+			help_text
+			;;
+		v)
+			VERBOSE=1
+			;;
+    q)
+      CHECK_QUALITY=1
+      log "Quality prompt enabled"
+      ;;
+		*)
+			log "Invalid option"
+			exit 1
+			;;
+	esac
+done
+
+[ "$VERBOSE" -eq 1 ] && printf "%s\n" "CONFIG DIR: $CFG_DIR"
+
+choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' \
+	-config "$CFG_DIR/$CFG_FILE" -l 6 -i -p "Aniwrapper")
 
 [ "$choice" == "$quit" ] && quit
 
