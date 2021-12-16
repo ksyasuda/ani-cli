@@ -53,10 +53,13 @@ run_setup() {
     log "Creating mpv/scripts/ directory if it doesn't exist..."
     mkdir -p "$MPV_DIR/scripts/"
     log "Created mpv scripts directory..."
-    log "Moving .lua into mpv scripts directory..."
-    cp lua/* "$MPV_DIR/scripts/"
-    # cp skip-intro.lua "$MPV_DIR/scripts/skip-intro.lua"
-    log "Moved skip-intro.lua into scripts directory..."
+    if [[ ! -f "$MPV_DIR/scripts/skip-intro.lua" ]]; then
+      log "Moving skip-intro.lua into mpv scripts directory..."
+      cp lua/skip-intro.lua "$MPV_DIR/scripts/"
+      log "Moved skip-intro.lua into scripts directory..."
+    else
+      log "skip-intro.lua already exists in $XDG_CONFIG_HOME/mpv/scripts/"
+    fi
 }
 
 if [[ ! -d "$DIR" ]]; then

@@ -1,44 +1,14 @@
 <div align="center">
 
+![icon](https://imgur.com/HbyB4Cb.png)
+
 # Aniwrapper
 
-[Setup](#setup) | [Usage](#usage) | [Screenshots](#screenshots)
+[**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-![Aniwrapper screenshot](./assets/screenshots/aniwrapper_home.png)
+![Aniwrapper screenshot](https://imgur.com/QaftS71.png)
 
 </div>
-
-<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
-
-**Table of Contents**
-
-- [Aniwrapper](#aniwrapper)
-- [Introduction](#introduction)
-- [Setup](#setup)
-  - [Dependencies](#dependencies)
-  - [Installing](#installing)
-    - [Arch Linux](#arch-linux)
-    - [Manual Install](#manual-install)
-    - [Install the Dependencies](#install-the-dependencies)
-    - [Clone the repo](#clone-the-repo)
-    - [Run setup script](#run-setup-script)
-- [Aniwrapper Menus](#aniwrapper-menus)
-  - [Search Anime](#search-anime)
-  - [Anime Selection](#anime-selection)
-  - [Episode Selection](#episode-selection)
-- [Usage](#usage)
-  - [aniwrapper](#aniwrapper)
-    - [Option 1: Streaming](#option-1-streaming)
-    - [Option 2: Download](#option-2-download)
-    - [Option 3: Continue](#option-3-continue)
-    - [Option 4: Playlist](#option-4-playlist)
-    - [Option 5: Sync History](#option-5-sync-history)
-  - [ani-cli Script](#ani-cli-script)
-- [Screenshots](#screenshots)
-
-<!-- markdown-toc end -->
-
----
 
 # Introduction
 
@@ -61,6 +31,36 @@ This tool scrapes the site [gogoanime](https://gogoanime.vc).
 It is intended to be called from the wrapper script `aniwrapper`,
 however using the ani-cli script itself is also possible
 
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
+
+**Table of Contents**
+
+- [Introduction](#introduction)
+- [Setup](#setup)
+  - [Dependencies](#dependencies)
+    - [Skip Intro Script](#skip-intro-script)
+  - [Installing](#installing)
+    - [Arch Linux](#arch-linux)
+    - [Manual Install](#manual-install)
+    - [Install the Dependencies](#install-the-dependencies)
+    - [Clone the repo](#clone-the-repo)
+    - [Run setup script](#run-setup-script)
+- [Aniwrapper Menus](#aniwrapper-menus)
+  - [Search Anime](#search-anime)
+  - [Anime Selection](#anime-selection)
+  - [Episode Selection](#episode-selection)
+- [Usage](#usage)
+  - [aniwrapper](#aniwrapper)
+    - [Option 1: Streaming](#option-1-streaming)
+    - [Option 2: Download](#option-2-download)
+    - [Option 3: Continue](#option-3-continue)
+    - [Option 4: Playlist](#option-4-playlist)
+    - [Option 5: Sync History](#option-5-sync-history)
+  - [ani-cli Script](#ani-cli-script)
+- [Screenshots](#screenshots)
+
+<!-- markdown-toc end -->
+
 # Setup
 
 ## Dependencies
@@ -71,11 +71,29 @@ These are the minimum dependences required to run `aniwrapper`
 - curl
 - sed
 - mpv
-  - skip-intro.lua (installed in setup.sh)
 - ffmpeg
 - rofi
   - meh.rasi (installed in setup.sh)
 - sqlite3
+
+### Skip Intro Script
+
+_This repo comes packaged with and will install the
+[skip-intro.lua](https://github.com/rui-ddc/skip-intro)
+script for MPV during setup if it is not already installed_
+
+The script is activated with the `TAB` key
+
+Upon activation, the skip-intro script will try its best to skip the
+episode introduction by skipping to the next moment of silence in the video
+
+- If the video has not pre-loaded past the introduction, the script will not
+  know what to do. Press `TAB` again to stop the script until the video
+  has loaded enough, or just manually skip past the intro.
+- If the video does not have a pause in audio (or a significant enough drop in
+  audio volume) between the end of the introduction and the beginning of the
+  video/episode, then the script may fail and skip to a random point in the
+  video
 
 ## Installing
 
@@ -100,7 +118,7 @@ To install manually, make sure the dependencies are installed first
 pacman -S --needed grep curl sed mpv ffmpeg rofi sqlite3
 
 # Debian
-apt-get install grep curl sed mpv ffmpeg rofi sqlite3
+apt install grep curl sed mpv ffmpeg rofi sqlite3
 ```
 
 ### Clone the repo
@@ -111,7 +129,7 @@ Use the following command to clone the Git repository locally and switch into th
 git clone https://github.com/ksyasuda/aniwrapper && cd aniwrapper
 ```
 
-### Run setup script
+### Run the setup and install the script
 
 After switching into the `aniwrapper` directory, run the following commands to set up and install the script
 
@@ -149,9 +167,9 @@ In the episode selection menu, you can select an individual episode from the lis
 
 <div align="center">
 
-![streaming gif select from menu](./assets/gifs/streaming.gif)
+![streaming gif select from menu](https://imgur.com/nI455zI.gif)
 Streaming a previously watched anime
-[click here](./assets/gifs/streaming_new.gif) for an example showing streaming a new anime
+[click here](https://imgur.com/nLjqLCL.gif) for an example showing streaming a new anime
 
 </div>
 
@@ -215,9 +233,9 @@ This would open/download episodes 1 2 3 4 5 6
 <div align="center">
 
 Aniwrapper Main Menu
-![aniwrapper frontpage](./assets/screenshots/aniwrapper_home.png)
+![aniwrapper frontpage](https://imgur.com/QaftS71.png)
 Aniwrapper Streaming Menu
-![aniwrapper streaming options](./assets/screenshots/aniwrapper_stream.png)
+![aniwrapper streaming options](https://imgur.com/jVJQERk.png)
 More to come soon... maybe
 
 </div>
