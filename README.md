@@ -167,9 +167,8 @@ In the episode selection menu, you can select an individual episode from the lis
 
 <div align="center">
 
-![streaming gif select from menu](https://imgur.com/nI455zI.gif)
-Streaming a previously watched anime
 [click here](https://imgur.com/nLjqLCL.gif) for an example showing streaming a new anime
+[click here](https://imgur.com/nI455zI.gif) for an example showing streaming a previously watched anime
 
 </div>
 
