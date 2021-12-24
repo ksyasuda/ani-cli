@@ -7,7 +7,7 @@ fi
 
 VERBOSE=0
 
-BASE_URL="https://www1.gogoanime.cm/"
+BASE_URL="https://www2.gogoanime.cm/"
 CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 ROFI_CFG="meh.rasi"
 
