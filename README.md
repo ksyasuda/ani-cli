@@ -1,7 +1,5 @@
 <div align="center">
 
-![icon](https://imgur.com/HbyB4Cb.png)
-
 # Aniwrapper
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
@@ -35,35 +33,33 @@ however using the ani-cli script itself is also possible
 
 **Table of Contents**
 
+- [Aniwrapper](#aniwrapper)
 - [Introduction](#introduction)
 - [Setup](#setup)
-  - [Dependencies](#dependencies)
-    - [Skip Intro Script](#skip-intro-script)
-  - [Installing](#installing)
-    - [Arch Linux](#arch-linux)
-    - [Manual Install](#manual-install)
-    - [Install the Dependencies](#install-the-dependencies)
-    - [Clone the repo](#clone-the-repo)
-    - [Run setup script](#run-setup-script)
+	- [Skip Intro Script](#skip-intro-script)
+	- [Installing](#installing)
+		- [Arch Linux](#arch-linux)
+		- [Manual Install](#manual-install)
+		- [Install the Dependencies](#install-the-dependencies)
+		- [Clone the repo](#clone-the-repo)
+		- [Run the setup and install the script](#run-the-setup-and-install-the-script)
 - [Aniwrapper Menus](#aniwrapper-menus)
-  - [Search Anime](#search-anime)
-  - [Anime Selection](#anime-selection)
-  - [Episode Selection](#episode-selection)
+	- [Search Anime](#search-anime)
+	- [Anime Selection](#anime-selection)
+	- [Episode Selection](#episode-selection)
 - [Usage](#usage)
-  - [aniwrapper](#aniwrapper)
-    - [Option 1: Streaming](#option-1-streaming)
-    - [Option 2: Download](#option-2-download)
-    - [Option 3: Continue](#option-3-continue)
-    - [Option 4: Playlist](#option-4-playlist)
-    - [Option 5: Sync History](#option-5-sync-history)
-  - [ani-cli Script](#ani-cli-script)
+	- [aniwrapper](#aniwrapper-1)
+		- [Option 1: Streaming](#option-1-streaming)
+		- [Option 2: Download](#option-2-download)
+		- [Option 3: Continue](#option-3-continue)
+		- [Option 4: Playlist](#option-4-playlist)
+		- [Option 5: Sync History](#option-5-sync-history)
+	- [ani-cli Script](#ani-cli-script)
 - [Screenshots](#screenshots)
 
 <!-- markdown-toc end -->
 
 # Setup
-
-## Dependencies
 
 These are the minimum dependences required to run `aniwrapper`
 
@@ -76,7 +72,7 @@ These are the minimum dependences required to run `aniwrapper`
   - meh.rasi (installed in setup.sh)
 - sqlite3
 
-### Skip Intro Script
+## Skip Intro Script
 
 _This repo comes packaged with and will install the
 [skip-intro.lua](https://github.com/rui-ddc/skip-intro)
@@ -167,8 +163,8 @@ In the episode selection menu, you can select an individual episode from the lis
 
 <div align="center">
 
-[click here](https://imgur.com/nLjqLCL.gif) for an example showing streaming a new anime
-[click here](https://imgur.com/nI455zI.gif) for an example showing streaming a previously watched anime
+- [click here](https://imgur.com/nLjqLCL.gif) for an example showing streaming a new anime
+- [click here](https://imgur.com/nI455zI.gif) for an example showing streaming a previously watched anime
 
 </div>
 
