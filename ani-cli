@@ -499,9 +499,10 @@ open_episode() {
 			cd "${ddir/ //}" || die "Could not enter directory $ddir"
 			mkdir -p "$anime_id" || die "Could not create directory"
 			cd "$anime_id" || die "Could not enter subdirectory $ddir/$anime_id"
-			ffmpeg -i "$play_link" -c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
-			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download finished for episode: $episode" ||
-			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download failed for episode: $episode. Please retry or check your internet connection"
+			# ffmpeg -i "$play_link" -c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			ffmpeg -i "$play_link" -c copy "${episode}.mkv" >/dev/null 2>&1 &&
+			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
+			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 				# printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				# printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
