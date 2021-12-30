@@ -28,6 +28,7 @@ log() {
 # 2. create history databases in $DIR
 # 3. move theme files to $DIR
 # 4. move skip-intro.lua into mpv/scripts folder
+# 5. move the aniwrapper icon to $XDG_CONFIG_HOME/aniwrapper/ directory
 run_setup() {
     log "INSTALL DIR: $DIR"
 
@@ -60,6 +61,10 @@ run_setup() {
     else
       log "skip-intro.lua already exists in $XDG_CONFIG_HOME/mpv/scripts/"
     fi
+
+	# install aniwrapper icon
+	# xdg-icon-resource install --size 64 ./assets/icons/icon-64.png aniwrapper --novendor
+	cp .assets/icons/icon-64.png "$XDG_CONFIG_HOME/aniwrapper/icon-64.png"
 }
 
 if [[ ! -d "$DIR" ]]; then

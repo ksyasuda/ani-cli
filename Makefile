@@ -16,5 +16,13 @@ uninstall:
 	$(RM) $(DESTDIR)$(PREFIX)/bin/ani-cli
 	$(RM) $(DESTDIR)$(PREFIX)/bin/aniwrapper
 
-.PHONY: all install uninstall dev
+reinstall:
+	$(RM) $(DESTDIR)$(PREFIX)/bin/ani-cli
+	$(RM) $(DESTDIR)$(PREFIX)/bin/aniwrapper
+	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
+	cp aniwrapper $(DESTDIR)$(PREFIX)/bin/aniwrapper
+	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
+	chmod 0755 $(DESTDIR)$(PREFIX)/bin/aniwrapper
+
+.PHONY: all install uninstall dev reinstall
 

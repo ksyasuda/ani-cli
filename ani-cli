@@ -11,6 +11,7 @@ VERBOSE=0
 BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 ROFI_CFG="meh.rasi"
+ANIWRAPPER_ICON_PATH="$CFG_DIR/aniwrapper.png"
 
 HISTORY_DB="$XDG_CONFIG_HOME/aniwrapper/history.sqlite3"
 
@@ -294,7 +295,10 @@ get_search_query() {
 				-mesg "$span" \
 				-config "$CFG_DIR/${ROFI_CFG}")
 
+		# Remove the id from the query
 		query="${query//[1-9]*\. /}"
+		# Remove trailing whitespace to avoid being converted to '-' next step
+		query="${query// /}"
 		log "Query: $query"
 	else
 		query=$*
@@ -401,8 +405,6 @@ anime_selection() {
 
 episode_selection() {
 	# select episode number for anime
-	[ "$is_download" -eq 1 ] &&
-		printf "Range of episodes can be specified: start_number end_number\n"
 	log "Anime ID: $anime_id"
 	stmt="SELECT DISTINCT episode_number \
 		  FROM watch_history \
@@ -498,8 +500,8 @@ open_episode() {
 			mkdir -p "$anime_id" || die "Could not create directory"
 			cd "$anime_id" || die "Could not enter subdirectory $ddir/$anime_id"
 			ffmpeg -i "$play_link" -c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
-        notify-send "Downloaded episode: $episode" ||
-        notify-send "Download failed episode: $episode, please retry or check your internet connection"
+			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download finished for episode: $episode" ||
+			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download failed for episode: $episode. Please retry or check your internet connection"
 				# printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				# printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
