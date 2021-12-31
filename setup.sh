@@ -46,14 +46,15 @@ run_setup() {
         log "History database created..."
     fi
 
-    # Move theme files and skip-intro script to correct locations
-    log "Moving theme files..."
-    cp themes/* "$DIR"/
-    log "Theme files moved..."
+    if [[ ! -f "$DIR/meh.rasi" ]]; then
+        # Move theme files and skip-intro script to correct locations
+        log "Moving theme files..."
+        cp themes/* "$DIR"/
+        log "Theme files moved..."
+    fi
 
     log "Creating mpv/scripts/ directory if it doesn't exist..."
     mkdir -p "$MPV_DIR/scripts/"
-    log "Created mpv scripts directory..."
     if [[ ! -f "$MPV_DIR/scripts/skip-intro.lua" ]]; then
       log "Moving skip-intro.lua into mpv scripts directory..."
       cp lua/skip-intro.lua "$MPV_DIR/scripts/"
@@ -62,19 +63,19 @@ run_setup() {
       log "skip-intro.lua already exists in $XDG_CONFIG_HOME/mpv/scripts/"
     fi
 
-	# install aniwrapper icon
-	# xdg-icon-resource install --size 64 ./assets/icons/icon-64.png aniwrapper --novendor
-	cp .assets/icons/icon-64.png "$XDG_CONFIG_HOME/aniwrapper/icon-64.png"
+    if [[ ! -d "$DIR/icons" ]]; then
+        log "Creating icons directory"
+        mkdir -p "$DIR/icons"
+    fi
+    # install aniwrapper icons
+    cp .assets/icons/* "$DIR/icons/"
+    log "Installed icons in config directory..."
+    # xdg-icon-resource install --size 64 ./assets/icons/icon-64.png aniwrapper --novendor
 }
 
-if [[ ! -d "$DIR" ]]; then
-    if run_setup; then
-        log "Setup Complete...."
-    else
-        printf "%s\n" "There was an error during setup"
-        exit 1
-    fi
+if run_setup; then
+    log "Setup Complete...."
 else
-    log "Directory exists... skipping setup"
-    exit 0
+    printf "%s\n" "There was an error during setup"
+    exit 1
 fi

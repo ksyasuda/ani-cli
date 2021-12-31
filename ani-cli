@@ -11,7 +11,8 @@ VERBOSE=0
 BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 ROFI_CFG="meh.rasi"
-ANIWRAPPER_ICON_PATH="$CFG_DIR/aniwrapper.png"
+ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
+MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 
 HISTORY_DB="$XDG_CONFIG_HOME/aniwrapper/history.sqlite3"
 
@@ -494,7 +495,7 @@ open_episode() {
 			# ffmpeg -i "$play_link" -c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
 			ffmpeg -i "$play_link" -c copy "${episode}.mkv" >/dev/null 2>&1 &&
 			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
-			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
+			notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 			# printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 			# printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
