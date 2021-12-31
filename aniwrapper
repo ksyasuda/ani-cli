@@ -26,15 +26,18 @@ options="1. Stream|2. Download|3. Continue|4. Playlist|5. Sync History|$quit"
 # Functions #
 #############
 get_quality() {
-  selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-    -l 1 -p "Choose video quality:" -sep '|' <<< "$QUALITIES")
-  QUALITY=$(awk '{print $2}' <<< "$selection")
-  log "selected quality: $QUALITY"
-  if [[ "$QUALITY" == 'best' || "$QUALITY" == 'worst' ]]; then
-    log "QUALITY: $QUALITY"
+  if [[ "$IS_ROFI" -eq 1 ]]; then
+    selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+      -l 1 -p "Choose video quality:" -sep '|' <<< "$QUALITIES")
+    QUALITY=$(awk '{print $2}' <<< "$selection")
   else
-    seppuku "Something went wrong getting the quality: $QUALITY... exiting"
+    printf "%s" "Enter quality [ best | worst ]: "
+    read -r QUALITY
   fi
+  log "selected quality: $QUALITY"
+  # if [[ "$QUALITY" != 'best' ]] && [[ "$QUALITY" != 'worst' ]]; then
+  #   seppuku "Something went wrong getting the quality: $QUALITY... exiting"
+  # fi
 }
 
 seppuku() {
@@ -78,7 +81,7 @@ while getopts 'vhqcd' OPT; do
 			VERBOSE=1
 			;;
     q)
-      QUALITY=1
+      GET_QUALITY=1
       log "Quality prompt enabled"
       ;;
     c)
