@@ -315,19 +315,10 @@ get_search_query() {
 anime_selection() {
 	# Select anime from query results
 	search_results=$*
-	# menu_format_string='[%d] %s\n'
-	# menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
-	# menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
-
 	count=1
 	menu=()
 	res=()
 	while read -r anime_id; do
-		# alternating colors for menu
-		# [ $((count % 2)) -eq 0 ] &&
-		# menu_format_string=$menu_format_string_c1 ||
-		# menu_format_string=$menu_format_string_c2
-
 		menu+="$count. $anime_id\n"
 		idx=$((count - 1))
 		res["$idx"]="$anime_id"
@@ -475,10 +466,11 @@ open_episode() {
 
 	log "Getting data for episode $episode"
 
-	insert_history "$anime_id" "$episode"
+	# Don't update watch history if downloading episode
+	if [ "$is_download" -eq 0 ]; then
+		insert_history "$anime_id" "$episode"
+	fi
 
-	# embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
-	# video_url=$(get_links "$embedded_video_url")
 	get_video_quality
 	status_code=$(curl -s -I get_video_quality "$play_link" | head -n 1|cut -d ' ' -f2)
   log "Status code: $status_code"
@@ -503,8 +495,8 @@ open_episode() {
 			ffmpeg -i "$play_link" -c copy "${episode}.mkv" >/dev/null 2>&1 &&
 			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
 			notify-send -i "$ANIWRAPPER_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
-				# printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
-				# printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
+			# printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
+			# printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
 	fi
 }
@@ -535,7 +527,6 @@ while getopts 'hd:Hpa:P:svq:' OPT; do
 	d)
 		is_download=1
 		download_dir="$OPTARG"
-
 		log "DOWNLOAD DIR: $download_dir"
 		;;
 	H)
@@ -705,6 +696,9 @@ done
 
 if [[ "$is_add" -eq 1 ]]; then
 	log "Finished adding to playlist file... exiting"
+	exit 0
+elif [[ "$is_download" -eq 1 ]]; then
+	log "Finished downloading episodes: $episodes for $selection_id... exiting"
 	exit 0
 fi
 
