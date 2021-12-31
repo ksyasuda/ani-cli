@@ -13,8 +13,10 @@ DEFAULT_PLAYLIST="$CFG_DIR/playlists/playlist.txt"
 CFG_FILE="meh.rasi"
 QUALITIES="1. best|2. worst"
 QUALITY="best"
-CHECK_QUALITY=0
+GET_QUALITY=0
 VERBOSE=0
+IS_ROFI=1
+IS_DOWNLOAD=0
 
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Playlist|5. Sync History|$quit"
@@ -46,10 +48,10 @@ quit() {
 }
 
 run() {
-  if [[ "$CHECK_QUALITY" -eq 1 ]]; then
+  if [[ "$GET_QUALITY" -eq 1 ]]; then
     get_quality
   else
-    log "CHECK_QUALITY disabled... using default: $QUALITY"
+    log "QUALITY flag not set... using default -> $QUALITY"
   fi
 	if [[ "$VERBOSE" -eq 0 ]]; then
 		"$CMD" -q "$QUALITY" "$*"
@@ -67,7 +69,7 @@ log() {
 ########
 # Main #
 ########
-while getopts 'vhq' OPT; do
+while getopts 'vhqcd' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -76,8 +78,16 @@ while getopts 'vhq' OPT; do
 			VERBOSE=1
 			;;
     q)
-      CHECK_QUALITY=1
+      QUALITY=1
       log "Quality prompt enabled"
+      ;;
+    c)
+      IS_ROFI=0
+      log "Command-line (ani-cli) mode set"
+      ;;
+    d)
+      IS_DOWNLOAD=1
+      log "Download flag set..."
       ;;
 		*)
 			log "Invalid option"
@@ -86,7 +96,19 @@ while getopts 'vhq' OPT; do
 	esac
 done
 
-[ "$VERBOSE" -eq 1 ] && printf "%s\n" "CONFIG DIR: $CFG_DIR"
+log "CONFIG DIR: $CFG_DIR"
+
+# Check if command-line flag is set
+if [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 0 ]]; then
+  run -c
+  exit $?
+elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
+  printf "%s" "Enter download dir: "
+  read -r dl_dir
+  log "Download dir: $dl_dir"
+  run "-cd $dl_dir"
+  exit $?
+fi
 
 choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' \
 	-config "$CFG_DIR/$CFG_FILE" -l 6 -i -p "Aniwrapper")

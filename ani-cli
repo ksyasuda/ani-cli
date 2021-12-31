@@ -290,7 +290,7 @@ get_search_query() {
 
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
 	span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
-	if [ -z "$*" ]; then
+	if [ -z "$*" ] && [ "$is_rofi" -eq 1 ]; then
 		query=$(printf "%s\n" "${hist[@]}" |
 			rofi -dmenu -l 12 -p "Search Anime:" \
 				-mesg "$span" \
@@ -302,6 +302,9 @@ get_search_query() {
 		# works with trailing '-' so remove for now
 		# query="${query// /}"
 		log "Query: $query"
+  elif [ "$is_rofi" -eq 0 ]; then
+		printf "Search Anime: "
+		read -r query
 	else
 		query=$*
 	fi
@@ -317,61 +320,84 @@ get_search_query() {
 anime_selection() {
 	# Select anime from query results
 	search_results=$*
+	if [ "$is_rofi" -eq 1 ]; then
+		count=1
+		menu=()
+		res=()
+		while read -r anime_id; do
+			menu+="$count. $anime_id\n"
+			idx=$((count - 1))
+			res["$idx"]="$anime_id"
+			count=$((count + 1))
+		done <<-EOF
+			$search_results
+		EOF
+
+		searched=""
+		cnt=0
+		# Get the comma separated list of indexes of anime that has been searched before
+		for anime in "${res[@]}"; do
+			log "ANIME: $anime"
+			check_db "$anime" "search"
+			if [[ $? -gt 0 ]]; then
+				log "SEARCHED BEFORE"
+				if [[ "$searched" == "" ]]; then
+					searched="$((cnt++))"
+				else
+					searched="$searched, $((cnt++))"
+				fi
+			fi
+		done
+
+		log "SEARCHED: $searched"
+
+		# get the anime from indexed list
+		user_input=$(printf "${menu[@]}" |
+			rofi -dmenu -config "$CFG_DIR/${ROFI_CFG}" \
+				-a "$searched" \
+				-l 12 -i -p "Enter number:")
+		[ -z "$user_input" ] && return 1
+
+		choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
+		# Remove period after number
+		choice="${choice::-1}"
+		name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
+  else
+	menu_format_string='[%d] %s\n'
+	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
+	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
+
 	count=1
-	menu=()
-	res=()
-	while read -r anime_id; do
-		menu+="$count. $anime_id\n"
-		idx=$((count - 1))
-		res["$idx"]="$anime_id"
-		count=$((count + 1))
+	while read anime_id; do
+		# alternating colors for menu
+		[ $((count % 2)) -eq 0 ] &&
+			menu_format_string=$menu_format_string_c1 ||
+			menu_format_string=$menu_format_string_c2
+
+		printf "$menu_format_string" "$count" "$anime_id"
+		count=$((count+1))
 	done <<-EOF
-		$search_results
+	$search_results
 	EOF
 
-	searched=""
-	cnt=0
-	# Get the comma separated list of indexes of anime that has been searched before
-	for anime in "${res[@]}"; do
-		log "ANIME: $anime"
-		check_db "$anime" "search"
-		if [[ $? -gt 0 ]]; then
-			log "SEARCHED BEFORE"
-			if [[ "$searched" == "" ]]; then
-				searched="$((cnt++))"
-			else
-				searched="$searched, $((cnt++))"
-			fi
-		fi
-	done
-
-	log "SEARCHED: $searched"
-
-	# get the anime from indexed list
-	user_input=$(printf "${menu[@]}" |
-		rofi -dmenu -config "$CFG_DIR/${ROFI_CFG}" \
-			-a "$searched" \
-			-l 12 -i -p "Enter number:")
-	[ -z "$user_input" ] && return 1
-
-	choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
-	# Remove period after number
-	choice="${choice::-1}"
-	name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
-
-	log "CHOICE: $name"
-	log "NAME: $name"
-
-	# check both choice and name are set
-	if [[ ! "$choice" ]] || [[ ! "$name" ]]; then
-		die "Invalid choice... committing seppuku"
-	fi
-	# Check if input is a number
-	[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
-
-	insert_history "$name" "search"
-
+	# User input
+	printf "$c_blue%s$c_green" "Enter number: "
+	read choice
 	printf "$c_reset"
+  name="$anime_id"
+	fi
+
+	log "CHOICE: $choice"
+
+  if [ "$is_rofi" -eq 1 ]; then
+    log "NAME: $name"
+    # check both choice and name are set
+    if [[ ! "$choice" ]] || [[ ! "$name" ]]; then
+      die "Invalid choice... committing seppuku"
+    fi
+  fi
+  # Check if input is a number
+  [ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
 
 	# Select respective anime_id
 	count=1
@@ -385,6 +411,12 @@ anime_selection() {
 		$search_results
 	EOF
 
+  [ -z "$name" ] && name="$anime_id"
+  log "NAME: $name"
+	insert_history "$name" "search"
+
+	printf "$c_reset"
+
 	[ -z "$selection_id" ] && die "Invalid number entered"
 
 	read -r last_ep_number <<-EOF
@@ -397,38 +429,48 @@ anime_selection() {
 ##################
 
 episode_selection() {
-	# select episode number for anime
-	log "Anime ID: $anime_id"
-	stmt="SELECT DISTINCT episode_number \
-		  FROM watch_history \
-		  WHERE anime_name = '$anime_id';"
-	hist=$(run_stmt "$stmt")
-	log "HISTORY: ${hist[*]}"
+	ep_choice_start="1"
+  if [ "$is_rofi" -eq 1 ]; then
+    # select episode number for anime
+    log "Anime ID: $anime_id"
+    stmt="SELECT DISTINCT episode_number \
+        FROM watch_history \
+        WHERE anime_name = '$anime_id';"
+    hist=$(run_stmt "$stmt")
+    log "HISTORY: ${hist[*]}"
 
-	# Get Watch History for $anime_id as comma separated list
-	watch_history=""
-	for i in $hist; do
-		if [[ "$watch_history" == "" ]]; then
-			watch_history="$((--i))"
-		else
-			watch_history="$watch_history, $((--i))"
-		fi
-	done
+    # Get Watch History for $anime_id as comma separated list
+    watch_history=""
+    for i in $hist; do
+      if [[ "$watch_history" == "" ]]; then
+        watch_history="$((--i))"
+      else
+        watch_history="$watch_history, $((--i))"
+      fi
+    done
 
-	log "WATCH HISTORY: %s\n" "$watch_history"
-	# get user choice and set the start and end
-	msg='<span foreground="peachpuff" style="italic" size="small" weight="light">Range of episodes can be provided as: START_EPISODE - END_EPISODE</span>'
-	choice=$(
-		seq 1 "$last_ep_number" |
-			rofi -dmenu -l 12 \
-				-a "$watch_history" \
-				-p "Select Episode [1, $last_ep_number]:" \
-				-mesg "$msg" \
-				-config "$CFG_DIR/${ROFI_CFG}"
-	)
-	ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
-	ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
-	log "START: $ep_choice_start | END: $ep_choice_end"
+    log "WATCH HISTORY: %s\n" "$watch_history"
+    # get user choice and set the start and end
+    msg='<span foreground="peachpuff" style="italic" size="small" weight="light">Range of episodes can be provided as: START_EPISODE - END_EPISODE</span>'
+    choice=$(
+      seq 1 "$last_ep_number" |
+        rofi -dmenu -l 12 \
+          -a "$watch_history" \
+          -p "Select Episode [1, $last_ep_number]:" \
+          -mesg "$msg" \
+          -config "$CFG_DIR/${ROFI_CFG}"
+    )
+    ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
+    ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
+    log "START: $ep_choice_start | END: $ep_choice_end"
+  elif [ $last_ep_number -gt 1 ]; then
+    [ $is_download -eq 1 ] &&
+      printf "Range of episodes can be specified: start_number end_number\n"
+
+    printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+    read ep_choice_start ep_choice_end
+    printf "$c_reset"
+  fi
 	if [[ -z "$ep_choice_start" ]] && [[ -z "$ep_choice_end" ]]; then
 		die "No episode range entered"
 	fi
@@ -513,6 +555,7 @@ trap "printf '$c_reset'" INT HUP
 dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi"
 
 # option parsing
+is_rofi=1
 is_download=0
 scrape=query
 download_dir="."
@@ -520,7 +563,7 @@ is_playlist=0
 playlist_remove=0
 playlist_add=0
 quality=best
-while getopts 'hd:Hpa:P:svq:' OPT; do
+while getopts 'hd:Hpa:P:svq:c' OPT; do
 	case "$OPT" in
 	h)
 		help_text
@@ -558,10 +601,13 @@ while getopts 'hd:Hpa:P:svq:' OPT; do
 	v)
 		VERBOSE=1
 		;;
-  q)
-    quality="$OPTARG"
-    log "passed in quality: $quality"
-    ;;
+	q)
+		quality="$OPTARG"
+		log "passed in quality: $quality"
+		;;
+	c)
+		is_rofi=0
+		;;
 	*)
 		printf "%s\n" "Invalid option"
 		exit 1
