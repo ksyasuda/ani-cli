@@ -9,6 +9,8 @@ install:
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/aniwrapper
 
 dev:
+	$(RM) $(DESTDIR)$(PREFIX)/bin/ani-cli
+	$(RM) $(DESTDIR)$(PREFIX)/bin/aniwrapper
 	ln -sr ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
 	ln -sr aniwrapper $(DESTDIR)$(PREFIX)/bin/aniwrapper
 
