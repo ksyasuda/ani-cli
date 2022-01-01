@@ -4,7 +4,7 @@
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-![Aniwrapper screenshot](https://imgur.com/QaftS71.png)
+![Aniwrapper screenshot](https://imgur.com/bhea2u3.png)
 
 </div>
 
@@ -52,7 +52,7 @@ however using the ani-cli script itself is also possible
 		- [Option 1: Streaming](#option-1-streaming)
 		- [Option 2: Download](#option-2-download)
 		- [Option 3: Continue](#option-3-continue)
-		- [Option 4: Playlist](#option-4-playlist)
+		- [Option 4: Play from File](#option-4-play-from-file)
 		- [Option 5: Sync History](#option-5-sync-history)
 	- [ani-cli Script](#ani-cli-script)
 - [Screenshots](#screenshots)
@@ -156,17 +156,30 @@ In the episode selection menu, you can select an individual episode from the lis
 
 ## aniwrapper
 
-    # Launch aniwrapper menu
+    # Launch menu (default video quality: best)
     aniwrapper
+
+    # Launch menu with quality selection
+    aniwrapper -q
+
+    # Enable verbose logging
+    aniwrapper -v
+
+    # Use ani-cli command-line mode (rofi disabled)
+    aniwrapper -c
+
+    # Download anime in command-line mode
+    aniwrapper -d
+
+    # All flags can be used in command-line mode as well
+    # ex. The following command will launch aniwrapper in command-line download mode
+    aniwrapper -cqd
+
 
 ### Option 1: Streaming
 
-<div align="center">
-
 - [click here](https://imgur.com/nLjqLCL.gif) for an example showing streaming a new anime
 - [click here](https://imgur.com/nI455zI.gif) for an example showing streaming a previously watched anime
-
-</div>
 
 Streaming is the default option for the `aniwrapper` script and will prompt you with each of the menus specified in the _[aniwrapper Menus](#aniwrapper-menus)_ section
 
@@ -180,9 +193,9 @@ After specifying the download directory (or leaving it blank for the default), y
 
 The continue option queries the `sqlite3` history databse and pulls the list of distinct anime names from the `watch_history` table. Select an option from the list and the most recently watched episode of the selected anime will play
 
-### Option 4: Playlist
+### Option 4: Play from File
 
-_description coming soon_
+This option prompts you to provide the path to your `Videos` directory.  Any path can be provided, but the script will begin the search from the provided path.  From there, follow the prompts to select the video you want to watch and it will be opened in `mpv`
 
 ### Option 5: Sync History
 
@@ -217,6 +230,9 @@ At the moment, the requirements are as follows:
     # sync history across devices
     ani-cli -s
 
+	# run ani-cli in command-line mode (rofi disabled)
+	ani-cli -c
+
 Multiple episodes can be viewed/downloaded by giving the episode range like so
 
     Choose episode [1-13]: 1 6
@@ -228,7 +244,7 @@ This would open/download episodes 1 2 3 4 5 6
 <div align="center">
 
 Aniwrapper Main Menu
-![aniwrapper frontpage](https://imgur.com/QaftS71.png)
+![aniwrapper frontpage](https://imgur.com/bhea2u3.png)
 Aniwrapper Streaming Menu
 ![aniwrapper streaming options](https://imgur.com/jVJQERk.png)
 More to come soon... maybe
