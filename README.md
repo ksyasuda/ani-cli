@@ -172,7 +172,7 @@ In the episode selection menu, you can select an individual episode from the lis
     aniwrapper -d
 
     # All flags can be used in command-line mode as well
-    # ex. The following command will launch aniwrapper in command-line download mode
+    # ex. The following command will launch aniwrapper in command-line download mode with quality selection
     aniwrapper -cqd
 
 
