@@ -223,9 +223,11 @@ update_date() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	stmt=""
 	if [[ "$2" == "search" ]]; then
+		log "UPDATING SEARCH_HISTORY: anime_name='$1', search_date='$datetime'"
 		stmt="UPDATE search_history SET search_date = '$datetime' \
 			WHERE anime_name = '$1';"
 	else
+		log "UPDATING WATCH_HISTORY: anime_name='$1', episode_number='$2' search_date='$datetime'"
 		stmt="UPDATE watch_history SET watch_date = '$datetime' \
 			WHERE anime_name = '$1' \
 			AND episode_number = $2;"
@@ -336,8 +338,6 @@ get_search_query() {
 			-config "$CFG_DIR/${ROFI_CFG}" <<< "${hist[@]}")
 		# Remove the id from the query
 		query="${query//[1-9]*\. /}"
-		# fixes '-' at end of selected anime, but removes spaces from queries
-		# works with trailing '-' so remove for now
 		# query="${query// /}"
 		log "Query: $query"
 	elif [ "$is_rofi" -eq 0 ]; then
@@ -426,7 +426,6 @@ anime_selection() {
 	log "CHOICE: $choice"
 
 	if [ "$is_rofi" -eq 1 ]; then
-		log "NAME: $name"
 		# check both choice and name are set
 		if [[ ! "$choice" ]] || [[ ! "$name" ]]; then
 			die "Invalid choice... committing seppuku"
@@ -473,7 +472,7 @@ episode_selection() {
         FROM watch_history \
         WHERE anime_name = '$anime_id';"
 		hist=$(run_stmt "$stmt")
-		log "HISTORY: ${hist[*]}"
+		# log "HISTORY: ${hist[*]}"
 
 		# Get Watch History for $anime_id as comma separated list
 		watch_history=""
@@ -485,7 +484,6 @@ episode_selection() {
 			fi
 		done
 
-		log "WATCH HISTORY: %s\n" "$watch_history"
 		# get user choice and set the start and end
 		msg='<span foreground="peachpuff" style="italic" size="small" weight="light">Range of episodes can be provided as: START_EPISODE - END_EPISODE</span>'
 		choice=$(
@@ -524,7 +522,6 @@ episode_selection() {
 		ep_choice_end=""
 	fi
 
-	# read ep_choice_start ep_choice_end
 	printf "$c_reset"
 
 }
@@ -537,24 +534,6 @@ open_episode() {
 	if [ $half_ep -eq 1 ]; then
 		temp_ep=$episode
 		episode=$episode"-5"
-	fi
-
-	if [[ ! "$is_playlist" ]]; then
-		# clear the screen
-		printf '\x1B[2J\x1B[1;1H'
-		if [[ $episode -lt 1 ]] || [[ $episode -gt $last_ep_number ]]; then
-			err "Episode out of range"
-			stmt="SELECT DISTINCT episode_number \
-				FROM watch_history \
-				WHERE anime_name = '$anime_id' \
-				ORDER BY episode_number ASC;"
-			hist=$(run_stmt "$stmt")
-			log "HISTORY: ${hist[*]}"
-			episode=$(printf "%s\n" "${hist[@]}" |
-				rofi -dmenu -l 12 -p "Choose Episode:" \
-					-config "$CFG_DIR/${ROFI_CFG}")
-			printf "$c_reset"
-		fi
 	fi
 
 	log "Getting data for episode $episode"
@@ -608,6 +587,36 @@ open_episode() {
 	fi
 }
 
+stream() {
+	log "Running stream()"
+	log "args: $*"
+	get_search_query "$*"
+	searched=0
+	if [ $# -le 1 ]; then
+		# check if anime has been searched before
+		anime_id="${query// /}"
+		log "Checking if anime: $anime_id has been searched before..."
+		check_db "$anime_id" "search"
+		searched="$?"
+		log "Searched before: $searched"
+	fi
+	if [ "$searched" -eq 0 ]; then
+		search_results=$(search_anime $query)
+		[ -z "$search_results" ] && die "No search results found"
+		if ! anime_selection "$search_results"; then
+			die "No anime selection found"
+		fi
+	else
+		# if the query is a previous search
+		# skip search_anime function and assign $query
+		anime_id="${query// /}"
+		selection_id="$anime_id"
+		insert_history "$anime_id" "search"
+		read -r last_ep_number <<< "$(search_eps "$selection_id")"
+	fi
+	episode_selection
+}
+
 ############
 # Start Up #
 ############
@@ -625,7 +634,7 @@ is_playlist=0
 playlist_remove=0
 playlist_add=0
 half_ep=0
-while getopts 'hd:Hpa:P:svq:c' OPT; do
+while getopts 'hd:Hsvq:c' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -638,24 +647,6 @@ while getopts 'hd:Hpa:P:svq:c' OPT; do
 			;;
 		H)
 			scrape=history
-			;;
-		p)
-			scrape=playlist
-			is_playlist=1
-			;;
-		a)
-			is_add=1
-			scrape=add
-			playlist_file="${OPTARG/ //}"
-			;;
-		P)
-			is_playlist=1
-			# remove spaces from $OPTARG
-			playlist_file="${OPTARG/ //}"
-			[ -z "$playlist_file" ] && die "Enter in path to playlist"
-			log "$playlist_file"
-			$player_fn "$playlist_file"
-			exit 0
 			;;
 		s)
 			scrape=sync
@@ -679,7 +670,6 @@ done
 shift $((OPTIND - 1))
 
 dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git"
-# check_for_update
 
 ########
 # main #
@@ -687,31 +677,7 @@ dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git"
 
 case $scrape in
 	query)
-		get_search_query "$*"
-		searched=0
-		if [ $# -eq 1 ]; then
-			# check if anime has been searched before
-			anime_id="${query// /}"
-			log "Checking if anime: $anime_id has been searched before..."
-			check_db "$anime_id" "search"
-			searched="$?"
-			log "Searched before: $searched"
-		fi
-		if [ "$searched" -eq 0 ]; then
-			search_results=$(search_anime $query)
-			[ -z "$search_results" ] && die "No search results found"
-			if ! anime_selection "$search_results"; then
-				die "No anime selection found"
-			fi
-		else
-			# if the query is a previous search
-			# skip search_anime function and assign $query
-			anime_id="${query// /}"
-			selection_id="$anime_id"
-			insert_history "$anime_id" "search"
-			read -r last_ep_number <<< "$(search_eps "$selection_id")"
-		fi
-		episode_selection
+		stream "$*"
 		;;
 	history)
 		stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
@@ -729,41 +695,6 @@ case $scrape in
 			LIMIT 1"
 		ep_choice_start=$(run_stmt "$stmt")
 		log "Most recently watched episode: $ep_choice_start"
-		;;
-	playlist)
-		lines=$(wc -l < "$playlist_file")
-		log "Num lines in playlist: " "$lines"
-		if [[ "$lines" -eq 0 ]]; then
-			get_search_query "$*"
-			search_results=$(search_anime "$query")
-			[ -z "$search_results" ] && die "No search results found"
-			if ! anime_selection "$search_results"; then
-				die "No anime selection found"
-			fi
-			episode_selection
-		else
-			line=($(sed '1q;d' "$playlist_file"))
-			if [[ "${#line[@]}" -ne 2 ]]; then
-				die "Something went wrong with the playlist file... exiting"
-			fi
-			selection_id="${line[0]}"
-			episodes=("$selection_id")
-			ep_choice_start="${line[1]}"
-			ep_choice_end=""
-			read -r last_ep_number <<- EOF
-				$(search_eps "$selection_id")
-			EOF
-			[ "$VERBOSE" -eq 1 ] && printf "Anime: %s Episode: %d\n" "$episodes" "$ep_choice_start"
-			[ "$VERBOSE" -eq 1 ] && printf "Episodes: %s\n" "${episodes[@]}"
-		fi
-		;;
-	add)
-		get_search_query "$*"
-		search_results=$(search_anime "$query")
-		[ -z "$search_results" ] && die "No search results found"
-		anime_selection "$search_results"
-		[ $? -ne 0 ] && die "No anime selection found"
-		episode_selection
 		;;
 	sync)
 		printf "%s" "Enter username for remote user: "
@@ -803,23 +734,10 @@ check_input
 
 # plays selected episode(s)
 for ep in $episodes; do
-	if [[ "$is_add" -eq 1 ]]; then
-		log "ID: $selection_id"
-		log "EPISODES: $episodes"
-		printf "%s\n" "$selection_id $ep" >> "$playlist_file"
-		log "Added to playlist file"
-	else
-		open_episode "$selection_id" "$ep" "$download_dir"
-		if [[ "$is_playlist" -eq 1 ]]; then
-			sed -i '1d' "$playlist_file"
-		fi
-	fi
+	open_episode "$selection_id" "$ep" "$download_dir"
 done
 
-if [[ "$is_add" -eq 1 ]]; then
-	log "Finished adding to playlist file... exiting"
-	exit 0
-elif [[ "$is_download" -eq 1 ]]; then
+if [[ "$is_download" -eq 1 ]]; then
 	log "Finished downloading episodes: $episodes for $selection_id... exiting"
 	exit 0
 fi
@@ -869,33 +787,9 @@ while :; do
 			episode=$((episode))
 			;;
 		a)
-			# tput reset
-			get_search_query
-
-			searched=0
-			if [ $# -eq 1 ]; then
-				# check if anime has been searched before
-				anime_id="${query// /}"
-				log "Checking if anime: $anime_id has been searched before..."
-				check_db "$anime_id" "search"
-				searched="$?"
-				log "Searched before: $searched"
-			fi
-			if [ "$searched" -eq 0 ]; then
-				search_results=$(search_anime $query)
-				[ -z "$search_results" ] && die "No search results found"
-				if ! anime_selection "$search_results"; then
-					die "No anime selection found"
-				fi
-			else
-				# if the query is a previous search
-				# skip search_anime function and assign $query
-				anime_id="${query// /}"
-				selection_id="$anime_id"
-				insert_history "$anime_id" "search"
-				read -r last_ep_number <<< "$(search_eps "$selection_id")"
-			fi
-			episode_selection
+			stream
+			episode=$ep_choice_start
+			log "NEW EPISODE: $selection_id - $episode"
 			;;
 
 		q)
