@@ -351,21 +351,24 @@ anime_selection() {
 			check_db "$anime" "search"
 			if [[ $? -gt 0 ]]; then
 				log "SEARCHED BEFORE"
-				if [[ "$searched" == "" ]]; then
-					searched="$((cnt++))"
+				if [ -z "$searched" ]; then
+					searched="$cnt"
 				else
-					searched="$searched, $((cnt++))"
+					searched="$searched, $cnt"
 				fi
 			fi
+      ((++cnt))
 		done
 
 		log "SEARCHED: $searched"
 
 		# get the anime from indexed list
+    msg="<span foreground='peachpuff' style='italic' size='small' weight='normal'>Query: $query</span>"
 		user_input=$(printf "${menu[@]}" |
 			rofi -dmenu -config "$CFG_DIR/${ROFI_CFG}" \
 				-a "$searched" \
-				-l 12 -i -p "Enter number:")
+				-l 12 -i -p "Enter number:" \
+        -mesg "$msg")
 		[ -z "$user_input" ] && return 1
 
 		choice=$(printf '%s\n' "$user_input" | awk '{print $1}')

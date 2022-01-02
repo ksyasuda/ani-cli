@@ -33,16 +33,15 @@ however using the ani-cli script itself is also possible
 
 **Table of Contents**
 
-- [Aniwrapper](#aniwrapper)
 - [Introduction](#introduction)
 - [Setup](#setup)
 	- [Skip Intro Script](#skip-intro-script)
 	- [Installing](#installing)
 		- [Arch Linux](#arch-linux)
 		- [Manual Install](#manual-install)
-		- [Install the Dependencies](#install-the-dependencies)
-		- [Clone the repo](#clone-the-repo)
-		- [Run the setup and install the script](#run-the-setup-and-install-the-script)
+			- [Install the Dependencies](#install-the-dependencies)
+			- [Clone the repo](#clone-the-repo)
+			- [Run the setup and install the script](#run-the-setup-and-install-the-script)
 - [Aniwrapper Menus](#aniwrapper-menus)
 	- [Search Anime](#search-anime)
 	- [Anime Selection](#anime-selection)
@@ -95,7 +94,7 @@ episode introduction by skipping to the next moment of silence in the video
 
 ### Arch Linux
 
-`aniwrapper-git` is available on the AUR for Arch users
+`aniwrapper-git` is available on the [AUR](https://aur.archlinux.org/packages/aniwrapper-git/) for Arch users
 
 ```sh
 paru -S aniwrapper-git
@@ -107,7 +106,7 @@ yay -S aniwrapper-git
 
 To install manually, make sure the dependencies are installed first
 
-### Install the Dependencies
+#### Install the Dependencies
 
 ```sh
 # Arch
@@ -117,7 +116,7 @@ pacman -S --needed grep curl sed mpv ffmpeg rofi sqlite3
 apt install grep curl sed mpv ffmpeg rofi sqlite3
 ```
 
-### Clone the repo
+#### Clone the repo
 
 Use the following command to clone the Git repository locally and switch into the cloned directory
 
@@ -125,7 +124,7 @@ Use the following command to clone the Git repository locally and switch into th
 git clone https://github.com/ksyasuda/aniwrapper && cd aniwrapper
 ```
 
-### Run the setup and install the script
+#### Run the setup and install the script
 
 After switching into the `aniwrapper` directory, run the following commands to set up and install the script
 
@@ -141,6 +140,23 @@ There are several menus used to drive the program forward
 ## Search Anime
 
 The first menu consists of a search box and a list of anime titles corresponding to past valid searches. Choose an option from the menu, or enter in a unique search query to search for a new anime. The result from this will be used to query against `gogoanime` and return similar named anime
+
+### Dealing with conflicting search queries / rofi grabbing from search list
+
+I can write more about it later, but in this program, rofi is configured to search with case insensitivity and select the best match from the list if there are matches.  This can make it difficult at times to write a search query that does not trigger a selection from the rofi menu
+
+<div align="center">
+
+![selection with query 'isekai'](https://imgur.com/c2U4kdn.png)
+Once your history starts filling up, it becomes progressively more difficult to form unique search queries
+
+![selection with dash](https://imgur.com/eS7DgDU.png)
+The workaround for this is to prepend a dash ` -` to the search query<br/>
+The above output was produced by searching: `isekai -`
+
+</div>
+
+As of the update on 2022-01-01, if selecting an anime from the search history list, the [anime selection](#anime-selection) menu will be skipped and the program will move on to [episode selection](#episode-selection)
 
 ## Anime Selection
 
@@ -240,10 +256,10 @@ This would open/download episodes 1 2 3 4 5 6
 
 <div align="center">
 
-Aniwrapper Main Menu
 ![aniwrapper frontpage](https://imgur.com/ZAmoEUA.png)
-Aniwrapper Streaming Menu
 ![aniwrapper streaming options](https://imgur.com/jVJQERk.png)
+![aniwrapper anime selection](https://imgur.com/eS7DgDU.png)
+
 More to come soon... maybe
 
 </div>
