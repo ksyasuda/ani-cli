@@ -60,10 +60,12 @@ search_anime() {
 	# get anime name along with its id
   log "NUM ARGS: $#"
   if [[ $# -gt 1 ]]; then
+    # if multi-word query, concatenate into one string and replace spaces with '-'
     search="$*"
     search="${search// /-}"
   else
-    search="$1"
+    # if one word, remove leading or trailing whitespace
+    search="${1// /}"
   fi
   # search=${1// /-}
   log "Search Query: $search"
@@ -635,13 +637,29 @@ shift $((OPTIND - 1))
 case $scrape in
 query)
 	get_search_query "$*"
-  res=$(check_db "$query" search)
-  log "Searched before: $res"
-	search_results=$(search_anime $query)
-	[ -z "$search_results" ] && die "No search results found"
-	if ! anime_selection "$search_results"; then
-		die "No anime selection found"
-	fi
+  searched=0
+  if [ $# -eq 1 ]; then
+    # check if anime has been searched before
+    anime_id="${query// /}"
+    log "Checking if anime: $anime_id has been searched before..."
+    check_db "$anime_id" "search"
+    searched="$?"
+    log "Searched before: $searched"
+  fi
+  if [ "$searched" -eq 0 ]; then
+    search_results=$(search_anime $query)
+    [ -z "$search_results" ] && die "No search results found"
+    if ! anime_selection "$search_results"; then
+      die "No anime selection found"
+    fi
+  else
+    # if the query is a previous search
+    # skip search_anime function and assign $query
+    anime_id="${query// /}"
+    selection_id="$anime_id"
+    insert_history "$anime_id" "search"
+    read -r last_ep_number <<< "$(search_eps "$selection_id")"
+  fi
 	episode_selection
 	;;
 history)
