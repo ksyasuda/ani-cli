@@ -107,10 +107,13 @@ search_eps() {
 }
 
 check_input() {
-	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2> /dev/null || die "Invalid number entered"
+	log "Checking input"
+	log "EP START: $ep_choice_start"
+	log "EP END: $ep_choice_end"
+	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2> /dev/null || die "Invalid number entered: $ep_choice_start"
 	episodes=$ep_choice_start
 	if [ -n "$ep_choice_end" ]; then
-		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2> /dev/null || die "Invalid number entered"
+		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2> /dev/null || die "Invalid number entered: $ep_choice_end"
 		# create list of episodes to download/watch
 		episodes=$(seq $ep_choice_start $ep_choice_end)
 	fi
@@ -506,12 +509,15 @@ episode_selection() {
 
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 		read ep_choice_start ep_choice_end
-		if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]; then
-			log "IS A HALF EPISODE"
-			half_ep=1
-			ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
-		fi
 		printf "$c_reset"
+	fi
+	# check for half episode
+	log "Checking if selected a half episode"
+	if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]; then
+		log "IS A HALF EPISODE"
+		half_ep=1
+		ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
+		ep_choice_end=$ep_choice_start
 	fi
 	if [[ -z "$ep_choice_start" ]] && [[ -z "$ep_choice_end" ]]; then
 		die "No episode range entered"
@@ -802,16 +808,7 @@ case $scrape in
 		;;
 esac
 
-{ # checking input
-	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2> /dev/null || die "Invalid number entered"
-	episodes=$ep_choice_start
-
-	if [ -n "$ep_choice_end" ]; then
-		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2> /dev/null || die "Invalid number entered"
-		# create list of episodes to download/watch
-		episodes=$(seq $ep_choice_start $ep_choice_end)
-	fi
-}
+check_input
 
 # plays selected episode(s)
 for ep in $episodes; do
