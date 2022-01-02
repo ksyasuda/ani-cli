@@ -141,6 +141,8 @@ There are several menus used to drive the program forward
 
 The first menu consists of a search box and a list of anime titles corresponding to past valid searches. Choose an option from the menu, or enter in a unique search query to search for a new anime. The result from this will be used to query against `gogoanime` and return similar named anime
 
+As of the update on ___2022-01-01___, if selecting an anime from the search history list, the [anime selection](#anime-selection) menu will be skipped and the program will move on to [episode selection](#episode-selection)
+
 ### Dealing with conflicting search queries / rofi grabbing from search list
 
 I can write more about it later, but in this program, rofi is configured to search with case insensitivity and select the best match from the list if there are matches.  This can make it difficult at times to write a search query that does not trigger a selection from the rofi menu
@@ -150,13 +152,11 @@ I can write more about it later, but in this program, rofi is configured to sear
 ![selection with query 'isekai'](https://imgur.com/c2U4kdn.png)
 Once your history starts filling up, it becomes progressively more difficult to form unique search queries
 
-![selection with dash](https://imgur.com/eS7DgDU.png)
+![selection with dash](https://imgur.com/vSyaoG6.png)
 The workaround for this is to prepend a dash ` -` to the search query<br/>
 The above output was produced by searching: `isekai -`
 
 </div>
-
-As of the update on 2022-01-01, if selecting an anime from the search history list, the [anime selection](#anime-selection) menu will be skipped and the program will move on to [episode selection](#episode-selection)
 
 ## Anime Selection
 
@@ -192,7 +192,7 @@ In the episode selection menu, you can select an individual episode from the lis
 ### Option 1: Streaming
 
 - [click here](https://imgur.com/nLjqLCL.gif) for an example showing streaming a new anime
-- [click here](https://imgur.com/nI455zI.gif) for an example showing streaming a previously watched anime
+- [click here](https://imgur.com/undefined.png) for an example showing streaming a previously watched anime
 
 Streaming is the default option for the `aniwrapper` script and will prompt you with each of the menus specified in the _[aniwrapper Menus](#aniwrapper-menus)_ section
 
@@ -258,7 +258,7 @@ This would open/download episodes 1 2 3 4 5 6
 
 ![aniwrapper frontpage](https://imgur.com/ZAmoEUA.png)
 ![aniwrapper streaming options](https://imgur.com/jVJQERk.png)
-![aniwrapper anime selection](https://imgur.com/eS7DgDU.png)
+![aniwrapper anime selection](https://imgur.com/vSyaoG6.png)
 
 More to come soon... maybe
 
