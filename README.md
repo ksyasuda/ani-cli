@@ -4,7 +4,7 @@
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-![Aniwrapper screenshot](https://imgur.com/bhea2u3.png)
+![Aniwrapper screenshot](https://imgur.com/ZAmoEUA.png)
 
 </div>
 
@@ -146,8 +146,6 @@ The first menu consists of a search box and a list of anime titles corresponding
 
 The next menu is where you select the anime to watch from a narrowed down list. Elements that have a blue border and text color indicate which anime have been watched before
 
-- _In the future, I'd like to make it so if you select an option from the list of previously searched anime, then it will skip this and go on to episode selection_
-
 ## Episode Selection
 
 In the episode selection menu, you can select an individual episode from the list, provide a single episode, or provide a range of episodes as two space separated integers `start_episode end_episode`. Like in the previous menu, any element with a blue border and text-color indicates that episode has been watched before
@@ -174,7 +172,6 @@ In the episode selection menu, you can select an individual episode from the lis
     # All flags can be used in command-line mode as well
     # ex. The following command will launch aniwrapper in command-line download mode with quality selection
     aniwrapper -cqd
-
 
 ### Option 1: Streaming
 
@@ -244,7 +241,7 @@ This would open/download episodes 1 2 3 4 5 6
 <div align="center">
 
 Aniwrapper Main Menu
-![aniwrapper frontpage](https://imgur.com/bhea2u3.png)
+![aniwrapper frontpage](https://imgur.com/ZAmoEUA.png)
 Aniwrapper Streaming Menu
 ![aniwrapper streaming options](https://imgur.com/jVJQERk.png)
 More to come soon... maybe
