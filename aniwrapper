@@ -11,7 +11,7 @@ DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
 DEFAULT_PLAYLIST="$CFG_DIR/playlists/playlist.txt"
 CFG_FILE="meh.rasi"
-QUALITIES="1. best|2. worst"
+QUALITIES="1. best (default)|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
 QUALITY="best"
 PLAYER_CMD="mpv"
 GET_QUALITY=0
@@ -28,10 +28,11 @@ options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$qu
 get_quality() {
 	if [[ "$IS_ROFI" -eq 1 ]]; then
 		selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -p "Choose video quality:" -sep '|' <<< "$QUALITIES")
+			-l 6 -theme-str 'listview {columns: 1;}' -p "Choose video quality:" \
+			-sep '|' <<< "$QUALITIES")
 		QUALITY=$(awk '{print $2}' <<< "$selection")
 	else
-		printf "%s" "Enter quality [ best | worst ]: "
+		printf "%s" "Enter quality [ best|1080|720|480|360|worst ]: "
 		read -r QUALITY
 	fi
 	log "selected quality: $QUALITY"

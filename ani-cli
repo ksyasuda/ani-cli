@@ -56,6 +56,21 @@ log() {
 	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$*" >&2
 }
 
+search_new() {
+	# get anime name along with id
+	curl -s "$BASE_URL" |
+		sed -n -E '
+		s_^[[:space:]]*<a href="/([^"/.]*)" title="([^"]*)".*_\1_p
+		' |
+		sed -n -E '
+		s_^[[:space:]]*([^"]*)-episode-[0-9]{1,100}*_\1_p
+		'
+}
+
+resolve_url() {
+	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $1
+}
+
 search_anime() {
 	# get anime name along with its id
 	log "NUM ARGS: $#"
@@ -108,12 +123,23 @@ get_embedded_video_link() {
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	curl -s "$BASE_URL/$anime_id${dub_prefix}-episode-$ep_no" |
-		sed -n -E '
+	req_link=$(curl -s "$BASE_URL/$anime_id${dub_prefix}-$ep_no" | grep -o "404")
+
+	if [ "$req_link" ]; then
+		curl -s "$BASE_URL/$anime_id${dub_prefix}-episode-$ep_no" |
+			sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
 		q
 		}'
+	else
+		curl -s "$BASE_URL/$anime_id${dub_prefix}-$ep_no" |
+			sed -n -E '
+		/^[[:space:]]*<a href="#" rel="100"/{
+		s/.*data-video="([^"]*)".*/https:\1/p
+		q
+		}'
+	fi
 }
 
 get_links() {
@@ -124,7 +150,7 @@ get_links() {
 
 get_video_quality() {
 	get_links
-	video_quality=$(curl -s get_links "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*" | sort -V | sed 's/amp;//')
+	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*" | sort -V | sed 's/amp;//')
 	case $quality in
 		best)
 			play_link=$(echo "$video_quality" | sort -V | tail -n 1)
@@ -139,7 +165,6 @@ get_video_quality() {
 				quality=best
 				play_link=$(echo "$video_quality" | sort -V | tail -n 1)
 			fi
-			printf '%s' "$play_link"
 			;;
 	esac
 }
@@ -481,6 +506,11 @@ episode_selection() {
 
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 		read ep_choice_start ep_choice_end
+		if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]; then
+			log "IS A HALF EPISODE"
+			half_ep=1
+			ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
+		fi
 		printf "$c_reset"
 	fi
 	if [[ -z "$ep_choice_start" ]] && [[ -z "$ep_choice_end" ]]; then
@@ -501,6 +531,11 @@ open_episode() {
 	anime_id=$1
 	episode=$2
 	ddir="$3"
+
+	if [ $half_ep -eq 1 ]; then
+		temp_ep=$episode
+		episode=$episode"-5"
+	fi
 
 	if [[ ! "$is_playlist" ]]; then
 		# clear the screen
@@ -528,19 +563,30 @@ open_episode() {
 	fi
 
 	get_video_quality
-	status_code=$(curl -s -I get_video_quality "$play_link" | head -n 1 | cut -d ' ' -f2)
+	# status_code=$(curl -s -I get_video_quality "$play_link" | head -n 1 | cut -d ' ' -f2)
+	status_code=$(curl -s -I "$play_link" | head -n 1 | cut -d ' ' -f2)
 	log "Status code: $status_code"
+
+	if [ $half_ep -eq 1 ]; then
+		episode=$temp_ep
+		half_ep=0
+	fi
 
 	if [ "$is_download" -eq 0 ]; then
 		if echo "$status_code" | grep -vE "^2.*"; then
 			printf "${c_red}\nCannot reach servers!"
 		else
-			setsid -f $player_fn get_video_quality "$play_link" > /dev/null 2>&1
+			if ps "$PID" &> /dev/null; then
+				kill "$PID"
+			fi
+			nohup $player_fn "$play_link" > /dev/null 2>&1 &
+			PID="$!"
+			# setsid -f $player_fn get_video_quality "$play_link" > /dev/null 2>&1
 			printf "${c_green}\nVideo playing"
 		fi
 	else
 		log "Downloading episode $episode ..."
-		log "$video_url"
+		log "$play_link"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
@@ -549,11 +595,13 @@ open_episode() {
 			cd "$anime_id" || die "Could not enter subdirectory $ddir/$anime_id"
 			# ffmpeg -i "$play_link" -c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
 			if command -v "notify-send" > /dev/null; then
-				ffmpeg -i "$play_link" -c copy "${episode}.mkv" > /dev/null 2>&1 &&
+				# ffmpeg -i "$play_link" -c copy "${episode}.mkv" > /dev/null 2>&1 &&
+				curl -L -# -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
 					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
 					notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 			else
-				ffmpeg -i "$play_link" -c copy "${episode}.mkv" > /dev/null 2>&1 &&
+				# ffmpeg -i "$play_link" -c copy "${episode}.mkv" > /dev/null 2>&1 &&
+				curl -L -# -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
 					printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode" ||
 					printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
 			fi
@@ -570,17 +618,16 @@ open_episode() {
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
-dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi"
-
 # option parsing
+scrape=query
+quality=best
 is_rofi=1
 is_download=0
-scrape=query
 download_dir="."
 is_playlist=0
 playlist_remove=0
 playlist_add=0
-quality=best
+half_ep=0
 while getopts 'hd:Hpa:P:svq:c' OPT; do
 	case "$OPT" in
 		h)
@@ -633,6 +680,9 @@ while getopts 'hd:Hpa:P:svq:c' OPT; do
 	esac
 done
 shift $((OPTIND - 1))
+
+dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git"
+# check_for_update
 
 ########
 # main #
@@ -791,13 +841,20 @@ episode=${ep_choice_end:-$ep_choice_start}
 choice=''
 while :; do
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+	if [ "$episode" -ne "$last_ep_number" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
+	fi
+	if [ "$episode" -ne "1" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
+	fi
+	if [ "$last_ep_number" -ne "1" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+	fi
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
+	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
+	# printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
-	printf "$c_reset"
 	read -r choice
 
 	printf "$c_reset"
@@ -812,11 +869,46 @@ while :; do
 		s)
 			printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
 			read -r episode
+			if [ "$(echo "$episode" | cut -c1-1)" = "h" ]; then
+				half_ep=1
+				episode=$(echo "$episode" | cut -c2-)
+			fi
 			printf "$c_reset"
 			[ "$episode" -eq "$episode" ] 2> /dev/null || die "Invalid number entered"
 			;;
 
-		r) ;;
+		r)
+			episode=$((episode))
+			;;
+		a)
+			# tput reset
+			get_search_query
+
+			searched=0
+			if [ $# -eq 1 ]; then
+				# check if anime has been searched before
+				anime_id="${query// /}"
+				log "Checking if anime: $anime_id has been searched before..."
+				check_db "$anime_id" "search"
+				searched="$?"
+				log "Searched before: $searched"
+			fi
+			if [ "$searched" -eq 0 ]; then
+				search_results=$(search_anime $query)
+				[ -z "$search_results" ] && die "No search results found"
+				if ! anime_selection "$search_results"; then
+					die "No anime selection found"
+				fi
+			else
+				# if the query is a previous search
+				# skip search_anime function and assign $query
+				anime_id="${query// /}"
+				selection_id="$anime_id"
+				insert_history "$anime_id" "search"
+				read -r last_ep_number <<< "$(search_eps "$selection_id")"
+			fi
+			episode_selection
+			;;
 
 		q)
 			break
