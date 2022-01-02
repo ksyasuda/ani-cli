@@ -22,23 +22,22 @@ IS_DOWNLOAD=0
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$quit"
 
-
 #############
 # Functions #
 #############
 get_quality() {
-  if [[ "$IS_ROFI" -eq 1 ]]; then
-    selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-      -l 1 -p "Choose video quality:" -sep '|' <<< "$QUALITIES")
-    QUALITY=$(awk '{print $2}' <<< "$selection")
-  else
-    printf "%s" "Enter quality [ best | worst ]: "
-    read -r QUALITY
-  fi
-  log "selected quality: $QUALITY"
-  # if [[ "$QUALITY" != 'best' ]] && [[ "$QUALITY" != 'worst' ]]; then
-  #   seppuku "Something went wrong getting the quality: $QUALITY... exiting"
-  # fi
+	if [[ "$IS_ROFI" -eq 1 ]]; then
+		selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Choose video quality:" -sep '|' <<< "$QUALITIES")
+		QUALITY=$(awk '{print $2}' <<< "$selection")
+	else
+		printf "%s" "Enter quality [ best | worst ]: "
+		read -r QUALITY
+	fi
+	log "selected quality: $QUALITY"
+	# if [[ "$QUALITY" != 'best' ]] && [[ "$QUALITY" != 'worst' ]]; then
+	#   seppuku "Something went wrong getting the quality: $QUALITY... exiting"
+	# fi
 }
 
 seppuku() {
@@ -52,11 +51,11 @@ quit() {
 }
 
 run() {
-  if [[ "$GET_QUALITY" -eq 1 ]]; then
-    get_quality
-  else
-    log "QUALITY flag not set... using default -> $QUALITY"
-  fi
+	if [[ "$GET_QUALITY" -eq 1 ]]; then
+		get_quality
+	else
+		log "QUALITY flag not set... using default -> $QUALITY"
+	fi
 	if [[ "$VERBOSE" -eq 0 ]]; then
 		"$CMD" -q "$QUALITY" "$*"
 	else
@@ -71,65 +70,50 @@ log() {
 }
 
 playlist_mode() {
-		# ---------------------------------------------------------------------------
-		# playlist mode
-		# ---------------------------------------------------------------------------
+	# ---------------------------------------------------------------------------
+	# playlist mode
+	# ---------------------------------------------------------------------------
+	log "Playlist mode"
+	options="1. Play playlist|2. Add to playlist|3. Delete from playlist|4. Quit"
+	choice=$(printf "%s\n" "${options[@]}" |
+		rofi -dmenu -sep '|' \
+			-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
+	[ -z "$choice" ] && seppuku "No choice selected"
+	[ "$choice" == "$quit" ] && quit
+	selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
+	if [[ "$selection" == "1." ]]; then
+		# ------------------------------------------------------------------
+		# watch playlist
+		# ------------------------------------------------------------------
 		log "Playlist mode"
-		options="1. Play playlist|2. Add to playlist|3. Delete from playlist|4. Quit"
+		options="1. From file|2. Streaming|3. Quit"
 		choice=$(printf "%s\n" "${options[@]}" |
 			rofi -dmenu -sep '|' \
 				-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
 		[ -z "$choice" ] && seppuku "No choice selected"
 		[ "$choice" == "$quit" ] && quit
+
+		log "Selection: $choice"
 		selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 		if [[ "$selection" == "1." ]]; then
-			# ------------------------------------------------------------------
-			# watch playlist
-			# ------------------------------------------------------------------
-			log "Playlist mode"
-			options="1. From file|2. Streaming|3. Quit"
-			choice=$(printf "%s\n" "${options[@]}" |
-				rofi -dmenu -sep '|' \
-					-config "$CFG_DIR/$CFG_FILE" -l 4 -i -p "Enter choice:")
+			# --------------------------------------------------------------
+			# watch playlist from file (downloaded videos)
+			# --------------------------------------------------------------
+			log "Watching playlist from file"
+			PLAYLIST_DIR="$HOME/Videos/sauce"
+			log "Default playlist directory: $PLAYLIST_DIR"
+			choice=$(cd "$PLAYLIST_DIR" && find . -mindepth 1 -type d |
+				cut -c 3- |
+				rofi -dmenu \
+					-config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Choose playlist:")
 			[ -z "$choice" ] && seppuku "No choice selected"
-			[ "$choice" == "$quit" ] && quit
-
-			log "Selection: $choice"
-			selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
-			if [[ "$selection" == "1." ]]; then
-				# --------------------------------------------------------------
-				# watch playlist from file (downloaded videos)
-				# --------------------------------------------------------------
-				log "Watching playlist from file"
-				PLAYLIST_DIR="$HOME/Videos/sauce"
-				log "Default playlist directory: $PLAYLIST_DIR"
-				choice=$(cd "$PLAYLIST_DIR" && find . -mindepth 1 -type d |
-					cut -c 3- |
-					rofi -dmenu \
-						-config "$CFG_DIR/$CFG_FILE" -l 5 -i -p "Choose playlist:")
-				[ -z "$choice" ] && seppuku "No choice selected"
-				log "Choice" "$choice"
-				run -P "$PLAYLIST_DIR/$choice"
-			elif [[ "$selection" == "2." ]]; then
-				# --------------------------------------------------------------
-				# watch playlist of 'queued' videos to stream
-				# --------------------------------------------------------------
-				log "Watching from 'queue'"
-				choice=$(rofi -dmenu \
-					-config "$CFG_DIR/$CFG_FILE" \
-					-l 1 -p "Enter path to playlist file (or leave blank for default):")
-				if [[ "$choice" ]]; then
-					PLAYLIST_FILE="$choice"
-				else
-					PLAYLIST_FILE="$DEFAULT_PLAYLIST"
-				fi
-				run -p
-			fi
+			log "Choice" "$choice"
+			run -P "$PLAYLIST_DIR/$choice"
 		elif [[ "$selection" == "2." ]]; then
-			# ------------------------------------------------------------------
-			# add to playlist
-			# ------------------------------------------------------------------
-			log "Add to playlist"
+			# --------------------------------------------------------------
+			# watch playlist of 'queued' videos to stream
+			# --------------------------------------------------------------
+			log "Watching from 'queue'"
 			choice=$(rofi -dmenu \
 				-config "$CFG_DIR/$CFG_FILE" \
 				-l 1 -p "Enter path to playlist file (or leave blank for default):")
@@ -138,100 +122,114 @@ playlist_mode() {
 			else
 				PLAYLIST_FILE="$DEFAULT_PLAYLIST"
 			fi
-			run -a "$PLAYLIST_FILE"
-		elif [[ "$selection" == "3." ]]; then
-			# -----------------------------------------------------------------------
-			# delete from playlist
-			# -----------------------------------------------------------------------
-			log "Delete from playlist"
-			choice=$(rofi -dmenu \
-				-config "$CFG_DIR/$CFG_FILE" \
-				-l 1 -p "Enter path to playlist file (or leave blank for default):")
-			if [[ "$choice" ]]; then
-				PLAYLIST_FILE="$choice"
-			else
-				PLAYLIST_FILE="$DEFAULT_PLAYLIST"
-			fi
-			[ "$VERBOSE" -eq 1 ] && log "playlist file: $PLAYLIST_FILE"
-			lines=""
-			cnt=0
-			while read -r line; do
-				if [[ "$cnt" -eq 0 ]]; then
-					lines="$((cnt + 1)). $line"
-				else
-					lines="$lines|$((cnt + 1)). $line"
-				fi
-				((cnt++))
-			done <"$PLAYLIST_FILE"
-			choice=$(rofi -dmenu -l 12 \
-				-sep '|' \
-				-config "$CFG_DIR/$CFG_FILE" -p "Choose episode to delete:" \
-				<<<"${lines[*]}")
-			log "choice: $choice"
-			selection=$(awk '{print $1}' <<<"$choice")
-			idx=${selection//\./}
-			log "index selected: $idx"
-			log "deleting entry: $idx"
-			if [[ -z "$idx" ]]; then
-				log "no entry selected"
-				exit 1
-			fi
-			sed -ie "$idx"d "$PLAYLIST_FILE"
-			if [ "$?" -eq 0 ]; then
-				log "$selection deleted from playlist"
-				exit 0
-			else
-				log "there was a problem deleting $choice"
-				exit 1
-			fi
+			run -p
 		fi
+	elif [[ "$selection" == "2." ]]; then
+		# ------------------------------------------------------------------
+		# add to playlist
+		# ------------------------------------------------------------------
+		log "Add to playlist"
+		choice=$(rofi -dmenu \
+			-config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter path to playlist file (or leave blank for default):")
+		if [[ "$choice" ]]; then
+			PLAYLIST_FILE="$choice"
+		else
+			PLAYLIST_FILE="$DEFAULT_PLAYLIST"
+		fi
+		run -a "$PLAYLIST_FILE"
+	elif [[ "$selection" == "3." ]]; then
+		# -----------------------------------------------------------------------
+		# delete from playlist
+		# -----------------------------------------------------------------------
+		log "Delete from playlist"
+		choice=$(rofi -dmenu \
+			-config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -p "Enter path to playlist file (or leave blank for default):")
+		if [[ "$choice" ]]; then
+			PLAYLIST_FILE="$choice"
+		else
+			PLAYLIST_FILE="$DEFAULT_PLAYLIST"
+		fi
+		[ "$VERBOSE" -eq 1 ] && log "playlist file: $PLAYLIST_FILE"
+		lines=""
+		cnt=0
+		while read -r line; do
+			if [[ "$cnt" -eq 0 ]]; then
+				lines="$((cnt + 1)). $line"
+			else
+				lines="$lines|$((cnt + 1)). $line"
+			fi
+			((cnt++))
+		done < "$PLAYLIST_FILE"
+		choice=$(rofi -dmenu -l 12 \
+			-sep '|' \
+			-config "$CFG_DIR/$CFG_FILE" -p "Choose episode to delete:" \
+			<<< "${lines[*]}")
+		log "choice: $choice"
+		selection=$(awk '{print $1}' <<< "$choice")
+		idx=${selection//\./}
+		log "index selected: $idx"
+		log "deleting entry: $idx"
+		if [[ -z "$idx" ]]; then
+			log "no entry selected"
+			exit 1
+		fi
+		sed -ie "$idx"d "$PLAYLIST_FILE"
+		if [ "$?" -eq 0 ]; then
+			log "$selection deleted from playlist"
+			exit 0
+		else
+			log "there was a problem deleting $choice"
+			exit 1
+		fi
+	fi
 }
 
 play_file() {
-  # opens the passed in file with $PLAYER_CMD
-  log "Checking if file is playable"
-  if [[ "$1"  =~ (\.mp4|\.mkv|\.ts)$ ]]; then
-    log "File is playable..."
-    log "Playing file: $1"
-    if [[ "$VERBOSE" -eq 1 ]]; then
-      $PLAYER_CMD "$1"
-    else
-      $PLAYER_CMD "$1" &>/dev/null &
-    fi
-    exit $?
-  else
-    seppuku "File: $1 is not playable... Quitting"
-  fi
+	# opens the passed in file with $PLAYER_CMD
+	log "Checking if file is playable"
+	if [[ "$1" =~ (\.mp4|\.mkv|\.ts)$ ]]; then
+		log "File is playable..."
+		log "Playing file: $1"
+		if [[ "$VERBOSE" -eq 1 ]]; then
+			$PLAYER_CMD "$1"
+		else
+			$PLAYER_CMD "$1" &> /dev/null &
+		fi
+		exit $?
+	else
+		seppuku "File: $1 is not playable... Quitting"
+	fi
 }
 
 check_path() {
-  pth="$1"
-  if ! [ -d "$pth" ]; then
-    seppuku "ERROR: Passed in directory is not valid: $inp"
-  elif [[ $(find "$pth" -type f | wc -l) -eq 0 ]]; then
-    seppuku "ERROR: Passed in directory is empty: $inp"
-  fi
+	pth="$1"
+	if ! [ -d "$pth" ]; then
+		seppuku "ERROR: Passed in directory is not valid: $inp"
+	elif [[ $(find "$pth" -type f | wc -l) -eq 0 ]]; then
+		seppuku "ERROR: Passed in directory is empty: $inp"
+	fi
 }
 
 find_videos() {
-  # recursive function for finding path to video file given a starting directory
-  inp="$1"
-  # log "INPUT: $inp"
-  if [ -f "$inp" ]; then
-    echo "$inp"
-    return 0
-  fi
-  check_path "$inp"
-  selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-    -l 12 -i -p "Enter selection" <<< "$(ls "$inp")")
-  if [ -z "$selection" ]; then
-    seppuku "selection is empty... exiting"
-  elif [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
-    find_videos "$inp/$selection"
-    return $?
-  fi
+	# recursive function for finding path to video file given a starting directory
+	inp="$1"
+	# log "INPUT: $inp"
+	if [ -f "$inp" ]; then
+		echo "$inp"
+		return 0
+	fi
+	check_path "$inp"
+	selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		-l 12 -i -p "Enter selection" <<< "$(ls "$inp")")
+	if [ -z "$selection" ]; then
+		seppuku "selection is empty... exiting"
+	elif [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
+		find_videos "$inp/$selection"
+		return $?
+	fi
 }
-
 
 ########
 # Main #
@@ -244,18 +242,18 @@ while getopts 'vhqcd' OPT; do
 		v)
 			VERBOSE=1
 			;;
-    q)
-      GET_QUALITY=1
-      log "Quality prompt enabled"
-      ;;
-    c)
-      IS_ROFI=0
-      log "Command-line (ani-cli) mode set"
-      ;;
-    d)
-      IS_DOWNLOAD=1
-      log "Download flag set..."
-      ;;
+		q)
+			GET_QUALITY=1
+			log "Quality prompt enabled"
+			;;
+		c)
+			IS_ROFI=0
+			log "Command-line (ani-cli) mode set"
+			;;
+		d)
+			IS_DOWNLOAD=1
+			log "Download flag set..."
+			;;
 		*)
 			log "Invalid option"
 			exit 1
@@ -267,14 +265,14 @@ log "CONFIG DIR: $CFG_DIR"
 
 # Check if command-line flag is set
 if [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 0 ]]; then
-  run -c
-  exit $?
+	run -c
+	exit $?
 elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
-  printf "%s" "Enter download dir: "
-  read -r dl_dir
-  log "Download dir: $dl_dir"
-  run "-cd $dl_dir"
-  exit $?
+	printf "%s" "Enter download dir: "
+	read -r dl_dir
+	log "Download dir: $dl_dir"
+	run "-cd $dl_dir"
+	exit $?
 fi
 
 choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' \
@@ -301,10 +299,10 @@ case "$selection" in
 			-l 1 -p "Enter download dir:")
 		# if dl_dir is none set to current directory
 		[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
-    # make sure download directory exists
-    if [ ! -d "$DEFAULT_DOWNLOAD" ]; then
-      mkdir -p "$DEFAULT_DOWNLOAD"
-    fi
+		# make sure download directory exists
+		if [ ! -d "$DEFAULT_DOWNLOAD" ]; then
+			mkdir -p "$DEFAULT_DOWNLOAD"
+		fi
 		run -d "$dl_dir"
 		;;
 	3.)
@@ -322,14 +320,14 @@ case "$selection" in
 		msg="Enter path to the videos directory or leave blank to go with the default: $HOME/Videos/sauce/"
 		span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
 		play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-		  -l 1 -mesg "$span" -p "Enter path to play dir:")
+			-l 1 -mesg "$span" -p "Enter path to play dir:")
 		[ -z "$play_dir" ] && play_dir="$DEFAULT_DOWNLOAD"
 		log "PLAY DIR: $play_dir"
 		[ ! -d "$play_dir" ] && seppuku "$play_dir does not exist"
 		video_path=$(find_videos "$play_dir")
 		log "VIDEO PATH: $video_path"
 		if [ -z "$video_path" ]; then
-		  seppuku "Something went wrong getting path"
+			seppuku "Something went wrong getting path"
 		fi
 		play_file "$video_path"
 		;;
@@ -382,4 +380,3 @@ case "$selection" in
 		;;
 
 esac
-
