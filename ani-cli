@@ -264,13 +264,14 @@ sync_watch_history() {
 		episodes=$(sqlite3 -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
 		# for each episode of $anime_name on the remote machine, check local
 		while read -r ep; do
+			# log "EP: $ep"
 			episode_num=$(awk -F '|' '{print $1}' <<<"$ep")
-			# TODO: Fix inserting duplicate rows
-			run_stmt "SELECT COUNT(*) FROM watch_history WHERE anime_name = '$anime_name' AND episode_number = $episode_num"
+			# log "EPISODE NUMBER: $episode_num"
+			check_db "$anime_name" "$episode_num"
 			num=$?
-			log "EP: $ep"
+			log "COUNT for $anime_name - episode $episode_num: $num"
 			if [[ "$num" -eq 0 ]]; then
-				log "NOT IN DB"
+				log "$anime_name - E$episode_num NOT IN DB"
 				watch_date=$(awk -F '|' '{print $NF}' <<<"$ep")
 				log "Adding ($anime_name|$episode_num|$watch_date) to watch history..."
 				if ! sqlite3 "$HISTORY_DB" "INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$anime_name', '$episode_num', '$watch_date')"; then
@@ -278,7 +279,7 @@ sync_watch_history() {
 				fi
 				((++cnt))
 			else
-				log "Episode: $episode_num found in the db... skipping"
+				log "$anime_name - Episode: $episode_num found in the db... skipping"
 			fi
 		done <<<"${episodes[@]}"
 	done <<<"$(sqlite3 -noheader "$temp_db" "SELECT DISTINCT anime_name FROM watch_history")"

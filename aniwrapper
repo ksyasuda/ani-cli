@@ -319,29 +319,19 @@ case "$selection" in
 		# ---------------------------------------------------------------------------
 		# play
 		# ---------------------------------------------------------------------------
-    msg="Enter path to the videos directory or leave blank to go with the default: $HOME/Videos/sauce/"
-    span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
-    play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-      -l 1 -mesg "$span" -p "Enter path to play dir:")
-    [ -z "$play_dir" ] && play_dir="$DEFAULT_DOWNLOAD"
-    log "PLAY DIR: $play_dir"
-    [ ! -d "$play_dir" ] && seppuku "$play_dir does not exist"
-    video_path=$(find_videos "$play_dir")
-    log "VIDEO PATH: $video_path"
-    if [ -z "$video_path" ]; then
-      seppuku "Something went wrong getting path"
-    fi
-    play_file "$video_path"
-    # selected_dir="$play_dir/$selection"
-    # [ ! -d "$selected_dir" ] && seppuku "$selected_dir does not exist"
-    # log "Selection is a directory, searching one level down"
-    # selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-    #   -l 12 -i  -p "Enter selection" <<< $(ls "$selected_dir"))
-    # if [ -f "$selected_dir/$selection" ]; then
-    #   play_file "$selected_dir/$selection"
-    #   exit 0
-    # fi
-    # seppuku "Selection not a file.  exiting"
+		msg="Enter path to the videos directory or leave blank to go with the default: $HOME/Videos/sauce/"
+		span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
+		play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		  -l 1 -mesg "$span" -p "Enter path to play dir:")
+		[ -z "$play_dir" ] && play_dir="$DEFAULT_DOWNLOAD"
+		log "PLAY DIR: $play_dir"
+		[ ! -d "$play_dir" ] && seppuku "$play_dir does not exist"
+		video_path=$(find_videos "$play_dir")
+		log "VIDEO PATH: $video_path"
+		if [ -z "$video_path" ]; then
+		  seppuku "Something went wrong getting path"
+		fi
+		play_file "$video_path"
 		;;
 	5.)
 		log "Sync history database"
@@ -367,9 +357,7 @@ case "$selection" in
 
 		if [[ -z "$keypath" ]]; then
 			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | run -s
-			# printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | ani-cli -s
 		else
-			# printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | ani-cli -s
 			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | run -s
 		fi
 
