@@ -1,5 +1,5 @@
 configuration {
-    font:				"Open Sans 15";
+    font:				    "Open Sans 15";
     display-drun:			"Dmenu";
     scroll-method:			0;
     disable-history:		false;
@@ -52,7 +52,7 @@ window {
     anchor: center;
     location: center;
     padding: 25;
-    width: 69%;
+    width: 80%;
 }
 listview {
     lines:                          12;
