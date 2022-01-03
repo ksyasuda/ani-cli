@@ -46,8 +46,8 @@ run_setup() {
 	if [[ ! -f "$DIR/$DB" ]]; then
 		# Create the DB if not exists
 		log "Creating history database..."
-		sqlite3 "$DIR/$DB" sql/watch_history_tbl.sql
-		sqlite3 "$DIR/$DB" sql/search_history_tbl.sql
+		sqlite3 "$DIR/$DB" < sql/watch_history_tbl.sql
+		sqlite3 "$DIR/$DB" < sql/search_history_tbl.sql
 		log "History database created..."
 	fi
 
