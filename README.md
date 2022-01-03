@@ -4,7 +4,7 @@
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-![Aniwrapper screenshot](https://imgur.com/ZAmoEUA.png)
+![Aniwrapper screenshot](https://imgur.com/Nvd9oJV.png)
 
 </div>
 
@@ -29,6 +29,7 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
 **Table of Contents**
 
+- [Aniwrapper](#aniwrapper)
 - [Introduction](#introduction)
 - [Setup](#setup)
 	- [Skip Intro Script](#skip-intro-script)
@@ -40,6 +41,7 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 			- [Run the setup and install the script](#run-the-setup-and-install-the-script)
 - [Aniwrapper Menus](#aniwrapper-menus)
 	- [Search Anime](#search-anime)
+		- [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
 	- [Anime Selection](#anime-selection)
 	- [Episode Selection](#episode-selection)
 - [Usage](#usage)
@@ -247,12 +249,13 @@ ani-cli -c
 
 # Screenshots
 
-<div align="center">
+<div>
 
-![aniwrapper frontpage](https://imgur.com/ZAmoEUA.png)
-![aniwrapper streaming options](https://imgur.com/jVJQERk.png)
-![aniwrapper anime selection](https://imgur.com/vSyaoG6.png)
+![aniwrapper main menu](https://imgur.com/Nvd9oJV.png)
 
-More to come soon... maybe
+- [query anime](https://imgur.com/vSyaoG6.png)
+- [aniwrapper streaming options](https://imgur.com/7JxvZz8.png)
+- [aniwrapper file selection](https://imgur.com/vFTxAgu.png)
+- [aniwrapper episode selection menu](https://imgur.com/vlOg8uc.png)
 
 </div>
