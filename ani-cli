@@ -1,20 +1,13 @@
 #!/usr/bin/env bash
 
-# Set config directory if not already set
-if [[ -z "$XDG_CONFIG_HOME" ]]; then
-	XDG_CONFIG_HOME="$HOME/.config"
-fi
-
 VERBOSE=0
 
-# BASE_URL="https://www2.gogoanime.cm/"
-BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
-CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
-ROFI_CFG="meh.rasi"
 ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
+BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
+CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
+HISTORY_DB="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper/history.sqlite3"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
-
-HISTORY_DB="$XDG_CONFIG_HOME/aniwrapper/history.sqlite3"
+ROFI_CFG="aniwrapper.rasi"
 
 # dependencies: grep, sed, curl, video_player, rofi, sqlite3
 # video_player ( needs to be able to play urls )
@@ -81,7 +74,6 @@ search_anime() {
 		# if one word, remove leading or trailing whitespace
 		search="${1// /}"
 	fi
-	# search=${1// /-}
 	log "Search Query: $search"
 	titlepattern='<a href="/category/'
 	curl -s "$BASE_URL//search.html" \
@@ -238,7 +230,6 @@ update_date() {
 insert_history() {
 	# inserts into search/watch history db
 	# check the anime_name/id
-
 	if ! check_anime_name "$1"; then
 		log "ERROR: Anime name is none... exiting"
 		return 1
@@ -293,9 +284,7 @@ sync_watch_history() {
 		episodes=$(sqlite3 -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
 		# for each episode of $anime_name on the remote machine, check local
 		while read -r ep; do
-			# log "EP: $ep"
 			episode_num=$(awk -F '|' '{print $1}' <<< "$ep")
-			# log "EPISODE NUMBER: $episode_num"
 			check_db "$anime_name" "$episode_num"
 			num=$?
 			log "COUNT for $anime_name - episode $episode_num: $num"
@@ -718,9 +707,9 @@ case $scrape in
 		temp_db="/tmp/aniwrapper_tmp_history.sqlite3"
 
 		if [[ -z "$key_path" ]]; then
-			scp -P "$PORT" "$connection_str:$XDG_CONFIG_HOME/aniwrapper/history.sqlite3" "$temp_db"
+			scp -P "$PORT" "$connection_str:$HISTORY_DB" "$temp_db"
 		else
-			scp -P "$PORT" -i "$key_path" "$connection_str:$XDG_CONFIG_HOME/aniwrapper/history.sqlite3" "$temp_db"
+			scp -P "$PORT" -i "$key_path" "$connection_str:$HISTORY_DB" "$temp_db"
 		fi
 		if [[ "$?" -ne 0 ]]; then
 			die "Error getting database file from remote host"

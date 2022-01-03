@@ -5,12 +5,11 @@ set -Eeo pipefail
 #############
 #  Globals  #
 #############
-[ -z "$XDG_CONFIG_HOME" ] && XDG_CONFIG_HOME="$HOME/.config"
 CMD="/usr/bin/ani-cli"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
-CFG_DIR="$XDG_CONFIG_HOME/aniwrapper"
+CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 DEFAULT_PLAYLIST="$CFG_DIR/playlists/playlist.txt"
-CFG_FILE="meh.rasi"
+CFG_FILE="aniwrapper.rasi"
 QUALITIES="1. best (default)|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
 QUALITY="best"
 PLAYER_CMD="mpv"
@@ -36,9 +35,6 @@ get_quality() {
 		read -r QUALITY
 	fi
 	log "selected quality: $QUALITY"
-	# if [[ "$QUALITY" != 'best' ]] && [[ "$QUALITY" != 'worst' ]]; then
-	#   seppuku "Something went wrong getting the quality: $QUALITY... exiting"
-	# fi
 }
 
 seppuku() {
@@ -99,7 +95,6 @@ check_path() {
 find_videos() {
 	# recursive function for finding path to video file given a starting directory
 	inp="$1"
-	# log "INPUT: $inp"
 	if [ -f "$inp" ]; then
 		echo "$inp"
 		return 0
