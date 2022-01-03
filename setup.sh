@@ -5,13 +5,20 @@
 ######################
 # DO NOT RUN AS ROOT #
 ######################
-VERBOSE=1
+VERBOSE=0
 
 log() {
 	if [[ "$VERBOSE" -eq 1 ]]; then
 		printf "%s\n" "$*"
 	fi
 }
+
+if [[ $# -ge 1 ]]; then
+	if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
+		VERBOSE=1
+		log "VERBOSE LOGGING ENABLED"
+	fi
+fi
 
 DB="history.sqlite3"
 
@@ -49,7 +56,7 @@ run_setup() {
 		log "aniwrapper.rasi does not exist in filesystem...  Moving theme files"
 		cp themes/* "$DIR"/
 		log "Theme files moved..."
-	elif diff -q "themes/aniwrapper.rasi" "$DIR/aniwrapper.rasi" &>/dev/null; then
+	elif diff -q "themes/aniwrapper.rasi" "$DIR/aniwrapper.rasi" &> /dev/null; then
 		log "Theme file has not changed... skipping"
 	else
 		log "Theme has changed... backing up old theme"
