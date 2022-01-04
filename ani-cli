@@ -95,62 +95,54 @@ check_input() {
 	fi
 }
 
-get_embedded_video_link() {
+get_dpage_link() {
 	# get the download page url
 	anime_id=$1
 	ep_no=$2
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	req_link=$(curl -s "$BASE_URL/$anime_id${dub_prefix}-$ep_no" | grep -o "404")
+	anime_page=$(curl -s "$BASE_URL/$anime_id${dub_prefix}-$ep_no")
 
-	if [ "$req_link" ]; then
-		curl -s "$BASE_URL/$anime_id${dub_prefix}-episode-$ep_no" |
-			sed -n -E '
-		/^[[:space:]]*<a href="#" rel="100"/{
-		s/.*data-video="([^"]*)".*/https:\1/p
-		q
-		}'
-	else
-		curl -s "$BASE_URL/$anime_id${dub_prefix}-$ep_no" |
-			sed -n -E '
-		/^[[:space:]]*<a href="#" rel="100"/{
-		s/.*data-video="([^"]*)".*/https:\1/p
-		q
-		}'
+	if [ -n "$(printf '%s' "$anime_page" | grep -o "404")" ]; then
+		anime_page=$(curl -s "$BASE_URL/$anime_id${dub_prefix}-episode-$ep_no")
 	fi
-}
 
-get_links() {
-	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
-	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?&")
-	video_url="https://gogoplay1.com/download?${episode_id}"
-	log 'GET_LINKS() VARS:'
-	log "embedded_video_url: $embedded_video_url"
-	log "episode_id: $episode_id"
-	log "video_url: $video_url"
+	printf '%s' "$anime_page" |
+		sed -n -E '
+		/^[[:space:]]*<li class="dowloads">/{
+		s/.*href="([^"]*)".*/\1/p
+		q
+		}'
 }
 
 get_video_quality() {
-	get_links
-	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*" | sort -V | sed 's/amp;//')
-	log "VIDEO QUALITY: $video_quality"
+	dpage_url=$1
+
+	video_links=$(curl -s "$dpage_url" | sed -n -E 's/.*href="([^"]*)" download>Download.*/\1/p' | sed 's/amp;//')
 	case $quality in
 		best)
-			play_link=$(echo "$video_quality" | sort -V | tail -n 1)
+			video_link=$(printf '%s' "$video_links" | tail -n 1)
 			;;
 		worst)
-			play_link=$(echo "$video_quality" | sort -V | head -n 1)
+			video_link=$(printf '%s' "$video_links" | head -n 1)
 			;;
 		*)
-			play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
-			if [ -z "$play_link" ]; then
-				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p")
+			if [ -z "$video_link" ]; then
+				err "Current video quality is not available (defaulting to highest quality)"
 				quality=best
-				play_link=$(echo "$video_quality" | sort -V | tail -n 1)
+				video_link=$(printf '%s' "$video_links" | tail -n 1)
 			fi
 			;;
 	esac
+	printf '%s' "$video_link"
+}
+
+get_links() {
+	dpage_url="$1"
+	video_url=$(get_video_quality "$dpage_url")
+	printf '%s' "$video_url"
 }
 
 dep_ch() {
@@ -523,10 +515,8 @@ open_episode() {
 		insert_history "$anime_id" "$episode"
 	fi
 
-	get_video_quality
-	log "Play link: $play_link"
-	status_code=$(curl -s -I "$play_link" | head -n 1 | cut -d ' ' -f2)
-	log "Status code: $status_code"
+	dpage_link=$(get_dpage_link "$anime_id" "$episode")
+	video_url=$(get_links "$dpage_link")
 
 	if [ $half_ep -eq 1 ]; then
 		episode=$temp_ep
@@ -534,19 +524,15 @@ open_episode() {
 	fi
 
 	if [ "$is_download" -eq 0 ]; then
-		if echo "$status_code" | grep -vE "^2.*"; then
-			printf "${c_red}\nCannot reach servers!"
-		else
-			if ps "$PID" &> /dev/null; then
-				kill "$PID"
-			fi
-			nohup $player_fn "$play_link" > /dev/null 2>&1 &
-			PID="$!"
-			printf "${c_green}\nVideo playing"
-		fi
+		kill $PID > /dev/null 2>&1
+		log "PLAYING VIDEO: $video_url"
+		log "REFERRER: $dpage_link"
+		nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
+		PID=$!
+		printf "${c_green}\nVideo playing"
 	else
 		log "Downloading episode $episode ..."
-		log "$play_link"
+		log "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
@@ -555,12 +541,12 @@ open_episode() {
 			cd "$anime_id" || die "Could not enter subdirectory $ddir/$anime_id"
 			if command -v "notify-send" > /dev/null; then
 				# ffmpeg -i "$play_link" -c copy "${episode}.mkv" > /dev/null 2>&1 &&
-				curl -L -# -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
+				curl -L -# -e "$dpage_link" -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
 					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
 					notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 			else
 				# ffmpeg -i "$play_link" -c copy "${episode}.mkv" > /dev/null 2>&1 &&
-				curl -L -# -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
+				curl -L -# -e "$dpage_link" -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
 					printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode" ||
 					printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
 			fi
