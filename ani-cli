@@ -2,10 +2,10 @@
 
 VERBOSE=0
 
-ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
-HISTORY_DB="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper/history.sqlite3"
+HISTORY_DB="$CFG_DIR/history.sqlite3"
+ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 ROFI_CFG="aniwrapper.rasi"
 
@@ -104,7 +104,7 @@ get_dpage_link() {
 	# dub prefix takes the value "-dub" when dub is needed else is empty
 	anime_page=$(curl -s "$BASE_URL/$anime_id${dub_prefix}-$ep_no")
 
-	if [ -n "$(printf '%s' "$anime_page" | grep -o "404")" ]; then
+	if printf '%s' "$anime_page" | grep -q "404"; then
 		anime_page=$(curl -s "$BASE_URL/$anime_id${dub_prefix}-episode-$ep_no")
 	fi
 
@@ -524,7 +524,7 @@ open_episode() {
 	fi
 
 	if [ "$is_download" -eq 0 ]; then
-		kill $PID > /dev/null 2>&1
+		kill "$PID" > /dev/null 2>&1
 		log "PLAYING VIDEO: $video_url"
 		log "REFERRER: $dpage_link"
 		nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
@@ -533,20 +533,18 @@ open_episode() {
 	else
 		log "Downloading episode $episode ..."
 		log "$video_url"
+		dl_dir="${ddir// /}/$anime_id"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
-			cd "${ddir/ //}" || die "Could not enter directory $ddir"
-			mkdir -p "$anime_id" || die "Could not create directory"
-			cd "$anime_id" || die "Could not enter subdirectory $ddir/$anime_id"
+			mkdir -p "$dl_dir" || die "Could not create directory"
 			if command -v "notify-send" > /dev/null; then
-				# ffmpeg -i "$play_link" -c copy "${episode}.mkv" > /dev/null 2>&1 &&
-				curl -L -# -e "$dpage_link" -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
+				aria2c -x 16 -s 16 --referer "$dpage_link" "$video_url" --dir="$dl_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
 					notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 			else
-				# ffmpeg -i "$play_link" -c copy "${episode}.mkv" > /dev/null 2>&1 &&
-				curl -L -# -e "$dpage_link" -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
+				# curl -L -# -e "$dpage_link" -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
+				aria2c -x 16 -s 16 --referer "$dpage_link" "$video_url" --dir="$dl_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 					printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode" ||
 					printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
 			fi
@@ -598,7 +596,7 @@ is_rofi=1
 is_download=0
 download_dir="."
 half_ep=0
-while getopts 'hd:Hsvq:c' OPT; do
+while getopts 'hd:Hsvq:c-:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -625,6 +623,17 @@ while getopts 'hd:Hsvq:c' OPT; do
 		c)
 			is_rofi=0
 			;;
+		-)
+			case $OPTARG in
+				dub)
+					dub_prefix="-dub"
+					;;
+				*)
+					help_text
+					exit 1
+					;;
+			esac
+			;;
 		*)
 			printf "%s\n" "Invalid option"
 			exit 1
@@ -633,7 +642,7 @@ while getopts 'hd:Hsvq:c' OPT; do
 done
 shift $((OPTIND - 1))
 
-dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git"
+dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c"
 
 ########
 # main #
