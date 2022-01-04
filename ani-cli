@@ -365,7 +365,7 @@ anime_selection() {
 			rofi -dmenu -config "$CFG_DIR/${ROFI_CFG}" \
 				-a "$searched" \
 				-l 12 -i -p "Enter selection:" \
-				-mesg "$msg")
+				-mesg "$msg" -only-match)
 		[ -z "$user_input" ] && return 1
 
 		choice=$(printf '%s\n' "$user_input" | awk '{print $1}')

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -Eeo pipefail
+# set -Eeo pipefail
 
 #############
 #  Globals  #
@@ -19,21 +19,15 @@ IS_DOWNLOAD=0
 
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$quit"
+playable="\.mp4|\.mkv|\.ts"
 
 #############
 # Functions #
 #############
-get_quality() {
-	if [[ "$IS_ROFI" -eq 1 ]]; then
-		selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-			-l 6 -theme-str 'listview {columns: 1;}' -p "Choose video quality:" \
-			-sep '|' <<< "$QUALITIES")
-		QUALITY=$(awk '{print $2}' <<< "$selection")
-	else
-		printf "%s" "Enter quality [ best|1080|720|480|360|worst ]: "
-		read -r QUALITY
+log() {
+	if [[ "$VERBOSE" -eq 1 ]]; then
+		printf "%s\n" "$*"
 	fi
-	log "selected quality: $QUALITY"
 }
 
 seppuku() {
@@ -59,16 +53,23 @@ run() {
 	fi
 }
 
-log() {
-	if [[ "$VERBOSE" -eq 1 ]]; then
-		printf "%s\n" "$*"
+get_quality() {
+	if [ "$IS_ROFI" -eq 1 ]; then
+		selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 6 -theme-str 'listview {columns: 1;}' -p "Choose video quality:" \
+			-sep '|' <<< "$QUALITIES")
+		QUALITY=$(awk '{print $2}' <<< "$selection")
+	else
+		printf "%s" "Enter quality [ best|1080|720|480|360|worst ]: "
+		read -r QUALITY
 	fi
+	log "selected quality: $QUALITY"
 }
 
 # opens the passed in file with $PLAYER_CMD
 play_file() {
 	log "Checking if file is playable"
-	if [[ "$1" =~ (\.mp4|\.mkv|\.ts)$ ]]; then
+	if [[ "$1" =~ ($playable)$ ]]; then
 		log "File is playable..."
 		log "Playing file: $1"
 		if [[ "$VERBOSE" -eq 1 ]]; then
@@ -82,27 +83,59 @@ play_file() {
 	fi
 }
 
-check_path() {
-	pth="$1"
-	if ! [ -d "$pth" ]; then
-		seppuku "ERROR: Passed in directory is not valid: $inp"
-	elif [[ $(find "$pth" -type f | wc -l) -eq 0 ]]; then
-		seppuku "ERROR: Passed in directory is empty: $inp"
-	fi
+# generates a span mesg for rofi given
+# input: message: str
+generate_span() {
+	msg="$*"
+	span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
+	printf "%s\n" "$span"
+}
+
+# attempt to generate list of valid files and directories
+generate_inputlist() {
+	# start at 2nd line, because first line out output from find is $1
+	outstr=""
+	while read -r directory; do
+		if [[ "${directory// /}" == "" ]]; then
+			continue
+		fi
+		if [[ "$outstr" == "" ]]; then
+			outstr="$directory"
+		else
+			outstr="$outstr|$directory"
+		fi
+	done <<< "$(find "$1" -maxdepth 1 -type d | sed "s|$1/||" | tail -n +2 | sort -V)"
+	while read -r filename; do
+		if [[ "${filename// /}" == "" ]]; then
+			continue
+		fi
+		if [[ "$outstr" == "" ]]; then
+			outstr="$filename"
+		else
+			outstr="$outstr|$filename"
+		fi
+	done <<< "$(find "$1" -maxdepth 1 -type f | sed "s|$1/||" | grep -E "$playable$" | sort -V)"
+	outstr="$outstr|Quit"
+	printf "%s\n" "$outstr"
 }
 
 # recursive function for finding path to video file given a starting directory
 find_videos() {
 	inp="$1"
+
+	# base case hit when a file is found
 	if [ -f "$inp" ]; then
-		echo "$inp"
+		printf "%s\n" "$inp"
 		return 0
 	fi
-	check_path "$inp"
-	selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-		-l 12 -i -p "Enter selection" <<< "$(ls "$inp")")
-	if [ -z "$selection" ]; then
-		seppuku "selection is empty... exiting"
+
+	span=$(generate_span "Current directory: $inp")
+	inputlist=$(generate_inputlist "$inp")
+	selection=$(rofi -dmenu -only-match -config "$CFG_DIR/$CFG_FILE" \
+		-l 13 -i -sep '|' -mesg "$span" -p "Enter selection" <<< "${inputlist[@]}")
+
+	if [ -z "$selection" ] || [ "$selection" = "Quit" ]; then
+		return 1
 	elif [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
 		find_videos "$inp/$selection"
 		return $?
@@ -154,7 +187,10 @@ elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
 	exit $?
 fi
 
-choice=$(echo "${options[@]}" | rofi -dmenu -sep '|' \
+# -------------------------------------------------------------------------------
+# Main
+# -------------------------------------------------------------------------------
+choice=$(echo "${options[@]}" | rofi -dmenu -only-match -sep '|' \
 	-config "$CFG_DIR/$CFG_FILE" -l 6 -i -p "Aniwrapper")
 
 [ "$choice" == "$quit" ] && quit
@@ -197,13 +233,13 @@ case "$selection" in
 		# play
 		# ---------------------------------------------------------------------------
 		msg="Enter path to the videos directory or leave blank to go with the default: $HOME/Videos/sauce/"
-		span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
+		span=$(generate_span "$msg")
 		play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
 			-l 1 -mesg "$span" -p "Enter path to play dir:")
 		[ -z "$play_dir" ] && play_dir="$DEFAULT_DOWNLOAD"
 		log "PLAY DIR: $play_dir"
 		[ ! -d "$play_dir" ] && seppuku "$play_dir does not exist"
-		video_path=$(find_videos "$play_dir")
+		video_path=$(find_videos "$play_dir") || quit
 		log "VIDEO PATH: $video_path"
 		if [ -z "$video_path" ]; then
 			seppuku "Something went wrong getting path"
@@ -243,19 +279,17 @@ case "$selection" in
 			exit 1
 		else
 			log "Databases synced successfully"
-			exit 0
+			quit
 		fi
 		;;
 	6.)
 		# ---------------------------------------------------------------------------
 		# get out
 		# ---------------------------------------------------------------------------
-		printf "%s\n" "Quitting..."
-		exit 0
+		quit
 		;;
 	*)
 		log "Invalid choice..."
 		exit 1
 		;;
-
 esac
