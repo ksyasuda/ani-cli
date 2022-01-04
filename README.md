@@ -61,7 +61,7 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 These are the minimum dependences required to run `aniwrapper`
 
 ```
-curl grep mpv rofi sed sqlite3
+aria2 curl grep mpv rofi sed sqlite3
 ```
 
 ## Skip Intro Script
@@ -103,10 +103,10 @@ To install manually, make sure the dependencies are installed first
 
 ```sh
 # Arch
-pacman -S --needed curl grep mpv rofi sed sqlite3
+pacman -S --needed aria2 curl grep mpv rofi sed sqlite3
 
 # Debian
-apt install curl grep mpv rofi sed sqlite3
+apt install aria2 curl grep mpv rofi sed sqlite3
 ```
 
 #### Clone the repo
