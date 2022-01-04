@@ -11,7 +11,7 @@ CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 CFG_FILE="aniwrapper.rasi"
 QUALITIES="1. best (default)|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
 QUALITY="best"
-PLAYER_CMD="mpv"
+PLAYER_CMD="mpv -config-dir ${XDG_CONFIG_HOME:-$HOME/.config}/mpv"
 GET_QUALITY=0
 VERBOSE=0
 IS_ROFI=1
@@ -81,13 +81,11 @@ play_file() {
 		log "File is playable..."
 		if [[ "$1" =~ .mp3 ]]; then
 			log ".mp3 file found... playing without video"
-			$PLAYER_CMD --no-video --volume=50 "$1"
-		elif [[ "$VERBOSE" -eq 1 ]]; then
-			log "Playing file: $1"
-			$PLAYER_CMD "$1"
+			log "MPV COMMAND: $PLAYER_CMD --no-video $1"
+			$PLAYER_CMD --no-video "$1"
 		else
-			log "Playing file: $1"
-			$PLAYER_CMD "$1" &> /dev/null &
+			log "MPV COMMAND: $PLAYER_CMD $1"
+			$PLAYER_CMD "$1"
 		fi
 		exit $?
 	else
