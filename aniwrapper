@@ -8,7 +8,6 @@ set -Eeo pipefail
 CMD="/usr/bin/ani-cli"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
-DEFAULT_PLAYLIST="$CFG_DIR/playlists/playlist.txt"
 CFG_FILE="aniwrapper.rasi"
 QUALITIES="1. best (default)|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
 QUALITY="best"
@@ -66,8 +65,8 @@ log() {
 	fi
 }
 
+# opens the passed in file with $PLAYER_CMD
 play_file() {
-	# opens the passed in file with $PLAYER_CMD
 	log "Checking if file is playable"
 	if [[ "$1" =~ (\.mp4|\.mkv|\.ts)$ ]]; then
 		log "File is playable..."
@@ -92,8 +91,8 @@ check_path() {
 	fi
 }
 
+# recursive function for finding path to video file given a starting directory
 find_videos() {
-	# recursive function for finding path to video file given a starting directory
 	inp="$1"
 	if [ -f "$inp" ]; then
 		echo "$inp"
@@ -150,6 +149,7 @@ elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
 	printf "%s" "Enter download dir: "
 	read -r dl_dir
 	log "Download dir: $dl_dir"
+	[ -d "$dl_dir" ] && mkdir -p "$dl_dir" || dir "Error creating directory: $dl_dir"
 	run "-cd $dl_dir"
 	exit $?
 fi

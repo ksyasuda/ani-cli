@@ -48,21 +48,6 @@ log() {
 	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$*" >&2
 }
 
-search_new() {
-	# get anime name along with id
-	curl -s "$BASE_URL" |
-		sed -n -E '
-		s_^[[:space:]]*<a href="/([^"/.]*)" title="([^"]*)".*_\1_p
-		' |
-		sed -n -E '
-		s_^[[:space:]]*([^"]*)-episode-[0-9]{1,100}*_\1_p
-		'
-}
-
-resolve_url() {
-	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $1
-}
-
 search_anime() {
 	# get anime name along with its id
 	log "NUM ARGS: $#"
@@ -140,11 +125,16 @@ get_links() {
 	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
 	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?&")
 	video_url="https://gogoplay1.com/download?${episode_id}"
+	log 'GET_LINKS() VARS:'
+	log "embedded_video_url: $embedded_video_url"
+	log "episode_id: $episode_id"
+	log "video_url: $video_url"
 }
 
 get_video_quality() {
 	get_links
 	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*" | sort -V | sed 's/amp;//')
+	log "VIDEO QUALITY: $video_quality"
 	case $quality in
 		best)
 			play_link=$(echo "$video_quality" | sort -V | tail -n 1)
@@ -281,9 +271,10 @@ sync_watch_history() {
 		# anime_name=$(awk -F '|' '{print $2}' <<<"$line")
 		anime_name="${line/ //}"
 		log "ANIME: $anime_name"
-		episodes=$(sqlite3 -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
+		episodes=$(sqlite3 -line -list -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
 		# for each episode of $anime_name on the remote machine, check local
 		while read -r ep; do
+			log "ROW: $ep"
 			episode_num=$(awk -F '|' '{print $1}' <<< "$ep")
 			check_db "$anime_name" "$episode_num"
 			num=$?
@@ -292,7 +283,7 @@ sync_watch_history() {
 				log "$anime_name - E$episode_num NOT IN DB"
 				watch_date=$(awk -F '|' '{print $NF}' <<< "$ep")
 				log "Adding ($anime_name|$episode_num|$watch_date) to watch history..."
-				if ! sqlite3 "$HISTORY_DB" "INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$anime_name', '$episode_num', '$watch_date')"; then
+				if ! sqlite3 -noheader "$HISTORY_DB" "INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$anime_name', '$episode_num', '$watch_date')"; then
 					err "Error inserting row $ep"
 				fi
 				((++cnt))
@@ -533,6 +524,7 @@ open_episode() {
 	fi
 
 	get_video_quality
+	log "Play link: $play_link"
 	status_code=$(curl -s -I "$play_link" | head -n 1 | cut -d ' ' -f2)
 	log "Status code: $status_code"
 
@@ -619,9 +611,6 @@ quality=best
 is_rofi=1
 is_download=0
 download_dir="."
-is_playlist=0
-playlist_remove=0
-playlist_add=0
 half_ep=0
 while getopts 'hd:Hsvq:c' OPT; do
 	case "$OPT" in

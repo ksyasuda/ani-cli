@@ -138,7 +138,7 @@ As of the update on **_2022-01-01_**, if selecting an anime from the search hist
 
 ### Dealing with conflicting search queries / rofi grabbing from search list
 
-I can write more about it later, but in this program, rofi is configured to search with case insensitivity and select the best match from the list if there are matches. This can make it difficult at times to write a search query that does not trigger a selection from the rofi menu
+In this program, rofi is configured to search with case insensitivity and select the best match from the list if there are matches. This can make it difficult at times to write a search query that does not trigger a selection from the rofi menu
 
 <div align="center">
 
