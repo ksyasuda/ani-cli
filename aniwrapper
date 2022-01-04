@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# set -Eeo pipefail
+set -Eeo pipefail
 
 #############
 #  Globals  #
@@ -16,10 +16,11 @@ GET_QUALITY=0
 VERBOSE=0
 IS_ROFI=1
 IS_DOWNLOAD=0
+IS_PLAY_FROM_FILE=0
 
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$quit"
-playable="\.mp4|\.mkv|\.ts"
+playable="\.mp4|\.mkv|\.ts|\.mp3"
 
 #############
 # Functions #
@@ -53,6 +54,13 @@ run() {
 	fi
 }
 
+create_default_download() {
+	# make sure download directory exists
+	if [ ! -d "$DEFAULT_DOWNLOAD" ]; then
+		mkdir -p "$DEFAULT_DOWNLOAD"
+	fi
+}
+
 get_quality() {
 	if [ "$IS_ROFI" -eq 1 ]; then
 		selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
@@ -71,10 +79,14 @@ play_file() {
 	log "Checking if file is playable"
 	if [[ "$1" =~ ($playable)$ ]]; then
 		log "File is playable..."
-		log "Playing file: $1"
-		if [[ "$VERBOSE" -eq 1 ]]; then
+		if [[ "$1" =~ .mp3 ]]; then
+			log ".mp3 file found... playing without video"
+			$PLAYER_CMD --no-video --volume=50 "$1"
+		elif [[ "$VERBOSE" -eq 1 ]]; then
+			log "Playing file: $1"
 			$PLAYER_CMD "$1"
 		else
+			log "Playing file: $1"
 			$PLAYER_CMD "$1" &> /dev/null &
 		fi
 		exit $?
@@ -105,6 +117,7 @@ generate_inputlist() {
 			outstr="$outstr|$directory"
 		fi
 	done <<< "$(find "$1" -maxdepth 1 -type d | sed "s|$1/||" | tail -n +2 | sort -V)"
+	log "DIRS: $outstr" 1> /dev/stderr
 	while read -r filename; do
 		if [[ "${filename// /}" == "" ]]; then
 			continue
@@ -115,13 +128,17 @@ generate_inputlist() {
 			outstr="$outstr|$filename"
 		fi
 	done <<< "$(find "$1" -maxdepth 1 -type f | sed "s|$1/||" | grep -E "$playable$" | sort -V)"
-	outstr="$outstr|Quit"
+	log "DIRS + FILES: $outstr" 1> /dev/stderr
+	outstr="$outstr|Back|Quit"
 	printf "%s\n" "$outstr"
 }
 
 # recursive function for finding path to video file given a starting directory
-find_videos() {
+find_media() {
 	inp="$1"
+	[ -z "$inp" ] && inp="/"
+	# workaround to allow logging w/o affecting return output
+	log "INPUT DIR: $inp" 1> /dev/stderr
 
 	# base case hit when a file is found
 	if [ -f "$inp" ]; then
@@ -136,16 +153,41 @@ find_videos() {
 
 	if [ -z "$selection" ] || [ "$selection" = "Quit" ]; then
 		return 1
+	elif [ "$selection" = "Back" ]; then
+		# go up one directory
+		find_media "$(sed -E "s/(\/[^\/]*$)//" <<< "$inp")"
 	elif [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
-		find_videos "$inp/$selection"
+		find_media "$inp/$selection"
 		return $?
 	fi
+}
+
+play_from_file() {
+	if [[ $# -eq 0 ]]; then
+		msg="Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/"
+		msg="$(printf '%s\n%s\n' "$msg" "The program will begin searching for media files from the supplied directory")"
+		span=$(generate_span "$msg")
+		play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -mesg "$span" -p "Enter path to starting directory:")
+	else
+		play_dir="$1"
+	fi
+	[ -z "$play_dir" ] && play_dir="$DEFAULT_DOWNLOAD"
+	[ "$play_dir" = "$DEFAULT_DOWNLOAD" ] && create_default_download
+	log "STARTING DIR: $play_dir"
+	[ ! -d "$play_dir" ] && seppuku "$play_dir does not exist"
+	video_path=$(find_media "$play_dir") || quit
+	log "VIDEO PATH: $video_path"
+	if [ -z "$video_path" ]; then
+		seppuku "Something went wrong getting path... path is empty"
+	fi
+	play_file "$video_path"
 }
 
 ########
 # Main #
 ########
-while getopts 'vhqcd' OPT; do
+while getopts 'vhqcdf:-:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -164,6 +206,12 @@ while getopts 'vhqcd' OPT; do
 		d)
 			IS_DOWNLOAD=1
 			log "Download flag set..."
+			;;
+		f)
+			IS_PLAY_FROM_FILE=1
+			play_path="$OPTARG"
+			log "Play from file flag set... skipping main menu"
+			log "PLAY_PATH: $play_path"
 			;;
 		*)
 			log "Invalid option"
@@ -184,6 +232,9 @@ elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
 	log "Download dir: $dl_dir"
 	[ -d "$dl_dir" ] && mkdir -p "$dl_dir" || dir "Error creating directory: $dl_dir"
 	run "-cd $dl_dir"
+	exit $?
+elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]]; then
+	play_from_file "$play_path"
 	exit $?
 fi
 
@@ -214,10 +265,7 @@ case "$selection" in
 			-l 1 -p "Enter download dir:")
 		# if dl_dir is none set to current directory
 		[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
-		# make sure download directory exists
-		if [ ! -d "$DEFAULT_DOWNLOAD" ]; then
-			mkdir -p "$DEFAULT_DOWNLOAD"
-		fi
+		create_default_download
 		run -d "$dl_dir"
 		;;
 	3.)
@@ -232,19 +280,8 @@ case "$selection" in
 		# ---------------------------------------------------------------------------
 		# play
 		# ---------------------------------------------------------------------------
-		msg="Enter path to the videos directory or leave blank to go with the default: $HOME/Videos/sauce/"
-		span=$(generate_span "$msg")
-		play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -mesg "$span" -p "Enter path to play dir:")
-		[ -z "$play_dir" ] && play_dir="$DEFAULT_DOWNLOAD"
-		log "PLAY DIR: $play_dir"
-		[ ! -d "$play_dir" ] && seppuku "$play_dir does not exist"
-		video_path=$(find_videos "$play_dir") || quit
-		log "VIDEO PATH: $video_path"
-		if [ -z "$video_path" ]; then
-			seppuku "Something went wrong getting path"
-		fi
-		play_file "$video_path"
+		log "Play from file selected"
+		play_from_file
 		;;
 	5.)
 		log "Sync history database"
