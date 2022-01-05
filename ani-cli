@@ -120,29 +120,26 @@ get_dpage_link() {
 get_video_quality() {
 	dpage_url=$1
 
-	video_links=$(curl -s "$dpage_url" | sed -n -E 's/.*href="([^"]*)" download>Download.*/\1/p' | sed 's/amp;//')
-	case $quality in
-		best)
-			video_link=$(printf '%s' "$video_links" | tail -n 1)
-			;;
-		worst)
-			video_link=$(printf '%s' "$video_links" | head -n 1)
-			;;
-		*)
-			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p")
-			if [ -z "$video_link" ]; then
-				err "Current video quality is not available (defaulting to highest quality)"
-				quality=best
-				video_link=$(printf '%s' "$video_links" | tail -n 1)
-			fi
-			;;
-	esac
+	video_links=$(curl -s "$sb_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
+	m=$(printf "%s" "$quality" | cut -c1)
+	i=$(printf "%s" "$video_links" | cut -d\' -f2)
+	h=$(printf "%s" "$video_links" | cut -d\' -f6)
+	video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$i&mode=$m&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
+	if [ -z "$video_link" ]; then
+		err "$quality quality doesn't exist, falling back to normal quality"
+		video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$i&mode=n&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
+	fi
+
 	printf '%s' "$video_link"
 }
 
 get_links() {
 	dpage_url="$1"
-	video_url=$(get_video_quality "$dpage_url")
+	sb_url=$(curl -s "$dpage_url" |
+		sed -n -E 's/^[[:space:]]*href="([^"]*)".*/\1/p' | grep -oE ".*sbplay.*")
+
+	video_url=$(get_video_quality "$sb_url")
+
 	printf '%s' "$video_url"
 }
 
@@ -203,7 +200,7 @@ update_date() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	stmt=""
 	if [[ "$1" == "file" ]]; then
-		log "UPDATING FILE_HISTORY: anime_name='$1', search_date='$datetime'"
+		log "UPDATING FILE_HISTORY: directory='$2', filename='$3', search_date='$datetime'"
 		stmt="UPDATE file_history SET watch_date = '$datetime' \
 			WHERE directory = '$2' and filename = '$3';"
 	elif [[ "$2" == "search" ]]; then
@@ -307,12 +304,9 @@ sync_watch_history() {
 }
 
 #####################
-## END of db code  ##
-#####################
-
-#####################
 ### Play from file###
 #####################
+
 # opens the passed in file with $PLAYER_CMD
 play_file() {
 	log "Checking if file is playable"
@@ -320,7 +314,7 @@ play_file() {
 		log "File is playable..."
 		filename=$(grep -oE '[^/]*$' <<< "$1")
 		log "FILENAME: $filename"
-		insert_history "file" "$1" "$filename"
+		insert_history "file" "$1" "$filename" &
 		if [[ "$1" =~ .mp3 ]]; then
 			log ".mp3 file found... playing without video"
 			log "MPV COMMAND: $PLAYER_CMD --no-video $1"
@@ -393,10 +387,6 @@ find_media() {
 		return $?
 	fi
 }
-
-###########################
-## END of Play from file ##
-###########################
 
 # get query
 get_search_query() {
@@ -533,7 +523,7 @@ anime_selection() {
 
 	[ -z "$name" ] && name="$anime_id"
 	log "NAME: $name"
-	insert_history "$name" "search"
+	insert_history "$name" "search" &
 
 	printf "$c_reset"
 
@@ -625,11 +615,12 @@ open_episode() {
 
 	# Don't update watch history if downloading episode
 	if [ "$is_download" -eq 0 ]; then
-		insert_history "$anime_id" "$episode"
+		insert_history "$anime_id" "$episode" &
 	fi
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_links "$dpage_link")
+	referer_link="https://sbplay2.com"
 
 	if [ $half_ep -eq 1 ]; then
 		episode=$temp_ep
@@ -639,8 +630,8 @@ open_episode() {
 	if [ "$is_download" -eq 0 ]; then
 		kill "$PID" > /dev/null 2>&1
 		log "PLAYING VIDEO: $video_url"
-		log "REFERRER: $dpage_link"
-		nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
+		log "REFERRER: $referer_link"
+		nohup "$player_fn" --http-header-fields="Referer:$referer_link" "$video_url" > /dev/null 2>&1 &
 		PID=$!
 		printf "${c_green}\nVideo playing"
 	else
@@ -652,12 +643,12 @@ open_episode() {
 		{
 			mkdir -p "$dl_dir" || die "Could not create directory"
 			if command -v "notify-send" > /dev/null; then
-				aria2c -x 16 -s 16 --referer "$dpage_link" "$video_url" --dir="$dl_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
+				aria2c -x 16 -s 16 --referer="$referer_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
 					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
 					notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 			else
-				# curl -L -# -e "$dpage_link" -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
-				aria2c -x 16 -s 16 --referer "$dpage_link" "$video_url" --dir="$dl_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
+				aria2c -x 16 -s 16 --referer="$referer_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
+					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
 					printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode" ||
 					printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
 			fi
@@ -689,7 +680,7 @@ stream() {
 		# skip search_anime function and assign $query
 		anime_id="${query// /}"
 		selection_id="$anime_id"
-		insert_history "$anime_id" "search"
+		insert_history "$anime_id" "search" &
 		read -r last_ep_number <<< "$(search_eps "$selection_id")"
 	fi
 	episode_selection
@@ -704,7 +695,7 @@ trap "printf '$c_reset'" INT HUP
 
 # option parsing
 scrape=query
-quality=best
+quality=normal
 is_rofi=1
 is_download=0
 download_dir="."
