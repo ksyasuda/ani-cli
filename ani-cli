@@ -207,6 +207,12 @@ update_date() {
 		log "UPDATING SEARCH_HISTORY: anime_name='$1', search_date='$datetime'"
 		stmt="UPDATE search_history SET search_date = '$datetime' \
 			WHERE anime_name = '$1';"
+	elif [[ $# -ge 3 ]]; then
+		[ -z "$3" ] && return 1
+		log "UPDATING watch_history from sync. watch_date -> $3"
+		stmt="UPDATE watch_history SET watch_date = '$3' \
+			WHERE anime_name = '$1' \
+			AND episode_number = $2;"
 	else
 		log "UPDATING WATCH_HISTORY: anime_name='$1', episode_number='$2' search_date='$datetime'"
 		stmt="UPDATE watch_history SET watch_date = '$datetime' \
@@ -291,9 +297,7 @@ sync_watch_history() {
 				log "$anime_name - E$episode_num NOT IN DB"
 				watch_date=$(awk -F '|' '{print $NF}' <<< "$ep")
 				log "Adding ($anime_name|$episode_num|$watch_date) to watch history..."
-				if ! sqlite3 -noheader "$HISTORY_DB" "INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$anime_name', '$episode_num', '$watch_date')"; then
-					err "Error inserting row $ep"
-				fi
+				insert_history "$anime_name" "$episode_num" "$watch_date"
 				((++cnt))
 			else
 				log "$anime_name - Episode: $episode_num found in the db... skipping"
