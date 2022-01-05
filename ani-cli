@@ -177,27 +177,36 @@ check_db() {
 	# args:
 	#   $1: anime name: str
 	#   $2: either 'search' or 'watch' for which db to query
-	if [[ "$2" == "search" ]]; then
+	log "check_db $*" 1> /dev/stderr
+	if [[ "$1" == "file" ]]; then
+		stmt="SELECT DISTINCT COUNT(*) \
+        FROM file_history \
+        WHERE directory = '$2' \
+        AND filename = '$3';"
+	elif [[ "$2" == "search" ]]; then
 		stmt="SELECT DISTINCT COUNT(*) \
 			  FROM search_history \
 			  WHERE anime_name = '$1';"
-		res=$(run_stmt "$stmt")
-		return "$res"
 	else
 		stmt="SELECT DISTINCT COUNT(*) \
 			  FROM watch_history \
 			  WHERE anime_name = '$1' \
 			  AND episode_number = '$2';"
-		res=$(run_stmt "$stmt")
-		return "$res"
 	fi
+	res=$(run_stmt "$stmt")
+	log "check_db result: $res"
+	return "$res"
 }
 
 # updates search/watch date for passed in anime
 update_date() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	stmt=""
-	if [[ "$2" == "search" ]]; then
+	if [[ "$1" == "file" ]]; then
+		log "UPDATING FILE_HISTORY: anime_name='$1', search_date='$datetime'"
+		stmt="UPDATE file_history SET watch_date = '$datetime' \
+			WHERE directory = '$2' and filename = '$3';"
+	elif [[ "$2" == "search" ]]; then
 		log "UPDATING SEARCH_HISTORY: anime_name='$1', search_date='$datetime'"
 		stmt="UPDATE search_history SET search_date = '$datetime' \
 			WHERE anime_name = '$1';"
@@ -213,32 +222,41 @@ update_date() {
 insert_history() {
 	# inserts into search/watch history db
 	# check the anime_name/id
-	if ! check_anime_name "$1"; then
-		log "ERROR: Anime name is none... exiting"
-		return 1
+	log "BEGIN: insert_history function"
+	if [[ ! "$1" == "file" ]]; then
+		if ! check_anime_name "$1"; then
+			log "ERROR: Anime name is none... exiting"
+			return 1
+		fi
 	fi
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	check_db "$@"
 	res="$?"
-	if [[ "$res" -gt 0 ]]; then
-		if [[ "$2" == "search" ]]; then
+	if [[ $res -gt 0 ]]; then
+		if [[ "$1" == "file" ]]; then
+			log "Already in file history db... updaing watch_date"
+		elif [[ "$2" == "search" ]]; then
 			log "Already in search db... Updating search_date"
 		else
 			log "Already in watch db... Updating watch_date"
 		fi
 		update_date "$@"
 	else
-		if [[ "$2" == "search" ]]; then
+		if [[ "$1" == "file" ]]; then
+			log "inserting $2/$3 into file_history..."
+			stmt="INSERT INTO file_history(directory, filename, watch_date) \
+        VALUES('$2', '$3', '$datetime');"
+		elif [[ "$2" == "search" ]]; then
 			stmt="INSERT INTO search_history(anime_name, search_date) \
 				VALUES('$1', '$datetime');"
-			run_stmt "$stmt"
 		else
 			stmt="INSERT INTO \
 				watch_history(anime_name, episode_number, watch_date) \
 				VALUES('$1', '$2', '$datetime');"
-			run_stmt "$stmt"
 		fi
+		run_stmt "$stmt"
 	fi
+	log "END: insert_history function"
 }
 
 sync_search_history() {
@@ -300,6 +318,9 @@ play_file() {
 	log "Checking if file is playable"
 	if [[ "$1" =~ ($playable)$ ]]; then
 		log "File is playable..."
+		filename=$(grep -oE '[^/]*$' <<< "$1")
+		log "FILENAME: $filename"
+		insert_history "file" "$1" "$filename"
 		if [[ "$1" =~ .mp3 ]]; then
 			log ".mp3 file found... playing without video"
 			log "MPV COMMAND: $PLAYER_CMD --no-video $1"
@@ -796,7 +817,7 @@ case $scrape in
 			die "Error getting database file from remote host"
 		fi
 		sync_search_history && sync_watch_history
-		exit 0
+		exit $?
 		;;
 	file)
 		log "STARTING DIR: $play_dir"
@@ -807,6 +828,7 @@ case $scrape in
 			die "Something went wrong getting path... path is empty"
 		fi
 		play_file "$video_path"
+		exit $?
 		;;
 esac
 
