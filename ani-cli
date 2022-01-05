@@ -13,7 +13,7 @@ PLAYER_CMD="mpv -config-dir ${XDG_CONFIG_HOME:-$HOME/.config}/mpv"
 # dependencies: grep, sed, curl, video_player, rofi, sqlite3
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
-playable="\.mp4|\.mkv|\.ts|\.mp3"
+playable="\.mp4|\.mkv|\.ts|\.mp3|\.webm"
 prog="ani-cli"
 
 c_red="\033[1;31m"
