@@ -48,21 +48,19 @@ run_setup() {
 		log "Creating history database..."
 		sqlite3 "$DIR/$DB" < sql/watch_history_tbl.sql
 		sqlite3 "$DIR/$DB" < sql/search_history_tbl.sql
+		sqlite3 "$DIR/$DB" < sql/file_history.sql
 		log "History database created..."
+	elif ! sqlite3 -noheader -batch "$DIR/$DB" ".tables" | grep 'file_history'; then
+		log "file_history table not found in database... creating table"
+		sqlite3 "$DIR/$DB" < sql/file_history.sql
+		log "file_history table created"
 	fi
 
+	# Move theme files and skip-intro script to correct locations
 	if [[ ! -f "$DIR/aniwrapper.rasi" ]]; then
-		# Move theme files and skip-intro script to correct locations
 		log "aniwrapper.rasi does not exist in filesystem...  Moving theme files"
 		cp themes/* "$DIR"/
 		log "Theme files moved..."
-	elif diff -q "themes/aniwrapper.rasi" "$DIR/aniwrapper.rasi" &> /dev/null; then
-		log "Theme file has not changed... skipping"
-	else
-		log "Theme has changed... backing up old theme"
-		mv "$DIR/aniwrapper.rasi" "$DIR/aniwrapper.rasi.bak"
-		log "Renamed $DIR/aniwrapper.rasi -> $DIR/aniwrapper.rasi.bak"
-		cp themes/aniwrapper.rasi "$DIR/"
 	fi
 
 	log "Creating mpv/scripts/ directory if it doesn't exist..."
