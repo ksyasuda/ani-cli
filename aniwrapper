@@ -74,112 +74,12 @@ get_quality() {
 	log "selected quality: $QUALITY"
 }
 
-# opens the passed in file with $PLAYER_CMD
-play_file() {
-	log "Checking if file is playable"
-	if [[ "$1" =~ ($playable)$ ]]; then
-		log "File is playable..."
-		if [[ "$1" =~ .mp3 ]]; then
-			log ".mp3 file found... playing without video"
-			log "MPV COMMAND: $PLAYER_CMD --no-video $1"
-			$PLAYER_CMD --no-video "$1"
-		else
-			log "MPV COMMAND: $PLAYER_CMD $1"
-			$PLAYER_CMD "$1"
-		fi
-		exit $?
-	else
-		seppuku "File: $1 is not playable... Quitting"
-	fi
-}
-
 # generates a span mesg for rofi given
 # input: message: str
 generate_span() {
 	msg="$*"
 	span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
 	printf "%s\n" "$span"
-}
-
-# attempt to generate list of valid files and directories
-generate_inputlist() {
-	# start at 2nd line, because first line out output from find is $1
-	outstr=""
-	while read -r directory; do
-		if [[ "${directory// /}" == "" ]]; then
-			continue
-		fi
-		if [[ "$outstr" == "" ]]; then
-			outstr="$directory"
-		else
-			outstr="$outstr|$directory"
-		fi
-	done <<< "$(find "$1" -maxdepth 1 -type d | sed "s|$1/||" | tail -n +2 | sort -V)"
-	log "DIRS: $outstr" 1> /dev/stderr
-	while read -r filename; do
-		if [[ "${filename// /}" == "" ]]; then
-			continue
-		fi
-		if [[ "$outstr" == "" ]]; then
-			outstr="$filename"
-		else
-			outstr="$outstr|$filename"
-		fi
-	done <<< "$(find "$1" -maxdepth 1 -type f | sed "s|$1/||" | grep -E "$playable$" | sort -V)"
-	log "DIRS + FILES: $outstr" 1> /dev/stderr
-	outstr="$outstr|Back|Quit"
-	printf "%s\n" "$outstr"
-}
-
-# recursive function for finding path to video file given a starting directory
-find_media() {
-	inp="$1"
-	[ -z "$inp" ] && inp="/"
-	# workaround to allow logging w/o affecting return output
-	log "INPUT DIR: $inp" 1> /dev/stderr
-
-	# base case hit when a file is found
-	if [ -f "$inp" ]; then
-		printf "%s\n" "$inp"
-		return 0
-	fi
-
-	span=$(generate_span "Current directory: $inp")
-	inputlist=$(generate_inputlist "$inp")
-	selection=$(rofi -dmenu -only-match -config "$CFG_DIR/$CFG_FILE" \
-		-l 13 -i -sep '|' -mesg "$span" -p "Enter selection" <<< "${inputlist[@]}")
-
-	if [ -z "$selection" ] || [ "$selection" = "Quit" ]; then
-		return 1
-	elif [ "$selection" = "Back" ]; then
-		# go up one directory
-		find_media "$(sed -E "s/(\/[^\/]*$)//" <<< "$inp")"
-	elif [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
-		find_media "$inp/$selection"
-		return $?
-	fi
-}
-
-play_from_file() {
-	if [[ $# -eq 0 ]]; then
-		msg="Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/"
-		msg="$(printf '%s\n%s\n' "$msg" "The program will begin searching for media files from the supplied directory")"
-		span=$(generate_span "$msg")
-		play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
-			-l 1 -mesg "$span" -p "Enter path to starting directory:")
-	else
-		play_dir="$1"
-	fi
-	[ -z "$play_dir" ] && play_dir="$DEFAULT_DOWNLOAD"
-	[ "$play_dir" = "$DEFAULT_DOWNLOAD" ] && create_default_download
-	log "STARTING DIR: $play_dir"
-	[ ! -d "$play_dir" ] && seppuku "$play_dir does not exist"
-	video_path=$(find_media "$play_dir") || quit
-	log "VIDEO PATH: $video_path"
-	if [ -z "$video_path" ]; then
-		seppuku "Something went wrong getting path... path is empty"
-	fi
-	play_file "$video_path"
 }
 
 ########
@@ -232,7 +132,7 @@ elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
 	run "-cd $dl_dir"
 	exit $?
 elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]]; then
-	play_from_file "$play_path"
+	run -f"$play_path"
 	exit $?
 fi
 
@@ -279,7 +179,17 @@ case "$selection" in
 		# play
 		# ---------------------------------------------------------------------------
 		log "Play from file selected"
-		play_from_file
+		msg="Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/"
+		msg="$(printf '%s\n%s\n' "$msg" "The program will begin searching for media files from the supplied directory")"
+		span=$(generate_span "$msg")
+		play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+			-l 1 -mesg "$span" -p "Enter path to starting directory:")
+		if [ -z "$play_dir" ]; then
+			create_default_download
+			run -f"$DEFAULT_DOWNLOAD"
+		else
+			run -f"$play_dir"
+		fi
 		;;
 	5.)
 		log "Sync history database"

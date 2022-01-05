@@ -8,11 +8,12 @@ HISTORY_DB="$CFG_DIR/history.sqlite3"
 ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 ROFI_CFG="aniwrapper.rasi"
+PLAYER_CMD="mpv -config-dir ${XDG_CONFIG_HOME:-$HOME/.config}/mpv"
 
 # dependencies: grep, sed, curl, video_player, rofi, sqlite3
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
-
+playable="\.mp4|\.mkv|\.ts|\.mp3"
 prog="ani-cli"
 
 c_red="\033[1;31m"
@@ -291,6 +292,91 @@ sync_watch_history() {
 ## END of db code  ##
 #####################
 
+#####################
+### Play from file###
+#####################
+# opens the passed in file with $PLAYER_CMD
+play_file() {
+	log "Checking if file is playable"
+	if [[ "$1" =~ ($playable)$ ]]; then
+		log "File is playable..."
+		if [[ "$1" =~ .mp3 ]]; then
+			log ".mp3 file found... playing without video"
+			log "MPV COMMAND: $PLAYER_CMD --no-video $1"
+			$PLAYER_CMD --no-video "$1"
+		else
+			log "MPV COMMAND: $PLAYER_CMD $1"
+			$PLAYER_CMD "$1"
+		fi
+		exit $?
+	else
+		die "File: $1 is not playable... Quitting"
+	fi
+}
+
+# attempt to generate list of valid files and directories
+generate_inputlist() {
+	# start at 2nd line, because first line out output from find is $1
+	outstr=""
+	while read -r directory; do
+		if [[ "${directory// /}" == "" ]]; then
+			continue
+		fi
+		if [[ "$outstr" == "" ]]; then
+			outstr="$directory"
+		else
+			outstr="$outstr|$directory"
+		fi
+	done <<< "$(find "$1" -maxdepth 1 -type d | sed "s|$1/||" | tail -n +2 | sort -V)"
+	log "DIRS: $outstr" 1> /dev/stderr
+	while read -r filename; do
+		if [[ "${filename// /}" == "" ]]; then
+			continue
+		fi
+		if [[ "$outstr" == "" ]]; then
+			outstr="$filename"
+		else
+			outstr="$outstr|$filename"
+		fi
+	done <<< "$(find "$1" -maxdepth 1 -type f | sed "s|$1/||" | grep -E "$playable$" | sort -V)"
+	log "DIRS + FILES: $outstr" 1> /dev/stderr
+	outstr="$outstr|Back|Quit"
+	printf "%s\n" "$outstr"
+}
+
+# recursive function for finding path to video file given a starting directory
+find_media() {
+	inp="$1"
+	[ -z "$inp" ] && inp="/"
+	# workaround to allow logging w/o affecting return output
+	log "INPUT DIR: $inp" 1> /dev/stderr
+
+	# base case hit when a file is found
+	if [ -f "$inp" ]; then
+		printf "%s\n" "$inp"
+		return 0
+	fi
+
+	span=$(generate_span "Current directory: $inp")
+	inputlist=$(generate_inputlist "$inp")
+	selection=$(rofi -dmenu -only-match -config "$CFG_DIR/$ROFI_CFG" \
+		-l 13 -i -sep '|' -mesg "$span" -p "Enter selection" <<< "${inputlist[@]}")
+
+	if [ -z "$selection" ] || [ "$selection" = "Quit" ]; then
+		return 1
+	elif [ "$selection" = "Back" ]; then
+		# go up one directory
+		find_media "$(sed -E "s/(\/[^\/]*$)//" <<< "$inp")"
+	elif [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
+		find_media "$inp/$selection"
+		return $?
+	fi
+}
+
+###########################
+## END of Play from file ##
+###########################
+
 # get query
 get_search_query() {
 	# Query the anime to stream/download
@@ -307,7 +393,7 @@ get_search_query() {
 	if [ -z "$*" ] && [ "$is_rofi" -eq 1 ]; then
 		query=$(rofi -dmenu -l 12 -p "Search Anime:" \
 			-mesg "$span" \
-			-config "$CFG_DIR/${ROFI_CFG}" <<< "${hist[@]}")
+			-config "$CFG_DIR/$ROFI_CFG" <<< "${hist[@]}")
 		# Remove the id from the query
 		query="${query//[1-9]*\. /}"
 		# query="${query// /}"
@@ -318,6 +404,12 @@ get_search_query() {
 	else
 		query=$*
 	fi
+}
+
+generate_span() {
+	msg="$*"
+	span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
+	printf "%s\n" "$span"
 }
 
 #####################
@@ -596,7 +688,7 @@ is_rofi=1
 is_download=0
 download_dir="."
 half_ep=0
-while getopts 'hd:Hsvq:c-:' OPT; do
+while getopts 'hd:Hsvq:c-:f:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -634,6 +726,11 @@ while getopts 'hd:Hsvq:c-:' OPT; do
 					;;
 			esac
 			;;
+		f)
+			scrape="file"
+			play_dir="$OPTARG"
+			;;
+
 		*)
 			printf "%s\n" "Invalid option"
 			exit 1
@@ -700,6 +797,16 @@ case $scrape in
 		fi
 		sync_search_history && sync_watch_history
 		exit 0
+		;;
+	file)
+		log "STARTING DIR: $play_dir"
+		[ ! -d "$play_dir" ] && die "$play_dir does not exist"
+		video_path=$(find_media "$play_dir") || die
+		log "VIDEO PATH: $video_path"
+		if [ -z "$video_path" ]; then
+			die "Something went wrong getting path... path is empty"
+		fi
+		play_file "$video_path"
 		;;
 esac
 
