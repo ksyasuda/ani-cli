@@ -343,26 +343,33 @@ generate_inputlist() {
 		if [[ "${directory// /}" == "" ]]; then
 			continue
 		fi
-		if [[ "$outstr" == "" ]]; then
-			outstr="$directory"
-		else
-			outstr="$outstr|$directory"
-		fi
+		[ "$outstr" = "" ] && outstr="$directory" || outstr="$outstr|$directory"
 	done <<< "$(find "$1" -maxdepth 1 -type d | sed "s|$1/||" | tail -n +2 | sort -V)"
 	log "DIRS: $outstr" 1> /dev/stderr
 	while read -r filename; do
 		if [[ "${filename// /}" == "" ]]; then
 			continue
 		fi
-		if [[ "$outstr" == "" ]]; then
-			outstr="$filename"
-		else
-			outstr="$outstr|$filename"
-		fi
+		[ "$outstr" = "" ] && outstr="$filename" || outstr="$outstr|$filename"
 	done <<< "$(find "$1" -maxdepth 1 -type f | sed "s|$1/||" | grep -E "$playable$" | sort -V)"
 	log "DIRS + FILES: $outstr" 1> /dev/stderr
 	outstr="$outstr|Back|Quit"
 	printf "%s\n" "$outstr"
+}
+
+generate_file_watchedlist() {
+	search_dir="$1"
+	watched=""
+	cnt=0
+	while read -r filename; do
+		if ! check_db "file" "$search_dir/$filename" "$filename"; then
+			log "$filename watched before... adding to list" 1> /dev/stderr
+			[ "$watched" = "" ] && watched="$cnt" || watched="$watched, $cnt"
+		fi
+		((++cnt))
+	done <<< "$(find "$search_dir" -maxdepth 1 -type f | sed "s|$search_dir/||" | grep -E "$playable$" | sort -V)"
+	log "WATCHED LIST: $watched" 1> /dev/stderr
+	printf "%s\n" "$watched"
 }
 
 # recursive function for finding path to video file given a starting directory
@@ -380,8 +387,10 @@ find_media() {
 
 	span=$(generate_span "Current directory: $inp")
 	inputlist=$(generate_inputlist "$inp")
+	watched_files=$(generate_file_watchedlist "$inp")
 	selection=$(rofi -dmenu -only-match -config "$ROFI_CFG" \
-		-l 13 -i -sep '|' -mesg "$span" -p "Enter selection" <<< "${inputlist[@]}")
+		-l 13 -i -sep '|' -mesg "$span" -a "$watched_files" \
+		-p "Enter selection" <<< "${inputlist[@]}")
 
 	if [ -z "$selection" ] || [ "$selection" = "Quit" ]; then
 		return 1
