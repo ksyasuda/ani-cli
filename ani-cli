@@ -248,7 +248,7 @@ insert_history() {
 		update_date "$@"
 	else
 		if [[ "$1" == "file" ]]; then
-			log "inserting $2/$3 into file_history..."
+			log "inserting $2 into file_history..."
 			stmt="INSERT INTO file_history(directory, filename, watch_date) \
         VALUES('$2', '$3', '$datetime');"
 		elif [[ "$2" == "search" ]]; then
@@ -319,8 +319,10 @@ play_file() {
 	if [[ "$1" =~ ($playable)$ ]]; then
 		log "File is playable..."
 		filename=$(grep -oE '[^/]*$' <<< "$1")
+		directory=$(sed -E "s/\/$filename//" <<< "$1")
 		log "FILENAME: $filename"
-		insert_history "file" "$1" "$filename" &
+		log "DIRECTORY: $directory"
+		insert_history "file" "$directory" "$filename" &
 		if [[ "$1" =~ .mp3 ]]; then
 			log ".mp3 file found... playing without video"
 			log "MPV COMMAND: $PLAYER_CMD --no-video $1"
@@ -357,12 +359,18 @@ generate_inputlist() {
 	printf "%s\n" "$outstr"
 }
 
+get_file_history_as_string() {
+	while read -r directory; do
+		continue
+	done <<< $(run_stmt "SELECT DISTINCT DIRECTORY FROM FILE_HISTORY;")
+}
+
 generate_file_watchedlist() {
 	search_dir="$1"
 	watched=""
 	cnt=0
 	while read -r filename; do
-		if ! check_db "file" "$search_dir/$filename" "$filename"; then
+		if ! check_db "file" "$search_dir" "$filename"; then
 			log "$filename watched before... adding to list" 1> /dev/stderr
 			[ "$watched" = "" ] && watched="$cnt" || watched="$watched, $cnt"
 		fi
