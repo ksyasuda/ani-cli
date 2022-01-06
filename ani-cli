@@ -7,8 +7,10 @@ CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
 ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
-ROFI_CFG="aniwrapper.rasi"
-PLAYER_CMD="mpv -config-dir ${XDG_CONFIG_HOME:-$HOME/.config}/mpv"
+ROFI_THEME="aniwrapper.rasi"
+ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
+PLAYER_CMD="mpv"
+THEMES="aniwrapper (default)|dracula|hidpi"
 
 # dependencies: grep, sed, curl, video_player, rofi, sqlite3
 # video_player ( needs to be able to play urls )
@@ -378,7 +380,7 @@ find_media() {
 
 	span=$(generate_span "Current directory: $inp")
 	inputlist=$(generate_inputlist "$inp")
-	selection=$(rofi -dmenu -only-match -config "$CFG_DIR/$ROFI_CFG" \
+	selection=$(rofi -dmenu -only-match -config "$ROFI_CFG" \
 		-l 13 -i -sep '|' -mesg "$span" -p "Enter selection" <<< "${inputlist[@]}")
 
 	if [ -z "$selection" ] || [ "$selection" = "Quit" ]; then
@@ -408,7 +410,7 @@ get_search_query() {
 	if [ -z "$*" ] && [ "$is_rofi" -eq 1 ]; then
 		query=$(rofi -dmenu -l 12 -p "Search Anime:" \
 			-mesg "$span" \
-			-config "$CFG_DIR/$ROFI_CFG" <<< "${hist[@]}")
+			-config "$ROFI_CFG" <<< "${hist[@]}")
 		# Remove the id from the query
 		query="${query//[1-9]*\. /}"
 		# query="${query// /}"
@@ -469,7 +471,7 @@ anime_selection() {
 		# get the anime from indexed list
 		msg="<span foreground='peachpuff' style='italic' size='small' weight='normal'>Query: $query</span>"
 		user_input=$(printf "${menu[@]}" |
-			rofi -dmenu -config "$CFG_DIR/${ROFI_CFG}" \
+			rofi -dmenu -config "$ROFI_CFG" \
 				-a "$searched" \
 				-l 12 -i -p "Enter selection:" \
 				-mesg "$msg" -only-match)
@@ -571,7 +573,7 @@ episode_selection() {
 					-a "$watch_history" \
 					-p "Select Episode [1, $last_ep_number]:" \
 					-mesg "$msg" \
-					-config "$CFG_DIR/${ROFI_CFG}"
+					-config "$ROFI_CFG"
 		)
 		ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
 		ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
@@ -704,7 +706,7 @@ is_rofi=1
 is_download=0
 download_dir="."
 half_ep=0
-while getopts 'hd:Hsvq:c-:f:' OPT; do
+while getopts 'hd:Hsvq:c-:f:t:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -746,7 +748,30 @@ while getopts 'hd:Hsvq:c-:f:' OPT; do
 			scrape="file"
 			play_dir="$OPTARG"
 			;;
-
+		t)
+			theme="$OPTARG"
+			case "$theme" in
+				aniwrapper)
+					ROFI_THEME=aniwrapper.rasi
+					;;
+				dracula)
+					ROFI_THEME=aniwrapper-dracula.rasi
+					;;
+				hidpi)
+					ROFI_THEME=aniwrapper-hidpi.rasi
+					;;
+				default)
+					ROFI_THEME=aniwrapper.rasi
+					;;
+				*)
+					log "$1 not a valid theme file.  Themes: [$THEMES]"
+					ROFI_THEME=aniwrapper.rasi
+					;;
+			esac
+			log "Setting theme for ani-cli -> $ROFI_THEME"
+			ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
+			log "ROFI_CFG: $ROFI_CFG"
+			;;
 		*)
 			printf "%s\n" "Invalid option"
 			exit 1

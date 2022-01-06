@@ -186,13 +186,19 @@ aniwrapper -q
 # Enable verbose logging
 aniwrapper -v
 
+# Choose rofi theme from presets
+aniwrapper -t [aniwrapper (default)|dracula|hidpi]
+
+# Specify starting directory for play_from_file mode, bypassing main menu
+aniwrapper -f <starting_directory> (no trailing slash in path)
+
 # Use ani-cli command-line mode (rofi disabled)
 aniwrapper -c
 
 # Download anime in command-line mode
 aniwrapper -d
 
-# All flags can be used in command-line mode as well
+# All flags can be used in command-line mode as well (except -f)
 # ex. The following command will launch aniwrapper in command-line download mode with quality selection
 aniwrapper -cqd
 ```
@@ -234,6 +240,9 @@ At the moment, the requirements are as follows:
 # watch anime
 ani-cli <query>
 
+# verbose logging
+ani-cli -v
+
 # download anime
 ani-cli -d <download_directory>
 
@@ -242,6 +251,15 @@ ani-cli -H
 
 # sync history across devices
 ani-cli -s
+
+# choose quality
+ani-cli -q [high|normal (default)|low]
+
+# choose rofi theme from presets
+ani-cli -t [aniwrapper (default)|dracula|hidpi]
+
+# Specify starting directory for play_from_file mode (does not work with -c)
+ani-cli -f <starting_directory> (no trailing slash in path)
 
 # run ani-cli in command-line mode (rofi disabled)
 ani-cli -c

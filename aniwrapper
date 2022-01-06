@@ -8,9 +8,11 @@ set -Eeo pipefail
 CMD="/usr/bin/ani-cli"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
-CFG_FILE="aniwrapper.rasi"
+ROFI_THEME="aniwrapper.rasi"
+CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
 QUALITIES="1. high|2. normal (default)|3. low"
 QUALITY=normal
+THEMES="aniwrapper (default)|dracula|hidpi"
 GET_QUALITY=0
 VERBOSE=0
 IS_ROFI=1
@@ -19,6 +21,7 @@ IS_PLAY_FROM_FILE=0
 
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$quit"
+theme=default
 
 #############
 # Functions #
@@ -40,15 +43,17 @@ quit() {
 }
 
 run() {
-	if [[ "$GET_QUALITY" -eq 1 ]]; then
-		get_quality
-	else
-		log "QUALITY flag not set... using default -> $QUALITY"
+	if [[ "$IS_PLAY_FROM_FILE" -eq 0 ]]; then
+		if [[ "$GET_QUALITY" -eq 1 ]]; then
+			get_quality
+		else
+			log "QUALITY flag not set... using default -> $QUALITY"
+		fi
 	fi
 	if [[ "$VERBOSE" -eq 0 ]]; then
-		"$CMD" -q "$QUALITY" "$*"
+		"$CMD" -q "$QUALITY" -t "$theme" "$*"
 	else
-		"$CMD" -q "$QUALITY" -v "$*"
+		"$CMD" -q "$QUALITY" -t "$theme" -v "$*"
 	fi
 }
 
@@ -61,7 +66,7 @@ create_default_download() {
 
 get_quality() {
 	if [ "$IS_ROFI" -eq 1 ]; then
-		selection=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		selection=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 3 -selected-row 1 \
 			-theme-str 'listview {columns: 1;}' -p "Choose video quality:" \
 			-sep '|' <<< "$QUALITIES")
@@ -84,7 +89,7 @@ generate_span() {
 ########
 # Main #
 ########
-while getopts 'vhqcdf:-:' OPT; do
+while getopts 'vhqcdf:-:t:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -110,6 +115,28 @@ while getopts 'vhqcdf:-:' OPT; do
 			log "Play from file flag set... skipping main menu"
 			log "PLAY_PATH: $play_path"
 			;;
+		t)
+			theme="$OPTARG"
+			log "custom theme provided: $theme"
+			case "$theme" in
+				aniwrapper)
+					log "Default theme chosen... doing nothing"
+					theme=default
+					;;
+				dracula)
+					log "Chaning theme to dracula..."
+					ROFI_THEME=aniwrapper-dracula.rasi
+					;;
+				hidpi)
+					ROFI_THEME=aniwrapper-hidpi.rasi
+					;;
+				*)
+					log "$1 not a valid theme file.  Themes: [$THEMES]"
+					theme=default
+					;;
+			esac
+			CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
+			;;
 		*)
 			log "Invalid option"
 			exit 1
@@ -118,6 +145,7 @@ while getopts 'vhqcdf:-:' OPT; do
 done
 
 log "CONFIG DIR: $CFG_DIR"
+log "ROFI CFG: $CFG_FILE"
 
 # Check if command-line flag is set
 if [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 0 ]]; then
@@ -139,7 +167,7 @@ fi
 # Main
 # -------------------------------------------------------------------------------
 choice=$(echo "${options[@]}" | rofi -dmenu -only-match -sep '|' \
-	-config "$CFG_DIR/$CFG_FILE" -l 6 -i -p "Aniwrapper")
+	-config "$CFG_FILE" -l 6 -i -p "Aniwrapper")
 
 [ "$choice" == "$quit" ] && quit
 
@@ -158,7 +186,7 @@ case "$selection" in
 		# download
 		# ---------------------------------------------------------------------------
 		log "Download anime"
-		dl_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		dl_dir=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -p "Enter download dir:")
 		# if dl_dir is none set to current directory
 		[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
@@ -178,10 +206,11 @@ case "$selection" in
 		# play
 		# ---------------------------------------------------------------------------
 		log "Play from file selected"
+		IS_PLAY_FROM_FILE=1
 		msg="Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/"
 		msg="$(printf '%s\n%s\n' "$msg" "The program will begin searching for media files from the supplied directory")"
 		span=$(generate_span "$msg")
-		play_dir=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		play_dir=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -mesg "$span" -p "Enter path to starting directory:")
 		if [ -z "$play_dir" ]; then
 			create_default_download
@@ -192,24 +221,24 @@ case "$selection" in
 		;;
 	5.)
 		log "Sync history database"
-		username=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		username=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -p "Enter the username of the remote user:")
 		if [[ -z "$username" ]] || [[ "$username" == "" ]]; then
 			log "No username provided... exiting"
 			exit 1
 		fi
-		host=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		host=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -p "Enter the host for the remote machine (eg 192.168.1.99):")
 		if [[ -z "$host" ]] || [[ "$host" == "" ]]; then
 			log "No host provided... exiting"
 			exit 1
 		fi
-		port=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		port=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -p "Enter in the ssh port for remote machine or leave blank for default [22]:")
 		if [[ -z "$port" ]] || [[ "$port" == "" ]]; then
 			port=22
 		fi
-		keypath=$(rofi -dmenu -config "$CFG_DIR/$CFG_FILE" \
+		keypath=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -p "Enter path to private key (leave blank if not needed or if unsure):")
 
 		if [[ -z "$keypath" ]]; then

@@ -31,7 +31,7 @@ log "MPV DIR:" "$MPV_DIR"
 # executes aniwrapper setup
 # 1. create the aniwrapper directory in $XDG_CONFIG_HOME
 # 2. create history databases in $DIR
-# 3. move theme files to $DIR
+# 3. move theme files to $DIR/themes/
 # 4. move skip-intro.lua into mpv/scripts folder
 # 5. move the aniwrapper icon to $XDG_CONFIG_HOME/aniwrapper/ directory
 run_setup() {
@@ -44,7 +44,6 @@ run_setup() {
 	fi
 
 	if [[ ! -f "$DIR/$DB" ]]; then
-		# Create the DB if not exists
 		log "Creating history database..."
 		sqlite3 "$DIR/$DB" < sql/watch_history_tbl.sql
 		sqlite3 "$DIR/$DB" < sql/search_history_tbl.sql
@@ -56,10 +55,10 @@ run_setup() {
 		log "file_history table created"
 	fi
 
-	# Move theme files and skip-intro script to correct locations
-	if [[ ! -f "$DIR/aniwrapper.rasi" ]]; then
-		log "aniwrapper.rasi does not exist in filesystem...  Moving theme files"
-		cp themes/* "$DIR"/
+	if [[ ! -d "$DIR/themes" ]]; then
+		log "themes directory does not exist in filesystem... Creating and moving themes"
+		mkdir -p "$DIR/themes"
+		cp themes/* "$DIR/themes/"
 		log "Theme files moved..."
 	fi
 
@@ -77,7 +76,6 @@ run_setup() {
 		log "Creating icons directory"
 		mkdir -p "$DIR/icons"
 	fi
-	# install aniwrapper icons
 	cp .assets/icons/* "$DIR/icons/"
 	log "Installed icons in config directory..."
 }
