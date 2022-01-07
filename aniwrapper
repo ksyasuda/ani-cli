@@ -27,7 +27,7 @@ theme=default
 #############
 # Functions #
 #############
-log() {
+logger() {
 	if [[ "$VERBOSE" -eq 1 ]]; then
 		printf "%s\n" "$*"
 	fi
@@ -76,7 +76,7 @@ get_quality() {
 		printf "%s" "Enter quality [$QUALITIES]: "
 		read -r QUALITY
 	fi
-	log "selected quality: $QUALITY"
+	logger "selected quality: $QUALITY"
 }
 
 # generates a span mesg for rofi given
@@ -100,28 +100,28 @@ while getopts 'vhqcdf:-:t:T:' OPT; do
 			;;
 		q)
 			GET_QUALITY=1
-			log "Quality prompt enabled"
+			logger "Quality prompt enabled"
 			;;
 		c)
 			IS_ROFI=0
-			log "Command-line (ani-cli) mode set"
+			logger "Command-line (ani-cli) mode set"
 			;;
 		d)
 			IS_DOWNLOAD=1
-			log "Download flag set..."
+			logger "Download flag set..."
 			;;
 		f)
 			IS_PLAY_FROM_FILE=1
 			play_path="$OPTARG"
-			log "Play from file flag set... skipping main menu"
-			log "PLAY_PATH: $play_path"
+			logger "Play from file flag set... skipping main menu"
+			logger "PLAY_PATH: $play_path"
 			;;
 		t)
 			theme="$OPTARG"
-			log "custom theme provided: $theme"
+			logger "custom theme provided: $theme"
 			case "$theme" in
 				aniwrapper)
-					log "Default theme chosen... doing nothing"
+					logger "Default theme chosen... doing nothing"
 					theme=default
 					;;
 				dracula)
@@ -151,14 +151,14 @@ while getopts 'vhqcdf:-:t:T:' OPT; do
 			IS_CUSTOM_THEME=1
 			;;
 		*)
-			log "Invalid option"
+			logger "Invalid option"
 			exit 1
 			;;
 	esac
 done
 
-log "CONFIG DIR: $CFG_DIR"
-log "ROFI CFG: $CFG_FILE"
+logger "CONFIG DIR: $CFG_DIR"
+logger "ROFI CFG: $CFG_FILE"
 
 # Check if command-line flag is set
 if [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 0 ]]; then
@@ -167,7 +167,7 @@ if [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 0 ]]; then
 elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
 	printf "%s" "Enter download dir: "
 	read -r dl_dir
-	log "Download dir: $dl_dir"
+	logger "Download dir: $dl_dir"
 	[ -d "$dl_dir" ] && mkdir -p "$dl_dir" || dir "Error creating directory: $dl_dir"
 	run "-cd $dl_dir"
 	exit $?
@@ -194,14 +194,14 @@ case "$selection" in
 		# ---------------------------------------------------------------------------
 		# streaming
 		# ---------------------------------------------------------------------------
-		log "Streaming mode"
+		logger "Streaming mode"
 		run
 		;;
 	2.)
 		# ---------------------------------------------------------------------------
 		# download
 		# ---------------------------------------------------------------------------
-		log "Download anime"
+		logger "Download anime"
 		dl_dir=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -p "Enter download dir:")
 		# if dl_dir is none set to current directory
@@ -214,14 +214,14 @@ case "$selection" in
 		# ---------------------------------------------------------------------------
 		# continue
 		# ---------------------------------------------------------------------------
-		log "Continue watching"
+		logger "Continue watching"
 		run -H
 		;;
 	4.)
 		# ---------------------------------------------------------------------------
 		# play
 		# ---------------------------------------------------------------------------
-		log "Play from file selected"
+		logger "Play from file selected"
 		IS_PLAY_FROM_FILE=1
 		msg="Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/"
 		msg="$(printf '%s\n%s\n' "$msg" "The program will begin searching for media files from the supplied directory")"
@@ -236,17 +236,17 @@ case "$selection" in
 		fi
 		;;
 	5.)
-		log "Sync history database"
+		logger "Sync history database"
 		username=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -p "Enter the username of the remote user:")
 		if [[ -z "$username" ]] || [[ "$username" == "" ]]; then
-			log "No username provided... exiting"
+			logger "No username provided... exiting"
 			exit 1
 		fi
 		host=$(rofi -dmenu -config "$CFG_FILE" \
 			-l 1 -p "Enter the host for the remote machine (eg 192.168.1.99):")
 		if [[ -z "$host" ]] || [[ "$host" == "" ]]; then
-			log "No host provided... exiting"
+			logger "No host provided... exiting"
 			exit 1
 		fi
 		port=$(rofi -dmenu -config "$CFG_FILE" \
@@ -264,10 +264,10 @@ case "$selection" in
 		fi
 
 		if [[ "$?" -ne 0 ]]; then
-			log "Aniwrapper was unable to sync the databases..."
+			logger "Aniwrapper was unable to sync the databases..."
 			exit 1
 		else
-			log "Databases synced successfully"
+			logger "Databases synced successfully"
 			quit
 		fi
 		;;
@@ -278,7 +278,7 @@ case "$selection" in
 		quit
 		;;
 	*)
-		log "Invalid choice..."
+		logger "Invalid choice..."
 		exit 1
 		;;
 esac
