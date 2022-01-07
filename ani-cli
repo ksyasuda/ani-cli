@@ -177,7 +177,11 @@ check_db() {
 	#   $1: anime name: str
 	#   $2: either 'search' or 'watch' for which db to query
 	log "check_db $*" 1> /dev/stderr
-	if [[ "$1" == "file" ]]; then
+	if [[ "$1" == "directory" ]]; then
+		stmt="SELECT DISTINCT COUNT(*) \
+        FROM file_history \
+        WHERE directory = '$2';"
+	elif [[ "$1" == "file" ]]; then
 		stmt="SELECT DISTINCT COUNT(*) \
         FROM file_history \
         WHERE directory = '$2' \
@@ -362,16 +366,25 @@ generate_inputlist() {
 get_file_history_as_string() {
 	while read -r directory; do
 		continue
-	done <<< $(run_stmt "SELECT DISTINCT DIRECTORY FROM FILE_HISTORY;")
+	done <<< "$(run_stmt 'SELECT DISTINCT DIRECTORY FROM FILE_HISTORY;')"
 }
 
 generate_file_watchedlist() {
 	search_dir="$1"
 	watched=""
 	cnt=0
+	while read -r directory; do
+		# sometimes direetory is empty string due to find parsing
+		[ -z "$directory" ] && continue
+		if ! check_db "directory" "$search_dir/$directory"; then
+			log "$search_dir/$directory opened before... adding $cnt to list" 1> /dev/stderr
+			[ "$watched" = "" ] && watched="$cnt" || watched="$watched, $cnt"
+		fi
+		((++cnt))
+	done <<< "$(find "$search_dir" -maxdepth 1 -type d | sed -E "s|$search_dir/||" | tail -n +2 | sort -V)"
 	while read -r filename; do
 		if ! check_db "file" "$search_dir" "$filename"; then
-			log "$filename watched before... adding to list" 1> /dev/stderr
+			log "$filename watched before... adding $cnt to list" 1> /dev/stderr
 			[ "$watched" = "" ] && watched="$cnt" || watched="$watched, $cnt"
 		fi
 		((++cnt))
@@ -396,6 +409,7 @@ find_media() {
 	span=$(generate_span "Current directory: $inp")
 	inputlist=$(generate_inputlist "$inp")
 	watched_files=$(generate_file_watchedlist "$inp")
+	log "watched files -> $watched_files"
 	selection=$(rofi -dmenu -only-match -config "$ROFI_CFG" \
 		-l 13 -i -sep '|' -mesg "$span" -a "$watched_files" \
 		-p "Enter selection" <<< "${inputlist[@]}")
@@ -425,7 +439,7 @@ get_search_query() {
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
 	span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
 	if [ -z "$*" ] && [ "$is_rofi" -eq 1 ]; then
-		query=$(rofi -dmenu -l 12 -p "Search Anime:" \
+		query=$(rofi -dmenu -l 15 -p "Search Anime:" \
 			-mesg "$span" \
 			-config "$ROFI_CFG" <<< "${hist[@]}")
 		# Remove the id from the query
