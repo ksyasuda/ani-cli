@@ -182,7 +182,7 @@ check_db() {
 check_date() {
 	source_dt="$1"
 	target_dt="$2"
-	if [[ "$i" < "$j" ]] || [[ "$i" == "$j" ]]; then
+	if [[ "$source_dt" < "$target_dt" ]] || [[ "$source_dt" == "$target_dt" ]]; then
 		return 1
 	else
 		return 0
