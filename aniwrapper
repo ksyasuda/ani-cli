@@ -90,7 +90,7 @@ generate_span() {
 ########
 # Main #
 ########
-while getopts 'vhqcdf:-:t:T:' OPT; do
+while getopts 'vhqcdf:-:t:T:CQ:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -144,6 +144,17 @@ while getopts 'vhqcdf:-:t:T:' OPT; do
 					;;
 			esac
 			CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
+			;;
+		C)
+			logger "Connecting to history database -> $CFG_DIR/history.sqlite3"
+			sqlite3 "$CFG_DIR/history.sqlite3"
+			exit $?
+			;;
+		Q)
+			query="$OPTARG"
+			logger "DATABASE QUERY: $query"
+			sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
+			exit $?
 			;;
 		T)
 			CFG_FILE="$OPTARG"
