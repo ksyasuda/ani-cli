@@ -32,7 +32,7 @@
     border-radius: 6;
     border-color: @bordercolor;
     padding:          5;
-	width: 75%;
+    width: 75%;
 }
 #mainbox {
     border:  0;
@@ -53,8 +53,8 @@
     spacing:      2px ;
     scrollbar:    false;
     padding:      2px 0px 0px ;
-	columns: 	  2;
-	lines:		  15;
+    columns: 	  2;
+    lines:		  15;
 }
 #element {
     border:  0;
@@ -69,7 +69,7 @@
     text-color:       @urgent-foreground;
 }
 #element.normal.active {
-    background-color: @active-background;
+    background-color: @drac-cya;
     text-color:       @background;
 }
 #element.selected.normal {
@@ -81,7 +81,7 @@
     text-color:       @foreground;
 }
 #element.selected.active {
-    background-color: @selected-active-background;
+    background-color: @active-background;
     text-color:       @foreground;
 }
 #element.alternate.normal {
@@ -93,8 +93,8 @@
     text-color:       @foreground;
 }
 #element.alternate.active {
-    background-color: @active-background;
-    text-color:       @foreground;
+    background-color: @drac-cya;
+    text-color:       @background;
 }
 #scrollbar {
     width:        2px ;
