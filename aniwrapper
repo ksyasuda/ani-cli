@@ -12,12 +12,13 @@ ROFI_THEME="aniwrapper.rasi"
 CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
 QUALITIES="1. high|2. normal (default)|3. low"
 QUALITY=normal
-THEMES="aniwrapper (default)|dracula|hidpi"
+THEMES="aniwrapper (default)|dracula|fancy|flamingo|material|onedark"
 GET_QUALITY=0
 VERBOSE=0
 IS_ROFI=1
 IS_DOWNLOAD=0
 IS_PLAY_FROM_FILE=0
+IS_CUSTOM_THEME=0
 
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$quit"
@@ -43,17 +44,17 @@ quit() {
 }
 
 run() {
-	if [[ "$IS_PLAY_FROM_FILE" -eq 0 ]]; then
-		if [[ "$GET_QUALITY" -eq 1 ]]; then
-			get_quality
-		else
-			log "QUALITY flag not set... using default -> $QUALITY"
-		fi
+	if [[ "$IS_PLAY_FROM_FILE" -eq 0 ]] && [[ "$GET_QUALITY" -eq 1 ]]; then
+		get_quality
 	fi
-	if [[ "$VERBOSE" -eq 0 ]]; then
-		"$CMD" -q "$QUALITY" -t "$theme" "$*"
+	if [[ "$IS_CUSTOM_THEME" -eq 1 ]] && [[ "$VERBOSE" -eq 0 ]]; then
+		"$CMD" -q "$QUALITY" -T "$CFG_FILE" "$@"
+	elif [[ "$IS_CUSTOM_THEME" -eq 1 ]] && [[ "$VERBOSE" -eq 1 ]]; then
+		"$CMD" -vq "$QUALITY" -T "$CFG_FILE" "$@"
+	elif [[ "$VERBOSE" -eq 0 ]]; then
+		"$CMD" -q "$QUALITY" -t "$theme" "$@"
 	else
-		"$CMD" -q "$QUALITY" -t "$theme" -v "$*"
+		"$CMD" -vq "$QUALITY" -t "$theme" "$@"
 	fi
 }
 
@@ -89,7 +90,7 @@ generate_span() {
 ########
 # Main #
 ########
-while getopts 'vhqcdf:-:t:' OPT; do
+while getopts 'vhqcdf:-:t:T:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -124,18 +125,30 @@ while getopts 'vhqcdf:-:t:' OPT; do
 					theme=default
 					;;
 				dracula)
-					log "Chaning theme to dracula..."
 					ROFI_THEME=aniwrapper-dracula.rasi
 					;;
-				hidpi)
-					ROFI_THEME=aniwrapper-hidpi.rasi
+				fancy)
+					ROFI_THEME=aniwrapper-fancy.rasi
+					;;
+				flamingo)
+					ROFI_THEME=aniwrapper-flamingo.rasi
+					;;
+				material)
+					ROFI_THEME=aniwrapper-material.rasi
+					;;
+				onedark)
+					ROFI_THEME=aniwrapper-onedark.rasi
 					;;
 				*)
-					log "$1 not a valid theme file.  Themes: [$THEMES]"
-					theme=default
+					seppuku "$theme not a valid theme file.  Themes: [$THEMES]"
 					;;
 			esac
 			CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
+			;;
+		T)
+			CFG_FILE="$OPTARG"
+			[ ! -f "$CFG_FILE" ] && seppuku "config file $CFG_FILE does not exist"
+			IS_CUSTOM_THEME=1
 			;;
 		*)
 			log "Invalid option"
@@ -158,8 +171,11 @@ elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
 	[ -d "$dl_dir" ] && mkdir -p "$dl_dir" || dir "Error creating directory: $dl_dir"
 	run "-cd $dl_dir"
 	exit $?
-elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]]; then
-	run -f"$play_path"
+elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 1 ]]; then
+	run "-f$play_path" -T "$CFG_FILE"
+	exit $?
+elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 0 ]]; then
+	run "-f$play_path"
 	exit $?
 fi
 

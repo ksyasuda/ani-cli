@@ -10,7 +10,7 @@ MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 ROFI_THEME="aniwrapper.rasi"
 ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
 PLAYER_CMD="mpv"
-THEMES="aniwrapper (default)|dracula|hidpi"
+THEMES="aniwrapper (default)|dracula|fancy|flamingo|material|onedark"
 
 # dependencies: grep, sed, curl, video_player, rofi, sqlite3
 # video_player ( needs to be able to play urls )
@@ -737,7 +737,7 @@ is_rofi=1
 is_download=0
 download_dir="."
 half_ep=0
-while getopts 'hd:Hsvq:c-:f:t:' OPT; do
+while getopts 'hd:Hsvq:c-:f:t:T:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -785,23 +785,36 @@ while getopts 'hd:Hsvq:c-:f:t:' OPT; do
 				aniwrapper)
 					ROFI_THEME=aniwrapper.rasi
 					;;
-				dracula)
-					ROFI_THEME=aniwrapper-dracula.rasi
-					;;
-				hidpi)
-					ROFI_THEME=aniwrapper-hidpi.rasi
-					;;
 				default)
 					ROFI_THEME=aniwrapper.rasi
 					;;
+				dracula)
+					ROFI_THEME=aniwrapper-dracula.rasi
+					;;
+				fancy)
+					ROFI_THEME=aniwrapper-fancy.rasi
+					;;
+				flamingo)
+					ROFI_THEME=aniwrapper-flamingo.rasi
+					;;
+				material)
+					ROFI_THEME=aniwrapper-material.rasi
+					;;
+				onedark)
+					ROFI_THEME=aniwrapper-onedark.rasi
+					;;
 				*)
-					log "$1 not a valid theme file.  Themes: [$THEMES]"
-					ROFI_THEME=aniwrapper.rasi
+					die "$theme not a valid theme file.  Themes: [$THEMES]"
 					;;
 			esac
 			log "Setting theme for ani-cli -> $ROFI_THEME"
 			ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
 			log "ROFI_CFG: $ROFI_CFG"
+			;;
+		T)
+			ROFI_CFG="$OPTARG"
+			[ ! -f "$ROFI_CFG" ] && die "$ROFI_CFG does not exist"
+			log "CUSTOM ROFI_CFG: $ROFI_CFG"
 			;;
 		*)
 			printf "%s\n" "Invalid option"

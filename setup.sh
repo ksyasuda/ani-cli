@@ -49,7 +49,7 @@ run_setup() {
 		sqlite3 "$DIR/$DB" < sql/search_history_tbl.sql
 		sqlite3 "$DIR/$DB" < sql/file_history.sql
 		log "History database created..."
-	elif ! sqlite3 -noheader -batch "$DIR/$DB" ".tables" | grep 'file_history'; then
+	elif ! sqlite3 -noheader -batch "$DIR/$DB" ".tables" | grep -q 'file_history'; then
 		log "file_history table not found in database... creating table"
 		sqlite3 "$DIR/$DB" < sql/file_history.sql
 		log "file_history table created"
