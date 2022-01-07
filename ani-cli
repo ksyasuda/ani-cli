@@ -743,7 +743,7 @@ is_rofi=1
 is_download=0
 download_dir="."
 half_ep=0
-while getopts 'hd:Hsvq:c-:f:t:T:' OPT; do
+while getopts 'hd:Hsvq:c-:f:t:T:CQ:' OPT; do
 	case "$OPT" in
 		h)
 			help_text
@@ -821,6 +821,17 @@ while getopts 'hd:Hsvq:c-:f:t:T:' OPT; do
 			ROFI_CFG="$OPTARG"
 			[ ! -f "$ROFI_CFG" ] && die "$ROFI_CFG does not exist"
 			logger "CUSTOM ROFI_CFG: $ROFI_CFG"
+			;;
+		C)
+			logger "Connecting to history database -> $CFG_DIR/history.sqlite3"
+			sqlite3 "$CFG_DIR/history.sqlite3"
+			exit $?
+			;;
+		Q)
+			query="$OPTARG"
+			logger "DATABASE QUERY: $query"
+			sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
+			exit $?
 			;;
 		*)
 			printf "%s\n" "Invalid option"
