@@ -291,10 +291,10 @@ sync_watch_history() {
 		# anime_name=$(awk -F '|' '{print $2}' <<<"$line")
 		anime_name="${line/ //}"
 		log "ANIME: $anime_name"
-		episodes=$(sqlite3 -line -list -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
+		episodes=$(sqlite3 -list -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
 		# for each episode of $anime_name on the remote machine, check local
 		while read -r ep; do
-			log "ROW: $ep"
+			# log "ROW: $ep"
 			episode_num=$(awk -F '|' '{print $1}' <<< "$ep")
 			check_db "$anime_name" "$episode_num"
 			num=$?
@@ -480,6 +480,8 @@ anime_selection() {
 			$search_results
 		EOF
 
+		menu+="$count. Quit"
+
 		searched=""
 		cnt=0
 		# Get the comma separated list of indexes of anime that has been searched before
@@ -507,6 +509,10 @@ anime_selection() {
 				-l 12 -i -p "Enter selection:" \
 				-mesg "$msg" -only-match)
 		[ -z "$user_input" ] && return 1
+		if [ $(awk '{ print $NF }' <<< "$user_input") = "Quit" ]; then
+			log "QUITTING"
+			return 1
+		fi
 
 		choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
 		# Remove period after number
