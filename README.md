@@ -186,6 +186,12 @@ aniwrapper -q
 # Enable verbose logging
 aniwrapper -v
 
+# Connect to history database
+aniwrapper -C
+
+# Query the history database
+aniwrapper -Q <query>
+
 # Choose rofi theme from presets
 aniwrapper -t [aniwrapper (default)|dracula|fancy|flamingo|material|onedark]
 
@@ -200,10 +206,6 @@ aniwrapper -c
 
 # Download anime in command-line mode
 aniwrapper -d
-
-# All flags can be used in command-line mode as well (except -f)
-# ex. The following command will launch aniwrapper in command-line download mode with quality selection
-aniwrapper -cqd
 ```
 
 ### Option 1: Streaming
