@@ -406,9 +406,10 @@ find_media() {
 	fi
 
 	span=$(generate_span "Current directory: $inp")
-	inputlist=$(generate_inputlist "$inp")
-	watched_files=$(generate_file_watchedlist "$inp")
-	logger "watched files -> $watched_files"
+	# run in parallel in background?
+	inputlist=$(generate_inputlist "$inp" &)
+	watched_files=$(generate_file_watchedlist "$inp" &)
+	wait
 	selection=$(rofi -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
 		-l 12 -i -sep '|' -mesg "$span" -a "$watched_files" \
 		-p "Enter selection" <<< "${inputlist[@]}")

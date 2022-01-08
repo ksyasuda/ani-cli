@@ -43,11 +43,13 @@ run_setup() {
 		log "Directory created"
 	fi
 
-	log "CREATING/UPDATING HISTORY DATABASE TABLES"
-	sqlite3 "$DIR/$DB" < sql/search_history_tbl.sql
-	sqlite3 "$DIR/$DB" < sql/watch_history_tbl.sql
-	sqlite3 "$DIR/$DB" < sql/file_history.sql
-	log "FINISHED CREATING/UPDATING THE TABLES"
+	if [[ ! -f "$DIR/$DB" ]]; then
+		log "CREATING HISTORY DATABASE"
+		sqlite3 "$DIR/$DB" < sql/search_history_tbl.sql
+		sqlite3 "$DIR/$DB" < sql/watch_history_tbl.sql
+		sqlite3 "$DIR/$DB" < sql/file_history.sql
+		log "FINISHED CREATING DB"
+	fi
 
 	if [[ ! -d "$DIR/themes" ]]; then
 		log "themes directory does not exist in filesystem... Creating and moving themes"

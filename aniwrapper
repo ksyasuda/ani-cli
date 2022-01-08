@@ -48,7 +48,6 @@ Options:
      -f  <path_to_directory> (no trailing slash) specify starting directory for play for file mode
      -Q  <query> query the history database
 	"
-	exit 0
 }
 
 logger() {
@@ -109,6 +108,7 @@ parse_args() {
 		case "$OPT" in
 			h)
 				help_text
+				exit 0
 				;;
 			v)
 				VERBOSE=1
@@ -177,7 +177,7 @@ parse_args() {
 				IS_CUSTOM_THEME=1
 				;;
 			*)
-				logger "Invalid option"
+				help_text
 				exit 1
 				;;
 		esac
@@ -286,8 +286,7 @@ main() {
 			quit
 			;;
 		*)
-			logger "Invalid choice..."
-			exit 1
+			help_text
 			;;
 	esac
 }
