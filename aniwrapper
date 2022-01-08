@@ -27,6 +27,30 @@ theme=default
 #############
 # Functions #
 #############
+help_text() {
+	while IFS= read -r line; do
+		printf "%s\n" "$line"
+	done <<< "
+Usage:
+    aniwrapper [-cdhvq] [-t <theme> or -T <config_path>]
+    aniwrapper [-cv] [-t <theme> or -T <config_path>] -f <path_to_directory>
+    aniwrapper -Q <query>
+    aniwrapper -C
+Options:
+     -h  show this help text
+     -q  enable quality selection
+     -c  enable command-line mode (rofi disabled)
+     -d  download episode in command-line mode
+     -C  connect to history database
+
+     -t  <aniwrapper (default)|dracula|fancy|flamingo|material|onedark> change rofi theme
+     -T  <config_path> specify custom rofi theme
+     -f  <path_to_directory> (no trailing slash) specify starting directory for play for file mode
+     -Q  <query> query the history database
+	"
+	exit 0
+}
+
 logger() {
 	if [[ "$VERBOSE" -eq 1 ]]; then
 		printf "%s\n" "$*"
@@ -58,13 +82,6 @@ run() {
 	fi
 }
 
-create_default_download() {
-	# make sure download directory exists
-	if [ ! -d "$DEFAULT_DOWNLOAD" ]; then
-		mkdir -p "$DEFAULT_DOWNLOAD"
-	fi
-}
-
 get_quality() {
 	if [ "$IS_ROFI" -eq 1 ]; then
 		selection=$(rofi -dmenu -config "$CFG_FILE" \
@@ -87,209 +104,196 @@ generate_span() {
 	printf "%s\n" "$span"
 }
 
+parse_args() {
+	while getopts 'vhqcdf:-:t:T:CQ:' OPT; do
+		case "$OPT" in
+			h)
+				help_text
+				;;
+			v)
+				VERBOSE=1
+				;;
+			q)
+				GET_QUALITY=1
+				logger "Quality prompt enabled"
+				;;
+			c)
+				IS_ROFI=0
+				logger "Command-line (ani-cli) mode set"
+				;;
+			d)
+				IS_DOWNLOAD=1
+				logger "Download flag set..."
+				;;
+			f)
+				IS_PLAY_FROM_FILE=1
+				play_path="$OPTARG"
+				logger "Play from file flag set... skipping main menu"
+				logger "PLAY_PATH: $play_path"
+				;;
+			t)
+				theme="$OPTARG"
+				logger "custom theme provided: $theme"
+				case "$theme" in
+					aniwrapper)
+						logger "Default theme chosen... doing nothing"
+						theme=default
+						;;
+					dracula)
+						ROFI_THEME=aniwrapper-dracula.rasi
+						;;
+					fancy)
+						ROFI_THEME=aniwrapper-fancy.rasi
+						;;
+					flamingo)
+						ROFI_THEME=aniwrapper-flamingo.rasi
+						;;
+					material)
+						ROFI_THEME=aniwrapper-material.rasi
+						;;
+					onedark)
+						ROFI_THEME=aniwrapper-onedark.rasi
+						;;
+					*)
+						seppuku "$theme not a valid theme file.  Themes: [$THEMES]"
+						;;
+				esac
+				CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
+				;;
+			C)
+				logger "Connecting to history database -> $CFG_DIR/history.sqlite3"
+				sqlite3 "$CFG_DIR/history.sqlite3"
+				exit $?
+				;;
+			Q)
+				query="$OPTARG"
+				logger "DATABASE QUERY: $query"
+				sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
+				exit $?
+				;;
+			T)
+				CFG_FILE="$OPTARG"
+				[ ! -f "$CFG_FILE" ] && seppuku "config file $CFG_FILE does not exist"
+				IS_CUSTOM_THEME=1
+				;;
+			*)
+				logger "Invalid option"
+				exit 1
+				;;
+		esac
+	done
+
+}
+
+check_flags() {
+	# Check if command-line flag is set
+	if [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 0 ]]; then
+		run -c
+		exit $?
+	elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
+		printf "%s" "Enter download dir: "
+		read -r dl_dir
+		logger "Download dir: $dl_dir"
+		[ -d "$dl_dir" ] && mkdir -p "$dl_dir" || dir "Error creating directory: $dl_dir"
+		run "-cd $dl_dir"
+		exit $?
+	elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 1 ]]; then
+		run "-f$play_path" -T "$CFG_FILE"
+		exit $?
+	elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 0 ]]; then
+		run "-f$play_path"
+		exit $?
+	fi
+}
+
 ########
 # Main #
 ########
-while getopts 'vhqcdf:-:t:T:CQ:' OPT; do
-	case "$OPT" in
-		h)
-			help_text
+main() {
+	choice=$(echo "${options[@]}" | rofi -dmenu -only-match -sep '|' \
+		-config "$CFG_FILE" -l 6 -i -p "Aniwrapper")
+
+	[ "$choice" == "$quit" ] && quit
+
+	selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
+
+	case "$selection" in
+		1.)
+			# ---------------------------------------------------------------------------
+			# streaming
+			# ---------------------------------------------------------------------------
+			logger "Streaming mode"
+			run
 			;;
-		v)
-			VERBOSE=1
+		2.)
+			# ---------------------------------------------------------------------------
+			# download
+			# ---------------------------------------------------------------------------
+			logger "Download anime"
+			dl_dir=$(rofi -dmenu -config "$CFG_FILE" \
+				-l 1 -p "Enter download dir:")
+			# if dl_dir is none set to current directory
+			[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
+			run -d "$dl_dir"
 			;;
-		q)
-			GET_QUALITY=1
-			logger "Quality prompt enabled"
+		3.)
+
+			# ---------------------------------------------------------------------------
+			# continue
+			# ---------------------------------------------------------------------------
+			logger "Continue watching"
+			run -H
 			;;
-		c)
-			IS_ROFI=0
-			logger "Command-line (ani-cli) mode set"
-			;;
-		d)
-			IS_DOWNLOAD=1
-			logger "Download flag set..."
-			;;
-		f)
+		4.)
+			# ---------------------------------------------------------------------------
+			# play
+			# ---------------------------------------------------------------------------
+			logger "Play from file selected"
 			IS_PLAY_FROM_FILE=1
-			play_path="$OPTARG"
-			logger "Play from file flag set... skipping main menu"
-			logger "PLAY_PATH: $play_path"
-			;;
-		t)
-			theme="$OPTARG"
-			logger "custom theme provided: $theme"
-			case "$theme" in
-				aniwrapper)
-					logger "Default theme chosen... doing nothing"
-					theme=default
-					;;
-				dracula)
-					ROFI_THEME=aniwrapper-dracula.rasi
-					;;
-				fancy)
-					ROFI_THEME=aniwrapper-fancy.rasi
-					;;
-				flamingo)
-					ROFI_THEME=aniwrapper-flamingo.rasi
-					;;
-				material)
-					ROFI_THEME=aniwrapper-material.rasi
-					;;
-				onedark)
-					ROFI_THEME=aniwrapper-onedark.rasi
-					;;
-				*)
-					seppuku "$theme not a valid theme file.  Themes: [$THEMES]"
-					;;
-			esac
-			CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
-			;;
-		C)
-			logger "Connecting to history database -> $CFG_DIR/history.sqlite3"
-			sqlite3 "$CFG_DIR/history.sqlite3"
+			span=$(printf '%s\n%s\n' "$(generate_span "Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
+			play_dir=$(rofi -dmenu -config "$CFG_FILE" \
+				-l 1 -mesg "$span" -p "Enter path to starting directory:")
+			if [ -z "$play_dir" ]; then
+				mkdir -p "$DEFAULT_DOWNLOAD" || seppuku "error creating default download directory"
+				run -f"$DEFAULT_DOWNLOAD"
+			else
+				run -f"$play_dir"
+			fi
 			exit $?
 			;;
-		Q)
-			query="$OPTARG"
-			logger "DATABASE QUERY: $query"
-			sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
-			exit $?
+		5.)
+			logger "Sync history database"
+			roficmd="rofi -dmenu -config $CFG_FILE -l 0 -p"
+			username=$($roficmd "Enter the username of the remote user:")
+			[ -z "$username" ] && seppuku "No username provided... exiting"
+			host=$($roficmd "Enter the host for the remote machine (eg 192.168.1.99):")
+			[ -z "$host" ] && seppuku "No host provided... exiting"
+			port=$($roficmd "Enter in the ssh port for remote machine or leave blank for default [22]:")
+			[ -z "$port" ] && port=22
+			keypath=$($roficmd "Enter path to private key (leave blank if not needed or if unsure):")
+			if ! printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | run -s; then
+				logger "Aniwrapper was unable to sync the databases..."
+				exit 1
+			else
+				logger "Databases synced successfully"
+				quit
+			fi
 			;;
-		T)
-			CFG_FILE="$OPTARG"
-			[ ! -f "$CFG_FILE" ] && seppuku "config file $CFG_FILE does not exist"
-			IS_CUSTOM_THEME=1
+		6.)
+			# ---------------------------------------------------------------------------
+			# get out
+			# ---------------------------------------------------------------------------
+			quit
 			;;
 		*)
-			logger "Invalid option"
+			logger "Invalid choice..."
 			exit 1
 			;;
 	esac
-done
+}
 
+parse_args "$@"
 logger "CONFIG DIR: $CFG_DIR"
 logger "ROFI CFG: $CFG_FILE"
-
-# Check if command-line flag is set
-if [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 0 ]]; then
-	run -c
-	exit $?
-elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
-	printf "%s" "Enter download dir: "
-	read -r dl_dir
-	logger "Download dir: $dl_dir"
-	[ -d "$dl_dir" ] && mkdir -p "$dl_dir" || dir "Error creating directory: $dl_dir"
-	run "-cd $dl_dir"
-	exit $?
-elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 1 ]]; then
-	run "-f$play_path" -T "$CFG_FILE"
-	exit $?
-elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 0 ]]; then
-	run "-f$play_path"
-	exit $?
-fi
-
-# -------------------------------------------------------------------------------
-# Main
-# -------------------------------------------------------------------------------
-choice=$(echo "${options[@]}" | rofi -dmenu -only-match -sep '|' \
-	-config "$CFG_FILE" -l 6 -i -p "Aniwrapper")
-
-[ "$choice" == "$quit" ] && quit
-
-selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
-
-case "$selection" in
-	1.)
-		# ---------------------------------------------------------------------------
-		# streaming
-		# ---------------------------------------------------------------------------
-		logger "Streaming mode"
-		run
-		;;
-	2.)
-		# ---------------------------------------------------------------------------
-		# download
-		# ---------------------------------------------------------------------------
-		logger "Download anime"
-		dl_dir=$(rofi -dmenu -config "$CFG_FILE" \
-			-l 1 -p "Enter download dir:")
-		# if dl_dir is none set to current directory
-		[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
-		create_default_download
-		run -d "$dl_dir"
-		;;
-	3.)
-
-		# ---------------------------------------------------------------------------
-		# continue
-		# ---------------------------------------------------------------------------
-		logger "Continue watching"
-		run -H
-		;;
-	4.)
-		# ---------------------------------------------------------------------------
-		# play
-		# ---------------------------------------------------------------------------
-		logger "Play from file selected"
-		IS_PLAY_FROM_FILE=1
-		msg="Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/"
-		msg="$(printf '%s\n%s\n' "$msg" "The program will begin searching for media files from the supplied directory")"
-		span=$(generate_span "$msg")
-		play_dir=$(rofi -dmenu -config "$CFG_FILE" \
-			-l 1 -mesg "$span" -p "Enter path to starting directory:")
-		if [ -z "$play_dir" ]; then
-			create_default_download
-			run -f"$DEFAULT_DOWNLOAD"
-		else
-			run -f"$play_dir"
-		fi
-		;;
-	5.)
-		logger "Sync history database"
-		username=$(rofi -dmenu -config "$CFG_FILE" \
-			-l 1 -p "Enter the username of the remote user:")
-		if [[ -z "$username" ]] || [[ "$username" == "" ]]; then
-			logger "No username provided... exiting"
-			exit 1
-		fi
-		host=$(rofi -dmenu -config "$CFG_FILE" \
-			-l 1 -p "Enter the host for the remote machine (eg 192.168.1.99):")
-		if [[ -z "$host" ]] || [[ "$host" == "" ]]; then
-			logger "No host provided... exiting"
-			exit 1
-		fi
-		port=$(rofi -dmenu -config "$CFG_FILE" \
-			-l 1 -p "Enter in the ssh port for remote machine or leave blank for default [22]:")
-		if [[ -z "$port" ]] || [[ "$port" == "" ]]; then
-			port=22
-		fi
-		keypath=$(rofi -dmenu -config "$CFG_FILE" \
-			-l 1 -p "Enter path to private key (leave blank if not needed or if unsure):")
-
-		if [[ -z "$keypath" ]]; then
-			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "" | run -s
-		else
-			printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | run -s
-		fi
-
-		if [[ "$?" -ne 0 ]]; then
-			logger "Aniwrapper was unable to sync the databases..."
-			exit 1
-		else
-			logger "Databases synced successfully"
-			quit
-		fi
-		;;
-	6.)
-		# ---------------------------------------------------------------------------
-		# get out
-		# ---------------------------------------------------------------------------
-		quit
-		;;
-	*)
-		logger "Invalid choice..."
-		exit 1
-		;;
-esac
+check_flags
+main
