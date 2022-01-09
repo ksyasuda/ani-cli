@@ -183,8 +183,8 @@ check_db() {
 			  AND episode_number = '$2';"
 	fi
 	res=$(run_stmt "$stmt")
+	return $res
 	# logger "END check_db... Result -> $res"
-	return "$res"
 }
 
 # return true (0) if $source_dt > $target_dt
@@ -202,7 +202,11 @@ check_date() {
 update_date() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	stmt=""
-	if [[ "$1" == "file" ]]; then
+	if [[ "$1" == "directory" ]]; then
+		logger "UPDATING FILE_HISTORY: directory='$2', filename='DIRECTORY', search_date='$datetime'"
+		stmt="UPDATE file_history SET watch_date = '$datetime' \
+			WHERE directory = '$2' and filename = '$3';"
+	elif [[ "$1" == "file" ]]; then
 		logger "UPDATING FILE_HISTORY: directory='$2', filename='$3', search_date='$datetime'"
 		stmt="UPDATE file_history SET watch_date = '$datetime' \
 			WHERE directory = '$2' and filename = '$3';"
@@ -246,7 +250,10 @@ insert_history() {
 		res=$?
 	else
 		logger "Row not found in DB... inserting"
-		if [[ "$1" == "file" ]]; then
+		if [[ "$1" == "directory" ]]; then
+			stmt="INSERT INTO file_history(directory, filename, watch_date) \
+                VALUES('$2', 'DIRECTORY', '$datetime');"
+		elif [[ "$1" == "file" ]]; then
 			stmt="INSERT INTO file_history(directory, filename, watch_date) \
         VALUES('$2', '$3', '$datetime');"
 		elif [[ "$2" == "search" ]]; then
@@ -319,7 +326,7 @@ play_file() {
 	logger "Checking if file is playable"
 	if [[ "$1" =~ ($playable)$ ]]; then
 		filename=$(grep -oE '[^/]*$' <<< "$1")
-		directory=$(sed -E "s/\/$filename//" <<< "$1")
+		directory=$(sed -E "s/(\/[^\/]+$)//" <<< "$1")
 		insert_history "file" "$directory" "$filename" &
 		if [[ "$1" =~ .mp3 ]]; then
 			logger ".mp3 file found... playing without video"
@@ -380,9 +387,8 @@ find_media() {
 	get_directory_data "$inp"
 	[ -z "$inputlist" ] && return 1
 
-	span=$(generate_span "Current directory: $inp")
 	selection=$(rofi -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
-		-l 15 -i -sep '|' -mesg "$span" -a "$watched" \
+		-l 15 -i -sep '|' -mesg "$(generate_span "Current directory: $inp")" -a "$watched" \
 		-p "Enter selection" <<< "$inputlist")
 
 	case "$selection" in
@@ -400,6 +406,7 @@ find_media() {
 			;;
 		*)
 			if [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
+				insert_history "directory" "$inp/$selection" &
 				if [ "$inp" = "/" ]; then
 					find_media "$selection"
 				else
@@ -892,6 +899,7 @@ case $scrape in
 	file)
 		logger "STARTING DIR: $play_dir"
 		[ ! -d "$play_dir" ] && die "$play_dir does not exist"
+		insert_history "directory" "$play_dir" &
 		video_path=$(find_media "$play_dir")
 		retcode="$?"
 		if [ "$retcode" -ne 0 ]; then
