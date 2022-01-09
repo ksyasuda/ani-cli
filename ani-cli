@@ -10,7 +10,7 @@ MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 ROFI_THEME="aniwrapper.rasi"
 ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
 PLAYER_CMD="mpv"
-THEMES="aniwrapper (default)|dracula|fancy|flamingo|material|onedark"
+THEMES="aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark"
 
 # dependencies: grep, sed, curl, video_player, rofi, sqlite3
 # video_player ( needs to be able to play urls )
@@ -318,21 +318,16 @@ sync_watch_history() {
 play_file() {
 	logger "Checking if file is playable"
 	if [[ "$1" =~ ($playable)$ ]]; then
-		logger "File is playable..."
 		filename=$(grep -oE '[^/]*$' <<< "$1")
 		directory=$(sed -E "s/\/$filename//" <<< "$1")
-		logger "FILENAME: $filename"
-		logger "DIRECTORY: $directory"
 		insert_history "file" "$directory" "$filename" &
 		if [[ "$1" =~ .mp3 ]]; then
 			logger ".mp3 file found... playing without video"
-			logger "MPV COMMAND: $PLAYER_CMD --no-video $1"
 			notification "Playing $1"
 			$PLAYER_CMD --no-video "$1"
 		else
 			notification "Playing $1"
-			logger "MPV COMMAND: $PLAYER_CMD $1"
-			$PLAYER_CMD "$1"
+			$PLAYER_CMD "$1" > /dev/null 2>&1 &
 		fi
 		return $?
 	else
@@ -340,41 +335,15 @@ play_file() {
 	fi
 }
 
-# attempt to generate list of valid files and directories
-generate_inputlist() {
-	# start at 2nd line, because first line out output from find is $1
-	outstr=""
-	while read -r directory; do
-		if [[ "${directory// /}" == "" ]]; then
-			continue
-		fi
-		[ "$outstr" = "" ] && outstr="$directory" || outstr="$outstr|$directory"
-	done <<< "$(find "$1" -maxdepth 1 -type d | sed "s|$1/||" | tail -n +2 | sort -V)"
-	# logger "DIRS: $outstr" 1> /dev/stderr
-	while read -r filename; do
-		if [[ "${filename// /}" == "" ]]; then
-			continue
-		fi
-		[ "$outstr" = "" ] && outstr="$filename" || outstr="$outstr|$filename"
-	done <<< "$(find "$1" -maxdepth 1 -type f | sed "s|$1/||" | grep -E "$playable$" | sort -V)"
-	# logger "DIRS + FILES: $outstr" 1> /dev/stderr
-	outstr="$outstr|Back|Quit"
-	printf "%s\n" "$outstr"
-}
-
-get_file_history_as_string() {
-	while read -r directory; do
-		continue
-	done <<< "$(run_stmt 'SELECT DISTINCT DIRECTORY FROM FILE_HISTORY;')"
-}
-
-generate_file_watchedlist() {
+get_directory_data() {
 	search_dir="$1"
+	inputlist=""
 	watched=""
-	cnt=0
+	cnt=1
 	while read -r directory; do
 		# sometimes direetory is empty string due to find parsing
-		[ -z "$directory" ] && continue
+		[ -z "${directory// /}" ] && continue
+		[ "$inputlist" = "" ] && inputlist="$directory" || inputlist="$inputlist|$directory"
 		if ! check_db "directory" "$search_dir/$directory"; then
 			logger "$search_dir/$directory opened before... adding $cnt to list" 1> /dev/stderr
 			[ "$watched" = "" ] && watched="$cnt" || watched="$watched, $cnt"
@@ -382,14 +351,17 @@ generate_file_watchedlist() {
 		((++cnt))
 	done <<< "$(find "$search_dir" -maxdepth 1 -type d | sed -E "s|$search_dir/||" | tail -n +2 | sort -V)"
 	while read -r filename; do
+		[ -z "${filename// /}" ] && continue
 		if ! check_db "file" "$search_dir" "$filename"; then
 			logger "$filename watched before... adding $cnt to list" 1> /dev/stderr
 			[ "$watched" = "" ] && watched="$cnt" || watched="$watched, $cnt"
 		fi
+		[ "$inputlist" = "" ] && inputlist="$filename" || inputlist="$inputlist|$filename"
 		((++cnt))
 	done <<< "$(find "$search_dir" -maxdepth 1 -type f | sed "s|$search_dir/||" | grep -E "$playable$" | sort -V)"
+	[ "$search_dir" != "/" ] && inputlist="../|$inputlist|Back|Quit" || inputlist="$inputlist|Back|Quit"
+	logger "INPUT LIST: $inputlist" 1> /dev/stderr
 	logger "WATCHED LIST: $watched" 1> /dev/stderr
-	printf "%s\n" "$watched"
 }
 
 # recursive function for finding path to video file given a starting directory
@@ -405,17 +377,16 @@ find_media() {
 		return 0
 	fi
 
+	get_directory_data "$inp"
+	[ -z "$inputlist" ] && return 1
+
 	span=$(generate_span "Current directory: $inp")
-	# run in parallel in background?
-	inputlist=$(generate_inputlist "$inp" &)
-	watched_files=$(generate_file_watchedlist "$inp" &)
-	wait
 	selection=$(rofi -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
-		-l 12 -i -sep '|' -mesg "$span" -a "$watched_files" \
-		-p "Enter selection" <<< "${inputlist[@]}")
+		-l 15 -i -sep '|' -mesg "$span" -a "$watched" \
+		-p "Enter selection" <<< "$inputlist")
 
 	case "$selection" in
-		Back)
+		Back | ../)
 			# go up one directory
 			# dotdotslash=$(sed -E "s/(\/[^\/]*$)//" <<< "$inp")
 			if [ -z "$(sed -E "s/(\/[^\/]*$)//" <<< "$inp")" ]; then
@@ -798,6 +769,7 @@ while getopts 'hd:Hsvq:c-:f:t:T:CQ:' OPT; do
 		f)
 			scrape="file"
 			play_dir="$OPTARG"
+			[ "$play_dir" != "/" ] && play_dir="$(sed -E 's/\/$//' <<< "$play_dir")" # remove trailing slash... unless searching / for some reason
 			;;
 		t)
 			theme="$OPTARG"
@@ -819,6 +791,9 @@ while getopts 'hd:Hsvq:c-:f:t:T:CQ:' OPT; do
 					;;
 				material)
 					ROFI_THEME=aniwrapper-material.rasi
+					;;
+				nord)
+					ROFI_THEME=aniwrapper-nord.rasi
 					;;
 				onedark)
 					ROFI_THEME=aniwrapper-onedark.rasi
@@ -919,7 +894,6 @@ case $scrape in
 		[ ! -d "$play_dir" ] && die "$play_dir does not exist"
 		video_path=$(find_media "$play_dir")
 		retcode="$?"
-		echo "RETURN FROM find_media() -> $retcode"
 		if [ "$retcode" -ne 0 ]; then
 			die "QUITTING"
 		elif [ -z "$video_path" ]; then

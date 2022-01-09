@@ -12,7 +12,7 @@ ROFI_THEME="aniwrapper.rasi"
 CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
 QUALITIES="1. high|2. normal (default)|3. low"
 QUALITY=normal
-THEMES="aniwrapper (default)|dracula|fancy|flamingo|material|onedark"
+THEMES="aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark"
 GET_QUALITY=0
 VERBOSE=0
 IS_ROFI=1
@@ -150,6 +150,9 @@ parse_args() {
 						;;
 					material)
 						ROFI_THEME=aniwrapper-material.rasi
+						;;
+					nord)
+						ROFI_THEME=aniwrapper-nord.rasi
 						;;
 					onedark)
 						ROFI_THEME=aniwrapper-onedark.rasi

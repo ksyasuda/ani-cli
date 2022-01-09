@@ -193,13 +193,13 @@ aniwrapper -C
 aniwrapper -Q <query>
 
 # Choose rofi theme from presets
-aniwrapper -t [aniwrapper (default)|dracula|fancy|flamingo|material|onedark]
+aniwrapper -t <aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark>
 
 # Specify custom rofi config
 aniwrapper -T <path_to_config>
 
 # Specify starting directory for play_from_file mode, bypassing main menu
-aniwrapper -f <starting_directory> (no trailing slash in path)
+aniwrapper -f <starting_directory>
 
 # Use ani-cli command-line mode (rofi disabled)
 aniwrapper -c
@@ -258,13 +258,13 @@ ani-cli -H
 ani-cli -s
 
 # choose quality
-ani-cli -q [high|normal (default)|low]
+ani-cli -q <high|normal (default)|low>
 
 # choose rofi theme from presets
-ani-cli -t [aniwrapper (default)|dracula|fancy|flamingo|material|onedark]
+ani-cli -t <aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark>
 
 # Specify starting directory for play_from_file mode (does not work with -c)
-ani-cli -f <starting_directory> (no trailing slash in path)
+ani-cli -f <starting_directory>
 
 # run ani-cli in command-line mode (rofi disabled)
 ani-cli -c
