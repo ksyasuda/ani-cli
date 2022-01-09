@@ -50,7 +50,7 @@ element {
     border:  0;
     cursor:  pointer;
     margin:  1px 0px;
-    border-radius: 12px;
+    border-radius: 6px;
 }
 element normal.normal {
     background-color: var(normal-background);
@@ -139,18 +139,45 @@ button selected {
     background-color: var(selected-normal-background);
     text-color: var(selected-normal-foreground);
 }
-inputbar {
-    padding: 7px;
-    margin: 7px;
-    spacing: 0;
-    text-color: var(normal-foreground);
-    background-color: var(nord3);
-    children: [ entry ];
-    border-radius: 12px;
-}
+
 entry {
     spacing: 0;
     cursor: text;
     text-color: var(normal-foreground);
     background-color: var(nord3);
+}
+
+inputbar {
+    padding: 7px;
+    margin: 7px;
+    spacing: 0;
+    text-color: var(normal-foreground);
+    children: [ prompt,textbox-prompt-colon,entry,case-indicator ];
+}
+
+case-indicator {
+    spacing:    0;
+    text-color: var(nord15);
+    margin: 0 0 0 0.5%;
+}
+
+entry {
+    padding: 4px 8px;
+    spacing:    0;
+    text-color: var(nord8);
+    border-radius: 6px;
+}
+
+prompt {
+    spacing: 0;
+    text-color: var(nord15);
+    padding: 4px 0px;
+}
+
+textbox-prompt-colon {
+    expand:     false;
+    str:        ":";
+    margin:     0px 0.3em 0em 0em ;
+    text-color: var(nord15);
+    padding: 4px 0px;
 }

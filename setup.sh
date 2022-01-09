@@ -51,12 +51,10 @@ run_setup() {
 		log "FINISHED CREATING DB"
 	fi
 
-	if [[ ! -d "$DIR/themes" ]]; then
-		log "themes directory does not exist in filesystem... Creating and moving themes"
-		mkdir -p "$DIR/themes"
-		cp themes/* "$DIR/themes/"
-		log "Theme files moved..."
-	fi
+	# log "themes directory does not exist in filesystem... Creating and moving themes"
+	mkdir -p "$DIR/themes"
+	cp themes/* "$DIR/themes/"
+	log "Theme files moved..."
 
 	log "Creating mpv/scripts/ directory if it doesn't exist..."
 	mkdir -p "$MPV_DIR/scripts/"

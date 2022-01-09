@@ -246,6 +246,7 @@ insert_history() {
 	res="$?"
 	if [[ $res -gt 0 ]]; then
 		logger "Match found... Updating row in history db..."
+		wait # in case there's another insert/update still running in background
 		update_date "$@"
 		res=$?
 	else
@@ -265,6 +266,7 @@ insert_history() {
 				VALUES('$1', '$2', '$datetime');"
 		fi
 		logger "INSERT STATEMENT -> $stmt"
+		wait # in case there's another insert/update still running in background
 		run_stmt "$stmt"
 		res=$?
 	fi

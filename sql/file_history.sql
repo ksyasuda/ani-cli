@@ -1,4 +1,4 @@
-CREATE TABLE file_history (
+CREATE TABLE IF NOT EXISTS file_history (
     id integer PRIMARY KEY AUTOINCREMENT,
     directory varchar(200) NOT NULL,
     filename varchar(200) NOT NULL,
@@ -8,5 +8,5 @@ CREATE TABLE file_history (
     UNIQUE (directory, filename)
 );
 
-CREATE UNIQUE INDEX dir_filename_idx ON file_history (directory, filename);
+CREATE UNIQUE INDEX IF NOT EXISTS dir_filename_idx ON file_history (directory, filename);
 
