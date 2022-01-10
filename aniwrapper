@@ -197,14 +197,16 @@ check_flags() {
 		printf "%s" "Enter download dir: "
 		read -r dl_dir
 		logger "Download dir: $dl_dir"
-		[ -d "$dl_dir" ] && mkdir -p "$dl_dir" || dir "Error creating directory: $dl_dir"
+		if [ ! -d "$dl_dir" ]; then
+			mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
+		fi
 		run "-cd $dl_dir"
 		exit $?
 	elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 1 ]]; then
 		run "-f$play_path" -T "$CFG_FILE"
 		exit $?
 	elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 0 ]]; then
-		run "-f$play_path"
+		run "-f$play_path" -t "$theme"
 		exit $?
 	fi
 }
