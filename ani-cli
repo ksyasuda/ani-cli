@@ -16,6 +16,7 @@ THEMES="aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark"
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
 playable="\.mp4|\.mkv|\.ts|\.mp3|\.webm"
+playable_list="mp4,mkv,ts,mp3,webm"
 prog="ani-cli"
 
 c_red="\033[1;31m"
@@ -246,7 +247,7 @@ insert_history() {
 	res="$?"
 	if [[ $res -gt 0 ]]; then
 		logger "Match found... Updating row in history db..."
-		wait # in case there's another insert/update still running in background
+		wait # in case there's another insert/update still running in background?
 		update_date "$@"
 		res=$?
 	else
@@ -327,8 +328,8 @@ sync_watch_history() {
 play_file() {
 	logger "Checking if file is playable"
 	if [[ "$1" =~ ($playable)$ ]]; then
-		filename=$(grep -oE '[^/]*$' <<< "$1")
-		directory=$(sed -E "s/(\/[^\/]+$)//" <<< "$1")
+		filename="${1##*/}"
+		directory="${1%/*}"
 		insert_history "file" "$directory" "$filename" &
 		if [[ "$1" =~ .mp3 ]]; then
 			logger ".mp3 file found... playing without video"
@@ -349,25 +350,29 @@ get_directory_data() {
 	inputlist=""
 	watched=""
 	cnt=1
-	while read -r directory; do
-		# sometimes direetory is empty string due to find parsing
-		[ -z "${directory// /}" ] && continue
-		[ "$inputlist" = "" ] && inputlist="$directory" || inputlist="$inputlist|$directory"
+	[ "$search_dir" = "/" ] && cnt=0 # account for no ../ on /
+	for directory in "$1"/*; do
+		directory="${directory##*/}"
+		[ -z "$inputlist" ] && inputlist="$directory" || inputlist="$inputlist|$directory"
 		if ! check_db "directory" "$search_dir/$directory"; then
 			logger "$search_dir/$directory opened before... adding $cnt to list" 1> /dev/stderr
-			[ "$watched" = "" ] && watched="$cnt" || watched="$watched, $cnt"
+			[ -z "$watched" ] && watched="$cnt" || watched="$watched, $cnt"
 		fi
 		((++cnt))
-	done <<< "$(find "$search_dir" -maxdepth 1 -type d | sed -E "s|$search_dir/||" | tail -n +2 | sort -V)"
-	while read -r filename; do
-		[ -z "${filename// /}" ] && continue
+	done
+	# while read -r filename; do
+	shopt -s nullglob   # set nullglob to avoid printing output if no files with extension exist
+	shopt -s nocaseglob # case insensitive globbing
+	for filename in "$1"/*."{$playable_list}"; do
+		[ -z "$inputlist" ] && inputlist="$filename" || inputlist="$inputlist|$filename"
 		if ! check_db "file" "$search_dir" "$filename"; then
 			logger "$filename watched before... adding $cnt to list" 1> /dev/stderr
-			[ "$watched" = "" ] && watched="$cnt" || watched="$watched, $cnt"
+			[ -z "$watched" ] && watched="$cnt" || watched="$watched, $cnt"
 		fi
-		[ "$inputlist" = "" ] && inputlist="$filename" || inputlist="$inputlist|$filename"
 		((++cnt))
-	done <<< "$(find "$search_dir" -maxdepth 1 -type f | sed "s|$search_dir/||" | grep -E "$playable$" | sort -V)"
+	done
+	shopt -u nullglob
+	shopt -u nocaseglob
 	[ "$search_dir" != "/" ] && inputlist="../|$inputlist|Back|Quit" || inputlist="$inputlist|Back|Quit"
 	logger "INPUT LIST: $inputlist" 1> /dev/stderr
 	logger "WATCHED LIST: $watched" 1> /dev/stderr
@@ -395,13 +400,8 @@ find_media() {
 
 	case "$selection" in
 		Back | ../)
-			# go up one directory
-			# dotdotslash=$(sed -E "s/(\/[^\/]*$)//" <<< "$inp")
-			if [ -z "$(sed -E "s/(\/[^\/]*$)//" <<< "$inp")" ]; then
-				find_media "/"
-			else
-				find_media "$(sed -E "s/(\/[^\/]*$)//" <<< "$inp")"
-			fi
+			dotdotslash="${inp%/*}"
+			[ -z "$dotdotslash" ] && find_media "/" || find_media "$dotdotslash"
 			;;
 		Quit)
 			return 1
@@ -410,7 +410,7 @@ find_media() {
 			if [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
 				insert_history "directory" "$inp/$selection" &
 				if [ "$inp" = "/" ]; then
-					find_media "$selection"
+					find_media "/$selection"
 				else
 					find_media "$inp/$selection"
 				fi
