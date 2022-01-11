@@ -407,16 +407,15 @@ find_media() {
 			return 1
 			;;
 		*)
-			if [ -d "$inp/$selection" ] || [ -f "$inp/$selection" ]; then
+			if [ ! -d "$inp/$selection" ] && [ ! -f "$inp/$selection" ]; then
+				return 1
+			else
 				insert_history "directory" "$inp/$selection" &
 				if [ "$inp" = "/" ]; then
 					find_media "/$selection"
 				else
 					find_media "$inp/$selection"
 				fi
-				return $?
-			else
-				return 1
 			fi
 			;;
 	esac
