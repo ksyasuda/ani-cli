@@ -275,7 +275,7 @@ main() {
 			;;
 		5.)
 			logger "Sync history database"
-			roficmd="rofi -dpi "$DPI" -dmenu -config $CFG_FILE -l 0 -p"
+			roficmd="rofi -dpi $DPI -dmenu -config $CFG_FILE -l 0 -p"
 			username=$($roficmd "Enter the username of the remote user:")
 			[ -z "$username" ] && seppuku "No username provided... exiting"
 			host=$($roficmd "Enter the host for the remote machine (eg 192.168.1.99):")
