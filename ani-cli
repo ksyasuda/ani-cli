@@ -300,7 +300,6 @@ sync_watch_history() {
 		anime_name="${line/ //}"
 		# some spacing for log messages
 		# logger && logger "ANIME: $anime_name"
-		episodes=$(sqlite3 -list -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
 		# for each episode of $anime_name on the remote machine, check local
 		while read -r ep; do
 			# logger
@@ -311,7 +310,7 @@ sync_watch_history() {
 				continue
 			fi
 			((++cnt))
-		done <<< "${episodes[@]}"
+		done < <(sqlite3 -list -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
 	done < <(sqlite3 -list -noheader "$temp_db" "SELECT DISTINCT anime_name FROM watch_history")
 	logger "$cnt rows inserted into watch_history table"
 	logger "$errs rows skipped on insert"
@@ -357,7 +356,6 @@ get_directory_data() {
 		fi
 		((++cnt))
 	done
-	# while read -r filename; do
 	shopt -s nullglob   # set nullglob to avoid printing output if no files with extension exist
 	shopt -s nocaseglob # case insensitive globbing
 	for filename in "$1"/*."{$playable_list}"; do
@@ -370,7 +368,14 @@ get_directory_data() {
 	done
 	shopt -u nullglob
 	shopt -u nocaseglob
-	[ "$search_dir" != "/" ] && inputlist="../|$inputlist|Back|Quit" || inputlist="$inputlist|Back|Quit"
+	logger "INPUTLIST: $inputlist"
+	if [[ -n "$inputlist" && "$search_dir" != / ]]; then
+		inputlist="../|$inputlist|Back|Quit"
+	elif [[ -z "$inputlist" && "$search_dir" != / ]]; then
+		inputlist="../|Back|Quit"
+	elif [[ "$search_dir" = / ]]; then
+		inputlist="$inputlist|Back|Quit"
+	fi
 	logger "INPUT LIST: $inputlist" 1> /dev/stderr
 	logger "WATCHED LIST: $watched" 1> /dev/stderr
 }
@@ -389,11 +394,10 @@ find_media() {
 	fi
 
 	get_directory_data "$inp"
-	[ -z "$inputlist" ] && return 1
-
-	selection=$(rofi -dpi "$DPI" -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
+	[ -z "$inp" ] && return 1
+	selection="$(rofi -dpi "$DPI" -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
 		-l 15 -i -sep '|' -mesg "$(generate_span "Current directory: $inp")" -a "$watched" \
-		-p "Enter selection" <<< "$inputlist")
+		-p "Enter selection" <<< "$inputlist")"
 
 	case "$selection" in
 		Back | ../)
@@ -428,17 +432,15 @@ get_search_query() {
 	stmt="SELECT DISTINCT id || '. ' || anime_name \
 		  FROM search_history \
 		  ORDER BY id DESC;"
-	hist=$(run_stmt "$stmt")
 
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
 	span="$(generate_span "$msg")"
 	if [ -z "$*" ] && [ "$is_rofi" -eq 1 ]; then
 		query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
 			-mesg "$span" \
-			-config "$ROFI_CFG" <<< "${hist[@]}")
+			-config "$ROFI_CFG" < <(run_stmt "$stmt"))
 		# Remove the id from the query
 		query="${query//[1-9]*\. /}"
-		# query="${query// /}"
 		logger "Query: $query"
 	elif [ "$is_rofi" -eq 0 ]; then
 		printf "Search Anime: "
