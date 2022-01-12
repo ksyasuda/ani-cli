@@ -6,19 +6,20 @@ set -Eeo pipefail
 #  Globals  #
 #############
 CMD="/usr/bin/ani-cli"
-DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
+CFG_FILE="$CFG_DIR/themes/aniwrapper.rasi"
+DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 ROFI_THEME="aniwrapper.rasi"
-CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
+THEMES="aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark"
 QUALITIES="1. high|2. normal (default)|3. low"
 QUALITY=normal
-THEMES="aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark"
+DPI=96
 GET_QUALITY=0
-VERBOSE=0
-IS_ROFI=1
+IS_CUSTOM_THEME=0
 IS_DOWNLOAD=0
 IS_PLAY_FROM_FILE=0
-IS_CUSTOM_THEME=0
+IS_ROFI=1
+VERBOSE=0
 
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$quit"
@@ -43,7 +44,7 @@ Options:
      -d  download episode in command-line mode
      -C  connect to history database
 
-     -t  <aniwrapper (default)|dracula|fancy|flamingo|material|onedark> change rofi theme
+     -t  <aniwrapper (default)|dracula|doomone|fancy|flamingo|material|onedark> change rofi theme
      -T  <config_path> specify custom rofi theme
      -f  <path_to_directory> (no trailing slash) specify starting directory for play for file mode
      -Q  <query> query the history database
@@ -71,19 +72,19 @@ run() {
 		get_quality
 	fi
 	if [[ "$IS_CUSTOM_THEME" -eq 1 ]] && [[ "$VERBOSE" -eq 0 ]]; then
-		"$CMD" -q "$QUALITY" -T "$CFG_FILE" "$@"
+		"$CMD" -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" "$@"
 	elif [[ "$IS_CUSTOM_THEME" -eq 1 ]] && [[ "$VERBOSE" -eq 1 ]]; then
-		"$CMD" -vq "$QUALITY" -T "$CFG_FILE" "$@"
+		"$CMD" -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" "$@"
 	elif [[ "$VERBOSE" -eq 0 ]]; then
-		"$CMD" -q "$QUALITY" -t "$theme" "$@"
+		"$CMD" -D"$DPI" -q "$QUALITY" -t "$theme" "$@"
 	else
-		"$CMD" -vq "$QUALITY" -t "$theme" "$@"
+		"$CMD" -D"$DPI" -vq "$QUALITY" -t "$theme" "$@"
 	fi
 }
 
 get_quality() {
 	if [ "$IS_ROFI" -eq 1 ]; then
-		selection=$(rofi -dmenu -config "$CFG_FILE" \
+		selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
 			-l 3 -selected-row 1 \
 			-theme-str 'listview {columns: 1;}' -p "Choose video quality:" \
 			-sep '|' <<< "$QUALITIES")
@@ -99,12 +100,12 @@ get_quality() {
 # input: message: str
 generate_span() {
 	msg="$*"
-	span="<span foreground='peachpuff' style='italic' size='small' weight='light'>$msg</span>"
+	span="<span foreground='#ecbe7b' style='italic' size='small'>$msg</span>"
 	printf "%s\n" "$span"
 }
 
 parse_args() {
-	while getopts 'vhqcdf:-:t:T:CQ:' OPT; do
+	while getopts 'vhqcdf:-:t:T:CQ:D:' OPT; do
 		case "$OPT" in
 			h)
 				help_text
@@ -141,6 +142,9 @@ parse_args() {
 						;;
 					dracula)
 						ROFI_THEME=aniwrapper-dracula.rasi
+						;;
+					doomone | doom-one)
+						ROFI_THEME=aniwrapper-doomone.rasi
 						;;
 					fancy)
 						ROFI_THEME=aniwrapper-fancy.rasi
@@ -179,6 +183,9 @@ parse_args() {
 				[ ! -f "$CFG_FILE" ] && seppuku "config file $CFG_FILE does not exist"
 				IS_CUSTOM_THEME=1
 				;;
+			D)
+				DPI="$OPTARG"
+				;;
 			*)
 				help_text
 				exit 1
@@ -215,7 +222,7 @@ check_flags() {
 # Main #
 ########
 main() {
-	choice=$(echo "${options[@]}" | rofi -dmenu -only-match -sep '|' \
+	choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -only-match -sep '|' \
 		-config "$CFG_FILE" -l 6 -i -p "Aniwrapper")
 
 	[ "$choice" == "$quit" ] && quit
@@ -235,7 +242,7 @@ main() {
 			# download
 			# ---------------------------------------------------------------------------
 			logger "Download anime"
-			dl_dir=$(rofi -dmenu -config "$CFG_FILE" \
+			dl_dir=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
 				-l 1 -p "Enter download dir:")
 			# if dl_dir is none set to current directory
 			[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
@@ -256,7 +263,7 @@ main() {
 			logger "Play from file selected"
 			IS_PLAY_FROM_FILE=1
 			span=$(printf '%s\n%s\n' "$(generate_span "Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
-			play_dir=$(rofi -dmenu -config "$CFG_FILE" \
+			play_dir=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
 				-l 1 -mesg "$span" -p "Enter path to starting directory:")
 			if [ -z "$play_dir" ]; then
 				mkdir -p "$DEFAULT_DOWNLOAD" || seppuku "error creating default download directory"
@@ -268,7 +275,7 @@ main() {
 			;;
 		5.)
 			logger "Sync history database"
-			roficmd="rofi -dmenu -config $CFG_FILE -l 0 -p"
+			roficmd="rofi -dpi "$DPI" -dmenu -config $CFG_FILE -l 0 -p"
 			username=$($roficmd "Enter the username of the remote user:")
 			[ -z "$username" ] && seppuku "No username provided... exiting"
 			host=$($roficmd "Enter the host for the remote machine (eg 192.168.1.99):")

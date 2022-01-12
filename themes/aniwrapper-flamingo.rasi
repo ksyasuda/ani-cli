@@ -6,7 +6,7 @@
 
 configuration {
 	sidebar-mode: false;
-	font: "Open Sans 15";
+	font: "Open Sans 11";
 }
 
 * {

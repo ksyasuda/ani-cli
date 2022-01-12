@@ -1,5 +1,5 @@
 configuration {
-    font:				    "Open Sans 15";
+    font:				    "Open Sans 11";
     display-drun:			"Dmenu";
     scroll-method:			0;
     disable-history:		false;
