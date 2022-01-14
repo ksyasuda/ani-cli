@@ -193,7 +193,7 @@ aniwrapper -C
 aniwrapper -Q <query>
 
 # Choose rofi theme from presets
-aniwrapper -t <aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark>
+aniwrapper -t <aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark>
 
 # Specify custom rofi config
 aniwrapper -T <path_to_config>
@@ -258,7 +258,7 @@ ani-cli -H
 ani-cli -s
 
 # choose quality
-ani-cli -q <high|normal (default)|low>
+ani-cli -q <best (default)|1080p|720p|480p|360p|worst>
 
 # choose rofi theme from presets
 ani-cli -t <aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark>

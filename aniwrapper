@@ -11,7 +11,7 @@ CFG_FILE="$CFG_DIR/themes/aniwrapper.rasi"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 ROFI_THEME="aniwrapper.rasi"
 THEMES="aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark"
-QUALITIES="1. high|2. normal (default)|3. low"
+QUALITIES="1. best (default)|2. 1080p|3. 720p|4. 360p|5. worst"
 QUALITY=normal
 DPI=96
 GET_QUALITY=0
@@ -85,9 +85,9 @@ run() {
 get_quality() {
 	if [ "$IS_ROFI" -eq 1 ]; then
 		selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-			-l 3 -selected-row 1 \
+			-l 5 -selected-row 0 \
 			-theme-str 'listview {columns: 1;}' -p "Choose video quality:" \
-			-sep '|' <<< "$QUALITIES")
+			-sep '|' -only-match <<< "$QUALITIES")
 		QUALITY=$(awk '{print $2}' <<< "$selection")
 	else
 		printf "%s" "Enter quality [$QUALITIES]: "

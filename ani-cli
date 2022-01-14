@@ -49,44 +49,7 @@ logger() {
 	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$*" >&2
 }
 
-search_anime() {
-	# get anime name along with its id
-	logger "NUM ARGS: $#"
-	if [[ $# -gt 1 ]]; then
-		# if multi-word query, concatenate into one string and replace spaces with '-'
-		search="$*"
-		search="${search// /-}"
-	else
-		# if one word, remove leading or trailing whitespace
-		search="${1// /}"
-	fi
-	logger "Search Query: $search"
-	titlepattern='<a href="/category/'
-	curl -s "$BASE_URL//search.html" \
-		-G \
-		-d "keyword=$search" |
-		sed -n -E '
-		s_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p
-		'
-}
-
-search_eps() {
-	# get available episodes for anime_id
-	anime_id=$1
-
-	curl -s "$BASE_URL/category/$anime_id" |
-		sed -n -E '
-		/^[[:space:]]*<a href="#" class="active" ep_start/{
-		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
-		q
-		}
-		'
-}
-
 check_input() {
-	logger "Checking input"
-	logger "EP START: $ep_choice_start"
-	logger "EP END: $ep_choice_end"
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2> /dev/null || die "Invalid number entered: $ep_choice_start"
 	episodes=$ep_choice_start
 	if [ -n "$ep_choice_end" ]; then
@@ -110,23 +73,48 @@ get_dpage_link() {
 	fi
 
 	printf '%s' "$anime_page" |
-		sed -n -E 's/.*rel="13" data-video="([^"]*)".*/\1/p' | cut -d/ -f5
+		sed -n -E 's/^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)".*/\1/p' |
+		sed 's/^/https:/g'
+}
+
+decrypt_link() {
+	logger "BEGIN: decrypt_link()" > /dev/stderr
+	ajax_url="https://gogoplay.io/encrypt-ajax.php"
+
+	#get the id from the url
+	video_id=$(printf "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
+	logger "video_id -> $video_id" > /dev/stderr
+
+	#construct ajax parameters
+	secret_key='3235373436353338353932393338333936373634363632383739383333323838'
+	iv='34323036393133333738303038313335'
+	ajax=$(printf "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
+	logger "ajax -> $ajax" > /dev/stderr
+
+	#send the request to the ajax url
+	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | tr '"' '\n' | sed -nE 's/.*cdn\.com.*/\0/p' | sed 's/\\//g'
+	logger "END: decrypt_link()" > /dev/stderr
 }
 
 get_video_quality() {
 	dpage_url=$1
-
-	video_links=$(curl -s "https://sbplay2.com/d/$dpage_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
-	logger "VIDEO LINKS: $video_links" 1> /dev/stderr
-	m=$(printf "%s" "$quality" | cut -c1)
-	h=$(printf "%s" "$video_links" | cut -d\' -f6)
-	logger "constructed video link -> https://sbplay2.com/dl?op=download_orig&id=$dpage_url&mode=$m&hash=$h" 1> /dev/stderr
-	video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$dpage_url&mode=$m&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
-	if [ -z "$video_link" ]; then
-		err "$quality quality doesn't exist, falling back to normal quality"
-		video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$dpage_url&mode=n&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
-	fi
-
+	video_links=$(decrypt_link "$dpage_url")
+	case $quality in
+		best)
+			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+			;;
+		worst)
+			video_link=$(printf '%s' "$video_links" | head -n 1)
+			;;
+		*)
+			video_link=$(printf '%s' "$video_links" | grep -iE "${quality}" | head -n 1)
+			if [ -z "$video_link" ]; then
+				err "Current video quality is not available (defaulting to best quality)"
+				quality=best
+				video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+			fi
+			;;
+	esac
 	printf '%s' "$video_link"
 }
 
@@ -138,10 +126,6 @@ dep_ch() {
 	done
 }
 
-run_stmt() {
-	printf "%s\n" "$1" | sqlite3 -noheader "$HISTORY_DB"
-}
-
 notification() {
 	msg="$*"
 	if command -v "notify-send" > /dev/null; then
@@ -151,16 +135,22 @@ notification() {
 	fi
 }
 
+generate_span() {
+	msg="$*"
+	span="<span foreground='#ecbe7b' style='italic' size='small'>$msg</span>"
+	printf "%s\n" "$span"
+}
+
 #####################
 ##  Database Code  ##
 #####################
 
+run_stmt() {
+	printf "%s\n" "$1" | sqlite3 -noheader "$HISTORY_DB"
+}
+
+# Return number of matches for anime/episode in db
 check_db() {
-	# Return number of matches for anime/episode in db
-	# args:
-	#   $1: anime name: str
-	#   $2: either 'search' or 'watch' for which db to query
-	# logger "BEGIN check_db()"
 	if [[ "$1" == "directory" ]]; then
 		stmt="SELECT DISTINCT COUNT(*) \
         FROM file_history \
@@ -182,7 +172,6 @@ check_db() {
 	fi
 	res=$(run_stmt "$stmt")
 	return $res
-	# logger "END check_db... Result -> $res"
 }
 
 # return true (0) if $source_dt > $target_dt
@@ -236,9 +225,9 @@ update_date() {
 	run_stmt "$stmt"
 }
 
+# inserts into search/watch history db
+# check the anime_name/id
 insert_history() {
-	# inserts into search/watch history db
-	# check the anime_name/id
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	logger "Checking if ($*) exists in db"
 	check_db "$@"
@@ -276,18 +265,15 @@ sync_search_history() {
 	errs=0
 	while read -r line; do
 		anime_name=$(awk -F '|' '{print $2}' <<< "$line")
-		# logger "Checking if $anime_name has been searched..."
 		res=$(sqlite3 -noheader "$HISTORY_DB" "SELECT COUNT(*) FROM search_history WHERE anime_name = '$anime_name'")
 		if [[ "$res" -eq 0 ]]; then
 			search_date=$(awk -F '|' '{print $3}' <<< "$line")
-			# logger "Not found in db... Adding ($anime_name|$search_date) to search history..."
 			if ! sqlite3 "$HISTORY_DB" "INSERT INTO search_history(anime_name, search_date) VALUES('$anime_name', '$search_date')"; then
 				((++errs))
 				continue
 			fi
 			((++cnt))
 		fi
-		# logger
 	done < <(sqlite3 -list -noheader "$temp_db" "SELECT DISTINCT * FROM search_history")
 	logger "$cnt rows inserted into search_history table"
 	logger "$errs errors on insert"
@@ -298,11 +284,8 @@ sync_watch_history() {
 	errs=0
 	while read -r line; do
 		anime_name="${line/ //}"
-		# some spacing for log messages
-		# logger && logger "ANIME: $anime_name"
 		# for each episode of $anime_name on the remote machine, check local
 		while read -r ep; do
-			# logger
 			episode_num=$(awk -F '|' '{print $1}' <<< "$ep")
 			watch_date=$(awk -F '|' '{print $NF}' <<< "$ep")
 			if ! insert_history "$anime_name" "$episode_num" "$watch_date"; then
@@ -426,6 +409,10 @@ find_media() {
 	esac
 }
 
+#####################
+##   main code     ##
+#####################
+
 # get query
 get_search_query() {
 	# Get search history
@@ -450,15 +437,39 @@ get_search_query() {
 	fi
 }
 
-generate_span() {
-	msg="$*"
-	span="<span foreground='#ecbe7b' style='italic' size='small'>$msg</span>"
-	printf "%s\n" "$span"
+search_anime() {
+	# get anime name along with its id
+	logger "NUM ARGS: $#"
+	if [[ $# -gt 1 ]]; then
+		# if multi-word query, concatenate into one string and replace spaces with '-'
+		search="$*"
+		search="${search// /-}"
+	else
+		# if one word, remove leading or trailing whitespace
+		search="${1// /}"
+	fi
+	logger "Search Query: $search"
+	titlepattern='<a href="/category/'
+	curl -s "$BASE_URL//search.html" \
+		-G \
+		-d "keyword=$search" |
+		sed -n -E '
+		s_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p
+		'
 }
 
-#####################
-## Anime selection ##
-#####################
+search_eps() {
+	# get available episodes for anime_id
+	anime_id=$1
+
+	curl -s "$BASE_URL/category/$anime_id" |
+		sed -n -E '
+		/^[[:space:]]*<a href="#" class="active" ep_start/{
+		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
+		q
+		}
+		'
+}
 
 anime_selection() {
 	# Select anime from query results
@@ -568,10 +579,6 @@ anime_selection() {
 	EOF
 }
 
-##################
-## Ep selection ##
-##################
-
 episode_selection() {
 	ep_choice_start="1"
 	if [ "$is_rofi" -eq 1 ]; then
@@ -652,7 +659,8 @@ open_episode() {
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_video_quality "$dpage_link")
-	referer_link="https://sbplay2.com"
+	logger "Download link: $video_url"
+	logger "Video url: $video_url"
 
 	if [ $half_ep -eq 1 ]; then
 		episode=$temp_ep
@@ -661,9 +669,7 @@ open_episode() {
 
 	if [ "$is_download" -eq 0 ]; then
 		kill "$PID" > /dev/null 2>&1
-		logger "PLAYING VIDEO: $video_url"
-		logger "REFERRER: $referer_link"
-		nohup "$player_fn" --http-header-fields="Referer:$referer_link" "$video_url" > /dev/null 2>&1 &
+		nohup "$player_fn" --http-header-fields="Referer:$dpage_link" "$video_url" > /dev/null 2>&1 &
 		PID=$!
 		if command -v "notify-send" > /dev/null; then
 			notify-send -i "$ANIWRAPPER_ICON_PATH" "Playing $anime_id - Episode $episode"
@@ -672,18 +678,17 @@ open_episode() {
 		fi
 	else
 		logger "Downloading episode $episode ..."
-		logger "$video_url"
 		dl_dir="${ddir// /}/$anime_id"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
 			mkdir -p "$dl_dir" || die "Could not create directory"
 			if command -v "notify-send" > /dev/null; then
-				aria2c -x 16 -s 16 --referer="$referer_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
+				aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
 					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
 					notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 			else
-				aria2c -x 16 -s 16 --referer="$referer_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
+				aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
 					printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode" ||
 					printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
 
@@ -724,16 +729,12 @@ stream() {
 	episode_selection
 }
 
-############
-# Start Up #
-############
-
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
 # option parsing
 scrape=query
-quality=normal
+quality=best
 is_rofi=1
 is_download=0
 download_dir="."
