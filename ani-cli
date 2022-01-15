@@ -422,7 +422,7 @@ get_search_query() {
 
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
 	span="$(generate_span "$msg")"
-	if [ -z "$*" ] && [ "$is_rofi" -eq 1 ]; then
+	if [ "$is_rofi" -eq 1 ]; then
 		query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
 			-mesg "$span" \
 			-config "$ROFI_CFG" < <(run_stmt "$stmt"))
@@ -432,8 +432,6 @@ get_search_query() {
 	elif [ "$is_rofi" -eq 0 ]; then
 		printf "Search Anime: "
 		read -r query
-	else
-		query=$*
 	fi
 }
 
@@ -449,7 +447,6 @@ search_anime() {
 		search="${1// /}"
 	fi
 	logger "Search Query: $search"
-	titlepattern='<a href="/category/'
 	curl -s "$BASE_URL//search.html" \
 		-G \
 		-d "keyword=$search" |
@@ -515,7 +512,7 @@ anime_selection() {
 				-async-pre-read 33 \
 				-mesg "$msg" -only-match)
 		[ -z "$user_input" ] && return 1
-		if [ $(awk '{ print $NF }' <<< "$user_input") = "Quit" ]; then
+		if [ "$(awk '{ print $NF }' <<< "$user_input")" = "Quit" ]; then
 			logger "QUITTING"
 			return 1
 		fi
@@ -588,7 +585,6 @@ episode_selection() {
         FROM watch_history \
         WHERE anime_name = '$anime_id';"
 		hist=$(run_stmt "$stmt")
-		# logger "HISTORY: ${hist[*]}"
 
 		# Get Watch History for $anime_id as comma separated list
 		watch_history=""
@@ -684,11 +680,11 @@ open_episode() {
 		{
 			mkdir -p "$dl_dir" || die "Could not create directory"
 			if command -v "notify-send" > /dev/null; then
-				aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
+				aria2c --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
 					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode" ||
 					notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 			else
-				aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
+				aria2c --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide &&
 					printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode" ||
 					printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
 
@@ -699,18 +695,15 @@ open_episode() {
 
 stream() {
 	logger "Running stream()"
-	logger "args: $*"
-	get_search_query "$*"
+	get_search_query
 	searched=0
-	if [ $# -le 1 ]; then
-		# check if anime has been searched before
-		anime_id="${query// /}"
-		[ -z "$anime_id" ] && die "No anime selected or queried"
-		logger "Checking if anime: $anime_id has been searched before..."
-		check_db "$anime_id" "search"
-		searched="$?"
-		logger "Searched before: $searched"
-	fi
+	# check if anime has been searched before
+	anime_id="${query// /}"
+	[ -z "$anime_id" ] && die "No anime selected or queried"
+	logger "Checking if anime: $anime_id has been searched before..."
+	check_db "$anime_id" "search"
+	searched="$?"
+	logger "Searched before: $searched"
 	if [ "$searched" -eq 0 ]; then
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
@@ -729,269 +722,273 @@ stream() {
 	episode_selection
 }
 
-# to clear the colors when exited using SIGINT
-trap "printf '$c_reset'" INT HUP
-
 # option parsing
-scrape=query
-quality=best
-is_rofi=1
-is_download=0
-download_dir="."
-half_ep=0
-while getopts 'hd:Hsvq:c-:f:t:T:CQ:D:' OPT; do
-	case "$OPT" in
-		h)
-			help_text
-			exit 0
-			;;
-		d)
-			is_download=1
-			download_dir="$OPTARG"
-			logger "DOWNLOAD DIR: $download_dir"
-			;;
-		H)
-			scrape=history
-			;;
-		s)
-			scrape=sync
-			;;
-		v)
-			VERBOSE=1
-			;;
-		q)
-			quality="$OPTARG"
-			logger "passed in quality: $quality"
-			;;
-		c)
-			is_rofi=0
-			;;
-		-)
-			case $OPTARG in
-				dub)
-					dub_prefix="-dub"
-					;;
-				*)
-					help_text
-					exit 1
-					;;
-			esac
-			;;
-		f)
-			scrape="file"
-			play_dir="$OPTARG"
-			[ "$play_dir" != "/" ] && play_dir="$(sed -E 's/\/$//' <<< "$play_dir")" # remove trailing slash... unless searching / for some reason
-			;;
-		t)
-			theme="$OPTARG"
-			case "$theme" in
-				aniwrapper)
-					ROFI_THEME=aniwrapper.rasi
-					;;
-				default)
-					ROFI_THEME=aniwrapper.rasi
-					;;
-				dracula)
-					ROFI_THEME=aniwrapper-dracula.rasi
-					;;
-				doomone | doom-one)
-					ROFI_THEME=aniwrapper-doomone.rasi
-					;;
-				fancy)
-					ROFI_THEME=aniwrapper-fancy.rasi
-					;;
-				flamingo)
-					ROFI_THEME=aniwrapper-flamingo.rasi
-					;;
-				material)
-					ROFI_THEME=aniwrapper-material.rasi
-					;;
-				nord)
-					ROFI_THEME=aniwrapper-nord.rasi
-					;;
-				onedark)
-					ROFI_THEME=aniwrapper-onedark.rasi
-					;;
-				*)
-					die "$theme not a valid theme file.  Themes: [$THEMES]"
-					;;
-			esac
-			logger "Setting theme for ani-cli -> $ROFI_THEME"
-			ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
-			logger "ROFI_CFG: $ROFI_CFG"
-			;;
-		T)
-			ROFI_CFG="$OPTARG"
-			[ ! -f "$ROFI_CFG" ] && die "$ROFI_CFG does not exist"
-			logger "CUSTOM ROFI_CFG: $ROFI_CFG"
-			;;
-		C)
-			logger "Connecting to history database -> $CFG_DIR/history.sqlite3"
-			sqlite3 "$CFG_DIR/history.sqlite3"
-			exit $?
-			;;
-		Q)
-			query="$OPTARG"
-			logger "DATABASE QUERY: $query"
-			sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
-			exit $?
-			;;
-		D)
-			DPI="$OPTARG"
-			;;
-		*)
-			printf "%s\n" "Invalid option"
-			exit 1
-			;;
-	esac
-done
-shift $((OPTIND - 1))
-
-dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c" "jq"
+parse_args() {
+	# to clear the colors when exited using SIGINT
+	trap "printf '$c_reset'" INT HUP
+	scrape=query
+	quality=best
+	is_rofi=1
+	is_download=0
+	download_dir="."
+	half_ep=0
+	while getopts 'hd:Hsvq:c-:f:t:T:CQ:D:' OPT; do
+		case "$OPT" in
+			h)
+				help_text
+				exit 0
+				;;
+			d)
+				is_download=1
+				download_dir="$OPTARG"
+				logger "DOWNLOAD DIR: $download_dir"
+				;;
+			H)
+				scrape=history
+				;;
+			s)
+				scrape=sync
+				;;
+			v)
+				VERBOSE=1
+				;;
+			q)
+				quality="$OPTARG"
+				logger "passed in quality: $quality"
+				;;
+			c)
+				is_rofi=0
+				;;
+			-)
+				case $OPTARG in
+					dub)
+						dub_prefix="-dub"
+						;;
+					*)
+						help_text
+						exit 1
+						;;
+				esac
+				;;
+			f)
+				scrape="file"
+				play_dir="$OPTARG"
+				[ "$play_dir" != "/" ] && play_dir="$(sed -E 's/\/$//' <<< "$play_dir")" # remove trailing slash... unless searching / for some reason
+				;;
+			t)
+				theme="$OPTARG"
+				case "$theme" in
+					aniwrapper)
+						ROFI_THEME=aniwrapper.rasi
+						;;
+					default)
+						ROFI_THEME=aniwrapper.rasi
+						;;
+					dracula)
+						ROFI_THEME=aniwrapper-dracula.rasi
+						;;
+					doomone | doom-one)
+						ROFI_THEME=aniwrapper-doomone.rasi
+						;;
+					fancy)
+						ROFI_THEME=aniwrapper-fancy.rasi
+						;;
+					flamingo)
+						ROFI_THEME=aniwrapper-flamingo.rasi
+						;;
+					material)
+						ROFI_THEME=aniwrapper-material.rasi
+						;;
+					nord)
+						ROFI_THEME=aniwrapper-nord.rasi
+						;;
+					onedark)
+						ROFI_THEME=aniwrapper-onedark.rasi
+						;;
+					*)
+						die "$theme not a valid theme file.  Themes: [$THEMES]"
+						;;
+				esac
+				logger "Setting theme for ani-cli -> $ROFI_THEME"
+				ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
+				logger "ROFI_CFG: $ROFI_CFG"
+				;;
+			T)
+				ROFI_CFG="$OPTARG"
+				[ ! -f "$ROFI_CFG" ] && die "$ROFI_CFG does not exist"
+				logger "CUSTOM ROFI_CFG: $ROFI_CFG"
+				;;
+			C)
+				logger "Connecting to history database -> $CFG_DIR/history.sqlite3"
+				sqlite3 "$CFG_DIR/history.sqlite3"
+				exit $?
+				;;
+			Q)
+				query="$OPTARG"
+				logger "DATABASE QUERY: $query"
+				sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
+				exit $?
+				;;
+			D)
+				DPI="$OPTARG"
+				;;
+			*)
+				printf "%s\n" "Invalid option"
+				exit 1
+				;;
+		esac
+	done
+	shift $((OPTIND - 1))
+}
 
 ########
 # main #
 ########
+main() {
+	case $scrape in
+		query)
+			stream
+			;;
+		history)
+			stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
+			search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
+			[ -z "$search_results" ] && die "History is empty"
+			if ! anime_selection "${search_results[@]}"; then
+				die "No anime selection found"
+			fi
+			logger "SELECTION: $selection_id"
 
-case $scrape in
-	query)
-		stream "$*"
-		;;
-	history)
-		stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
-		search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
-		[ -z "$search_results" ] && die "History is empty"
-		if ! anime_selection "${search_results[@]}"; then
-			die "No anime selection found"
-		fi
-		logger "SELECTION: $selection_id"
-
-		stmt="SELECT episode_number \
+			stmt="SELECT episode_number \
 			FROM watch_history \
 			WHERE anime_name = '$selection_id' \
 			ORDER BY watch_date DESC \
 			LIMIT 1"
-		ep_choice_start=$(run_stmt "$stmt")
-		logger "Most recently watched episode: $ep_choice_start"
-		;;
-	sync)
-		printf "%s" "Enter username for remote user: "
-		read -r username
-		printf "%s" "Enter host for remote user: "
-		read -r host
-
-		connection_str="$username@$host"
-		printf "%s" "Enter port to connect to remote host with or leave blank for default (22): "
-		read -r port
-		if [[ "${port/ //}" == "" ]]; then
-			PORT=22
-		else
-			PORT="$port"
-		fi
-
-		printf "%s" "Enter path to private key (leave blank if unsure or not needed): "
-		read -r key_path
-
-		printf "%s\n" "Syncing database with: $connection_str on port $PORT"
-		temp_db="/tmp/aniwrapper_tmp_history.sqlite3"
-
-		if [[ -z "$key_path" ]]; then
-			scp -P "$PORT" "$connection_str:$HISTORY_DB" "$temp_db"
-		else
-			scp -P "$PORT" -i "$key_path" "$connection_str:$HISTORY_DB" "$temp_db"
-		fi
-		if [[ "$?" -ne 0 ]]; then
-			die "Error getting database file from remote host"
-		fi
-		sync_search_history && sync_watch_history
-		exit $?
-		;;
-	file)
-		logger "STARTING DIR: $play_dir"
-		[ ! -d "$play_dir" ] && die "$play_dir does not exist"
-		insert_history "directory" "$play_dir" &
-		video_path=$(find_media "$play_dir")
-		retcode="$?"
-		if [ "$retcode" -ne 0 ]; then
-			die "QUITTING"
-		elif [ -z "$video_path" ]; then
-			die "Something went wrong getting path... path is empty"
-		fi
-		logger "VIDEO PATH: $video_path"
-		play_file "$video_path"
-		exit $?
-		;;
-esac
-
-check_input
-
-# plays selected episode(s)
-for ep in $episodes; do
-	open_episode "$selection_id" "$ep" "$download_dir"
-done
-
-if [[ "$is_download" -eq 1 ]]; then
-	logger "Finished downloading episodes: $episodes for $selection_id... exiting"
-	exit 0
-fi
-
-episode=${ep_choice_end:-$ep_choice_start}
-
-choice=''
-while :; do
-	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
-	if [ "$episode" -ne "$last_ep_number" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
-	fi
-	if [ "$episode" -ne "1" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
-	fi
-	if [ "$last_ep_number" -ne "1" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
-	fi
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
-	# printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
-	printf "${c_blue}Enter choice:${c_green} "
-	read -r choice
-
-	printf "$c_reset"
-	case $choice in
-		n)
-			episode=$((episode + 1))
+			ep_choice_start=$(run_stmt "$stmt")
+			logger "Most recently watched episode: $ep_choice_start"
 			;;
-		p)
-			episode=$((episode - 1))
-			;;
+		sync)
+			printf "%s" "Enter username for remote user: "
+			read -r username
+			printf "%s" "Enter host for remote user: "
+			read -r host
 
-		s)
-			printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
-			read -r episode
-			if [ "$(echo "$episode" | cut -c1-1)" = "h" ]; then
-				half_ep=1
-				episode=$(echo "$episode" | cut -c2-)
+			connection_str="$username@$host"
+			printf "%s" "Enter port to connect to remote host with or leave blank for default (22): "
+			read -r port
+			if [[ "${port/ //}" == "" ]]; then
+				PORT=22
+			else
+				PORT="$port"
 			fi
-			printf "$c_reset"
-			[ "$episode" -eq "$episode" ] 2> /dev/null || die "Invalid number entered"
-			;;
 
-		r)
-			episode=$((episode))
-			;;
-		a)
-			stream
-			episode=$ep_choice_start
-			logger "NEW EPISODE: $selection_id - $episode"
-			;;
+			printf "%s" "Enter path to private key (leave blank if unsure or not needed): "
+			read -r key_path
 
-		q)
-			break
-			;;
+			printf "%s\n" "Syncing database with: $connection_str on port $PORT"
+			temp_db="/tmp/aniwrapper_tmp_history.sqlite3"
 
-		*)
-			die "invalid choice"
+			if [[ -z "$key_path" ]]; then
+				scp -P "$PORT" "$connection_str:$HISTORY_DB" "$temp_db"
+			else
+				scp -P "$PORT" -i "$key_path" "$connection_str:$HISTORY_DB" "$temp_db"
+			fi
+			if [[ "$?" -ne 0 ]]; then
+				die "Error getting database file from remote host"
+			fi
+			sync_search_history && sync_watch_history
+			exit $?
+			;;
+		file)
+			logger "STARTING DIR: $play_dir"
+			[ ! -d "$play_dir" ] && die "$play_dir does not exist"
+			insert_history "directory" "$play_dir" &
+			video_path=$(find_media "$play_dir")
+			retcode="$?"
+			if [ "$retcode" -ne 0 ]; then
+				die "QUITTING"
+			elif [ -z "$video_path" ]; then
+				die "Something went wrong getting path... path is empty"
+			fi
+			logger "VIDEO PATH: $video_path"
+			play_file "$video_path"
+			exit $?
 			;;
 	esac
-	open_episode "$selection_id" "$episode" "$download_dir"
-done
+
+	check_input
+
+	# plays selected episode(s)
+	for ep in $episodes; do
+		open_episode "$selection_id" "$ep" "$download_dir"
+	done
+
+	if [[ "$is_download" -eq 1 ]]; then
+		logger "Finished downloading episodes: $episodes for $selection_id... exiting"
+		exit 0
+	fi
+
+	episode=${ep_choice_end:-$ep_choice_start}
+
+	choice=''
+	while :; do
+		printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
+		if [ "$episode" -ne "$last_ep_number" ]; then
+			printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
+		fi
+		if [ "$episode" -ne "1" ]; then
+			printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
+		fi
+		if [ "$last_ep_number" -ne "1" ]; then
+			printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+		fi
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
+		# printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
+		printf "${c_blue}Enter choice:${c_green} "
+		read -r choice
+
+		printf "$c_reset"
+		case $choice in
+			n)
+				episode=$((episode + 1))
+				;;
+			p)
+				episode=$((episode - 1))
+				;;
+
+			s)
+				printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
+				read -r episode
+				if [ "$(echo "$episode" | cut -c1-1)" = "h" ]; then
+					half_ep=1
+					episode=$(echo "$episode" | cut -c2-)
+				fi
+				printf "$c_reset"
+				[ "$episode" -eq "$episode" ] 2> /dev/null || die "Invalid number entered"
+				;;
+
+			r)
+				episode=$((episode))
+				;;
+			a)
+				stream
+				episode=$ep_choice_start
+				logger "NEW EPISODE: $selection_id - $episode"
+				;;
+
+			q)
+				break
+				;;
+
+			*)
+				die "invalid choice"
+				;;
+		esac
+		open_episode "$selection_id" "$episode" "$download_dir"
+	done
+}
+
+dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c" "jq"
+parse_args "$@"
+main
