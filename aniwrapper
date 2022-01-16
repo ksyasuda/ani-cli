@@ -51,7 +51,7 @@ Options:
 	"
 }
 
-logger() {
+lg() {
 	if [[ "$VERBOSE" -eq 1 ]]; then
 		printf "%s\n" "$*"
 	fi
@@ -93,7 +93,7 @@ get_quality() {
 		printf "%s" "Enter quality [$QUALITIES]: "
 		read -r QUALITY
 	fi
-	logger "selected quality: $QUALITY"
+	lg "selected quality: $QUALITY"
 }
 
 # generates a span mesg for rofi given
@@ -116,28 +116,28 @@ parse_args() {
 				;;
 			q)
 				GET_QUALITY=1
-				logger "Quality prompt enabled"
+				lg "Quality prompt enabled"
 				;;
 			c)
 				IS_ROFI=0
-				logger "Command-line (ani-cli) mode set"
+				lg "Command-line (ani-cli) mode set"
 				;;
 			d)
 				IS_DOWNLOAD=1
-				logger "Download flag set..."
+				lg "Download flag set..."
 				;;
 			f)
 				IS_PLAY_FROM_FILE=1
 				play_path="$OPTARG"
-				logger "Play from file flag set... skipping main menu"
-				logger "PLAY_PATH: $play_path"
+				lg "Play from file flag set... skipping main menu"
+				lg "PLAY_PATH: $play_path"
 				;;
 			t)
 				theme="$OPTARG"
-				logger "custom theme provided: $theme"
+				lg "custom theme provided: $theme"
 				case "$theme" in
 					aniwrapper)
-						logger "Default theme chosen... doing nothing"
+						lg "Default theme chosen... doing nothing"
 						theme=default
 						;;
 					dracula)
@@ -168,13 +168,13 @@ parse_args() {
 				CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
 				;;
 			C)
-				logger "Connecting to history database -> $CFG_DIR/history.sqlite3"
+				lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
 				sqlite3 "$CFG_DIR/history.sqlite3"
 				exit $?
 				;;
 			Q)
 				query="$OPTARG"
-				logger "DATABASE QUERY: $query"
+				lg "DATABASE QUERY: $query"
 				sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
 				exit $?
 				;;
@@ -203,7 +203,7 @@ check_flags() {
 	elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
 		printf "%s" "Enter download dir: "
 		read -r dl_dir
-		logger "Download dir: $dl_dir"
+		lg "Download dir: $dl_dir"
 		if [ ! -d "$dl_dir" ]; then
 			mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
 		fi
@@ -234,14 +234,14 @@ main() {
 			# ---------------------------------------------------------------------------
 			# streaming
 			# ---------------------------------------------------------------------------
-			logger "Streaming mode"
+			lg "Streaming mode"
 			run
 			;;
 		2.)
 			# ---------------------------------------------------------------------------
 			# download
 			# ---------------------------------------------------------------------------
-			logger "Download anime"
+			lg "Download anime"
 			dl_dir=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
 				-l 1 -p "Enter download dir:")
 			# if dl_dir is none set to current directory
@@ -253,14 +253,14 @@ main() {
 			# ---------------------------------------------------------------------------
 			# continue
 			# ---------------------------------------------------------------------------
-			logger "Continue watching"
+			lg "Continue watching"
 			run -H
 			;;
 		4.)
 			# ---------------------------------------------------------------------------
 			# play
 			# ---------------------------------------------------------------------------
-			logger "Play from file selected"
+			lg "Play from file selected"
 			IS_PLAY_FROM_FILE=1
 			span=$(printf '%s\n%s\n' "$(generate_span "Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
 			play_dir=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
@@ -274,7 +274,7 @@ main() {
 			exit $?
 			;;
 		5.)
-			logger "Sync history database"
+			lg "Sync history database"
 			roficmd="rofi -dpi $DPI -dmenu -config $CFG_FILE -l 0 -p"
 			username=$($roficmd "Enter the username of the remote user:")
 			[ -z "$username" ] && seppuku "No username provided... exiting"
@@ -284,10 +284,10 @@ main() {
 			[ -z "$port" ] && port=22
 			keypath=$($roficmd "Enter path to private key (leave blank if not needed or if unsure):")
 			if ! printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | run -s; then
-				logger "Aniwrapper was unable to sync the databases..."
+				lg "Aniwrapper was unable to sync the databases..."
 				exit 1
 			else
-				logger "Databases synced successfully"
+				lg "Databases synced successfully"
 				quit
 			fi
 			;;
@@ -304,7 +304,7 @@ main() {
 }
 
 parse_args "$@"
-logger "CONFIG DIR: $CFG_DIR"
-logger "ROFI CFG: $CFG_FILE"
+lg "CONFIG DIR: $CFG_DIR"
+lg "ROFI CFG: $CFG_FILE"
 check_flags
 main

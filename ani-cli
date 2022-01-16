@@ -44,7 +44,7 @@ err() {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
-logger() {
+lg() {
 	# prints passed in args to stdout if $VERBOSE is set to 1
 	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$*" >&2
 }
@@ -78,22 +78,22 @@ get_dpage_link() {
 }
 
 decrypt_link() {
-	logger "BEGIN: decrypt_link()" > /dev/stderr
+	lg "BEGIN: decrypt_link()" > /dev/stderr
 	ajax_url="https://gogoplay.io/encrypt-ajax.php"
 
 	#get the id from the url
 	video_id=$(printf "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
-	logger "video_id -> $video_id" > /dev/stderr
+	lg "video_id -> $video_id" > /dev/stderr
 
 	#construct ajax parameters
 	secret_key='3235373436353338353932393338333936373634363632383739383333323838'
 	iv='34323036393133333738303038313335'
 	ajax=$(printf "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
-	logger "ajax -> $ajax" > /dev/stderr
+	lg "ajax -> $ajax" > /dev/stderr
 
 	#send the request to the ajax url
 	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | jq -r '.source[].file'
-	logger "END: decrypt_link()" > /dev/stderr
+	lg "END: decrypt_link()" > /dev/stderr
 }
 
 get_video_quality() {
@@ -131,7 +131,7 @@ notification() {
 	if command -v "notify-send" > /dev/null; then
 		notify-send -i "$ANIWRAPPER_ICON_PATH" "$msg"
 	else
-		logger "$msg"
+		lg "$msg"
 	fi
 }
 
@@ -190,15 +190,15 @@ update_date() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	stmt=""
 	if [[ "$1" == "directory" ]]; then
-		logger "UPDATING FILE_HISTORY: directory='$2', filename='DIRECTORY', search_date='$datetime'"
+		lg "UPDATING FILE_HISTORY: directory='$2', filename='DIRECTORY', search_date='$datetime'"
 		stmt="UPDATE file_history SET watch_date = '$datetime' \
 			WHERE directory = '$2' and filename = '$3';"
 	elif [[ "$1" == "file" ]]; then
-		logger "UPDATING FILE_HISTORY: directory='$2', filename='$3', search_date='$datetime'"
+		lg "UPDATING FILE_HISTORY: directory='$2', filename='$3', search_date='$datetime'"
 		stmt="UPDATE file_history SET watch_date = '$datetime' \
 			WHERE directory = '$2' and filename = '$3';"
 	elif [[ "$2" == "search" ]]; then
-		logger "UPDATING SEARCH_HISTORY: anime_name='$1', search_date='$datetime'"
+		lg "UPDATING SEARCH_HISTORY: anime_name='$1', search_date='$datetime'"
 		stmt="UPDATE search_history SET search_date = '$datetime' \
 			WHERE anime_name = '$1';"
 	elif [[ $# -ge 3 ]]; then
@@ -206,17 +206,17 @@ update_date() {
 		[ -z "$temp_dt" ] && return 1
 		hist_dt=$(run_stmt "SELECT watch_date FROM watch_history WHERE anime_name='$1' AND episode_number='$2';")
 		hist_dt="${hist_dt// /:}"
-		logger "Checking if update is needed..."
+		lg "Checking if update is needed..."
 		if ! check_date "$hist_dt" "$temp_dt"; then
-			logger "Passed in date is older or same than current date... doing nothing"
+			lg "Passed in date is older or same than current date... doing nothing"
 			return 1
 		fi
-		logger "UPDATING watch_history from sync. watch_date -> $temp_dt"
+		lg "UPDATING watch_history from sync. watch_date -> $temp_dt"
 		stmt="UPDATE watch_history SET watch_date = '$temp_dt' \
 			WHERE anime_name = '$1' \
 			AND episode_number = $2;"
 	else
-		logger "UPDATING WATCH_HISTORY: anime_name='$1', episode_number='$2' search_date='$datetime'"
+		lg "UPDATING WATCH_HISTORY: anime_name='$1', episode_number='$2' search_date='$datetime'"
 		stmt="UPDATE watch_history SET watch_date = '$datetime' \
 			WHERE anime_name = '$1' \
 			AND episode_number = $2;"
@@ -229,15 +229,15 @@ update_date() {
 # check the anime_name/id
 insert_history() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
-	logger "Checking if ($*) exists in db"
+	lg "Checking if ($*) exists in db"
 	check_db "$@"
 	res="$?"
 	if [[ $res -gt 0 ]]; then
-		logger "Match found... Updating row in history db..."
+		lg "Match found... Updating row in history db..."
 		update_date "$@"
 		res=$?
 	else
-		logger "Row not found in DB... inserting"
+		lg "Row not found in DB... inserting"
 		if [[ "$1" == "directory" ]]; then
 			stmt="INSERT INTO file_history(directory, filename, watch_date) \
                 VALUES('$2', 'DIRECTORY', '$datetime');"
@@ -252,7 +252,7 @@ insert_history() {
 				watch_history(anime_name, episode_number, watch_date) \
 				VALUES('$1', '$2', '$datetime');"
 		fi
-		logger "INSERT STATEMENT -> $stmt"
+		lg "INSERT STATEMENT -> $stmt"
 		wait # in case there's another insert/update still running in background
 		run_stmt "$stmt"
 		res=$?
@@ -275,8 +275,8 @@ sync_search_history() {
 			((++cnt))
 		fi
 	done < <(sqlite3 -list -noheader "$temp_db" "SELECT DISTINCT * FROM search_history")
-	logger "$cnt rows inserted into search_history table"
-	logger "$errs errors on insert"
+	lg "$cnt rows inserted into search_history table"
+	lg "$errs errors on insert"
 }
 
 sync_watch_history() {
@@ -295,8 +295,8 @@ sync_watch_history() {
 			((++cnt))
 		done < <(sqlite3 -list -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
 	done < <(sqlite3 -list -noheader "$temp_db" "SELECT DISTINCT anime_name FROM watch_history")
-	logger "$cnt rows inserted into watch_history table"
-	logger "$errs rows skipped on insert"
+	lg "$cnt rows inserted into watch_history table"
+	lg "$errs rows skipped on insert"
 }
 
 #####################
@@ -305,13 +305,13 @@ sync_watch_history() {
 
 # opens the passed in file with $PLAYER_CMD
 play_file() {
-	logger "Checking if file is playable"
+	lg "Checking if file is playable"
 	if [[ "$1" =~ ($playable)$ ]]; then
 		filename="${1##*/}"
 		directory="${1%/*}"
 		insert_history "file" "$directory" "$filename" &
 		if [[ "$1" =~ .mp3 ]]; then
-			logger ".mp3 file found... playing without video"
+			lg ".mp3 file found... playing without video"
 			notification "Playing $1"
 			$PLAYER_CMD --no-video "$1"
 		else
@@ -334,7 +334,7 @@ get_directory_data() {
 		directory="${directory##*/}"
 		[ -z "$inputlist" ] && inputlist="$directory" || inputlist="$inputlist|$directory"
 		if ! check_db "directory" "$search_dir/$directory"; then
-			logger "$search_dir/$directory opened before... adding $cnt to list" 1> /dev/stderr
+			lg "$search_dir/$directory opened before... adding $cnt to list" 1> /dev/stderr
 			[ -z "$watched" ] && watched="$cnt" || watched="$watched, $cnt"
 		fi
 		((++cnt))
@@ -344,14 +344,14 @@ get_directory_data() {
 	for filename in "$1"/*."{$playable_list}"; do
 		[ -z "$inputlist" ] && inputlist="$filename" || inputlist="$inputlist|$filename"
 		if ! check_db "file" "$search_dir" "$filename"; then
-			logger "$filename watched before... adding $cnt to list" 1> /dev/stderr
+			lg "$filename watched before... adding $cnt to list" 1> /dev/stderr
 			[ -z "$watched" ] && watched="$cnt" || watched="$watched, $cnt"
 		fi
 		((++cnt))
 	done
 	shopt -u nullglob
 	shopt -u nocaseglob
-	logger "INPUTLIST: $inputlist"
+	lg "INPUTLIST: $inputlist"
 	if [[ -n "$inputlist" && "$search_dir" != / ]]; then
 		inputlist="../|$inputlist|Back|Quit"
 	elif [[ -z "$inputlist" && "$search_dir" != / ]]; then
@@ -359,8 +359,8 @@ get_directory_data() {
 	elif [[ "$search_dir" = / ]]; then
 		inputlist="$inputlist|Back|Quit"
 	fi
-	logger "INPUT LIST: $inputlist" 1> /dev/stderr
-	logger "WATCHED LIST: $watched" 1> /dev/stderr
+	lg "INPUT LIST: $inputlist" 1> /dev/stderr
+	lg "WATCHED LIST: $watched" 1> /dev/stderr
 }
 
 # recursive function for finding path to video file given a starting directory
@@ -368,7 +368,7 @@ find_media() {
 	inp="$1"
 	[ -z "$inp" ] && die "No directory"
 	# workaround to allow logging w/o affecting return output
-	logger "INPUT DIR: $inp" 1> /dev/stderr
+	lg "INPUT DIR: $inp" 1> /dev/stderr
 
 	# base case hit when a file is found
 	if [ -f "$inp" ]; then
@@ -428,7 +428,7 @@ get_search_query() {
 			-config "$ROFI_CFG" < <(run_stmt "$stmt"))
 		# Remove the id from the query
 		query="${query//[1-9]*\. /}"
-		logger "Query: $query"
+		lg "Query: $query"
 	elif [ "$is_rofi" -eq 0 ]; then
 		printf "Search Anime: "
 		read -r query
@@ -437,7 +437,7 @@ get_search_query() {
 
 search_anime() {
 	# get anime name along with its id
-	logger "NUM ARGS: $#"
+	lg "NUM ARGS: $#"
 	if [[ $# -gt 1 ]]; then
 		# if multi-word query, concatenate into one string and replace spaces with '-'
 		search="$*"
@@ -446,7 +446,7 @@ search_anime() {
 		# if one word, remove leading or trailing whitespace
 		search="${1// /}"
 	fi
-	logger "Search Query: $search"
+	lg "Search Query: $search"
 	curl -s "$BASE_URL//search.html" \
 		-G \
 		-d "keyword=$search" |
@@ -489,10 +489,10 @@ anime_selection() {
 		cnt=0
 		# Get the comma separated list of indexes of anime that has been searched before
 		for anime in "${res[@]}"; do
-			logger "ANIME: $anime"
+			lg "ANIME: $anime"
 			check_db "$anime" "search"
 			if [[ $? -gt 0 ]]; then
-				logger "$anime HAS BEEN SEARCHED BEFORE"
+				lg "$anime HAS BEEN SEARCHED BEFORE"
 				if [ -z "$searched" ]; then
 					searched="$cnt"
 				else
@@ -501,7 +501,7 @@ anime_selection() {
 			fi
 			((++cnt))
 		done
-		logger "SEARCHED: $searched"
+		lg "SEARCHED: $searched"
 
 		# get the anime from indexed list
 		msg="$(generate_span "Query: $query")"
@@ -513,7 +513,7 @@ anime_selection() {
 				-mesg "$msg" -only-match)
 		[ -z "$user_input" ] && return 1
 		if [ "$(awk '{ print $NF }' <<< "$user_input")" = "Quit" ]; then
-			logger "QUITTING"
+			lg "QUITTING"
 			return 1
 		fi
 
@@ -541,7 +541,7 @@ anime_selection() {
 		name="$anime_id"
 	fi
 
-	logger "CHOICE: $choice"
+	lg "CHOICE: $choice"
 
 	if [ "$is_rofi" -eq 1 ]; then
 		# check both choice and name are set
@@ -580,7 +580,7 @@ episode_selection() {
 	ep_choice_start="1"
 	if [ "$is_rofi" -eq 1 ]; then
 		# select episode number for anime
-		logger "Anime ID: $anime_id"
+		lg "Anime ID: $anime_id"
 		stmt="SELECT DISTINCT episode_number \
         FROM watch_history \
         WHERE anime_name = '$anime_id';"
@@ -608,7 +608,7 @@ episode_selection() {
 		)
 		ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
 		ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
-		logger "START: $ep_choice_start | END: $ep_choice_end"
+		lg "START: $ep_choice_start | END: $ep_choice_end"
 	elif [ $last_ep_number -gt 1 ]; then
 		[ $is_download -eq 1 ] &&
 			printf "Range of episodes can be specified: start_number end_number\n"
@@ -619,7 +619,7 @@ episode_selection() {
 	fi
 	# check for half episode
 	if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]; then
-		logger "IS A HALF EPISODE"
+		lg "IS A HALF EPISODE"
 		half_ep=1
 		ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
 		ep_choice_end=$ep_choice_start
@@ -646,7 +646,7 @@ open_episode() {
 		episode=$episode"-5"
 	fi
 
-	logger "Getting data for episode $episode"
+	lg "Getting data for episode $episode"
 
 	# Don't update watch history if downloading episode
 	if [ "$is_download" -eq 0 ]; then
@@ -655,8 +655,8 @@ open_episode() {
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_video_quality "$dpage_link")
-	logger "Download link: $video_url"
-	logger "Video url: $video_url"
+	lg "Download link: $video_url"
+	lg "Video url: $video_url"
 
 	if [ $half_ep -eq 1 ]; then
 		episode=$temp_ep
@@ -673,7 +673,7 @@ open_episode() {
 			printf "${c_green}\nVideo playing"
 		fi
 	else
-		logger "Downloading episode $episode ..."
+		lg "Downloading episode $episode ..."
 		dl_dir="${ddir// /}/$anime_id"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
@@ -694,20 +694,20 @@ open_episode() {
 }
 
 stream() {
-	logger "Running stream()"
+	lg "Running stream()"
 	get_search_query
 	searched=0
 	# check if anime has been searched before
 	anime_id="${query// /}"
 	[ -z "$anime_id" ] && die "No anime selected or queried"
-	logger "Checking if anime: $anime_id has been searched before..."
+	lg "Checking if anime: $anime_id has been searched before..."
 	check_db "$anime_id" "search"
 	searched="$?"
-	logger "Searched before: $searched"
+	lg "Searched before: $searched"
 	if [ "$searched" -eq 0 ]; then
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
-		logger "SEARCH RESULTS: $search_results"
+		lg "SEARCH RESULTS: $search_results"
 		if ! anime_selection "$search_results"; then
 			die "No anime selection found"
 		fi
@@ -741,7 +741,7 @@ parse_args() {
 			d)
 				is_download=1
 				download_dir="$OPTARG"
-				logger "DOWNLOAD DIR: $download_dir"
+				lg "DOWNLOAD DIR: $download_dir"
 				;;
 			H)
 				scrape=history
@@ -754,7 +754,7 @@ parse_args() {
 				;;
 			q)
 				quality="$OPTARG"
-				logger "passed in quality: $quality"
+				lg "passed in quality: $quality"
 				;;
 			c)
 				is_rofi=0
@@ -809,23 +809,23 @@ parse_args() {
 						die "$theme not a valid theme file.  Themes: [$THEMES]"
 						;;
 				esac
-				logger "Setting theme for ani-cli -> $ROFI_THEME"
+				lg "Setting theme for ani-cli -> $ROFI_THEME"
 				ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
-				logger "ROFI_CFG: $ROFI_CFG"
+				lg "ROFI_CFG: $ROFI_CFG"
 				;;
 			T)
 				ROFI_CFG="$OPTARG"
 				[ ! -f "$ROFI_CFG" ] && die "$ROFI_CFG does not exist"
-				logger "CUSTOM ROFI_CFG: $ROFI_CFG"
+				lg "CUSTOM ROFI_CFG: $ROFI_CFG"
 				;;
 			C)
-				logger "Connecting to history database -> $CFG_DIR/history.sqlite3"
+				lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
 				sqlite3 "$CFG_DIR/history.sqlite3"
 				exit $?
 				;;
 			Q)
 				query="$OPTARG"
-				logger "DATABASE QUERY: $query"
+				lg "DATABASE QUERY: $query"
 				sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
 				exit $?
 				;;
@@ -856,7 +856,7 @@ main() {
 			if ! anime_selection "${search_results[@]}"; then
 				die "No anime selection found"
 			fi
-			logger "SELECTION: $selection_id"
+			lg "SELECTION: $selection_id"
 
 			stmt="SELECT episode_number \
 			FROM watch_history \
@@ -864,7 +864,7 @@ main() {
 			ORDER BY watch_date DESC \
 			LIMIT 1"
 			ep_choice_start=$(run_stmt "$stmt")
-			logger "Most recently watched episode: $ep_choice_start"
+			lg "Most recently watched episode: $ep_choice_start"
 			;;
 		sync)
 			printf "%s" "Enter username for remote user: "
@@ -899,7 +899,7 @@ main() {
 			exit $?
 			;;
 		file)
-			logger "STARTING DIR: $play_dir"
+			lg "STARTING DIR: $play_dir"
 			[ ! -d "$play_dir" ] && die "$play_dir does not exist"
 			insert_history "directory" "$play_dir" &
 			video_path=$(find_media "$play_dir")
@@ -909,7 +909,7 @@ main() {
 			elif [ -z "$video_path" ]; then
 				die "Something went wrong getting path... path is empty"
 			fi
-			logger "VIDEO PATH: $video_path"
+			lg "VIDEO PATH: $video_path"
 			play_file "$video_path"
 			exit $?
 			;;
@@ -923,7 +923,7 @@ main() {
 	done
 
 	if [[ "$is_download" -eq 1 ]]; then
-		logger "Finished downloading episodes: $episodes for $selection_id... exiting"
+		lg "Finished downloading episodes: $episodes for $selection_id... exiting"
 		exit 0
 	fi
 
@@ -974,7 +974,7 @@ main() {
 			a)
 				stream
 				episode=$ep_choice_start
-				logger "NEW EPISODE: $selection_id - $episode"
+				lg "NEW EPISODE: $selection_id - $episode"
 				;;
 
 			q)
