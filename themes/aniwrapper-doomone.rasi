@@ -108,6 +108,8 @@ window {
     background-color: var(background);
     width: 75%;
     border-radius: 12px;
+    anchor: center;
+    location: center;
 }
 mainbox {
     padding: 0;

@@ -418,7 +418,7 @@ get_search_query() {
 	# Get search history
 	stmt="SELECT DISTINCT id || '. ' || anime_name \
 		  FROM search_history \
-		  ORDER BY id DESC;"
+		  ORDER BY search_date DESC;"
 
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
 	span="$(generate_span "$msg")"
@@ -655,7 +655,7 @@ open_episode() {
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_video_quality "$dpage_link")
-	lg "Download link: $video_url"
+	lg "Download link: $dpage_link"
 	lg "Video url: $video_url"
 
 	if [ $half_ep -eq 1 ]; then
