@@ -48,7 +48,6 @@ element {
     padding: 4px 0px 4px 7px;
     spacing: 5px;
     border:  0;
-    cursor:  pointer;
     margin:  1px 0px;
     border-radius: 6px;
 }
@@ -92,20 +91,20 @@ element-text {
     background-color: rgba(0, 0, 0, 0%);
     text-color: inherit;
     highlight: inherit;
-    cursor: inherit;
 }
 element-icon {
     background-color: rgba(0, 0, 0, 0%);
     size: 1.0000em;
     text-color: inherit;
-    cursor: inherit;
 }
 window {
     padding: 0;
     border: 0;
     background-color: var(background);
-    width: 60%;
+    width: 80%;
     border-radius: 12px;
+    anchor: center;
+    location: center;
 }
 mainbox {
     padding: 0;
@@ -113,9 +112,11 @@ mainbox {
 }
 message {
     margin: 0px 7px;
+    border: 0;
 }
 textbox {
     text-color: var(foreground);
+    border: 0;
 }
 listview {
     margin: 0px 0px 5px;
@@ -123,6 +124,7 @@ listview {
     spacing: 2px;
     fixed-height: 0;
     columns: 2;
+    border: 0;
 }
 scrollbar {
     padding: 0;
@@ -133,7 +135,6 @@ scrollbar {
 button {
     spacing: 0;
     text-color: var(normal-foreground);
-    cursor: pointer;
 }
 button selected {
     background-color: var(selected-normal-background);
@@ -142,7 +143,6 @@ button selected {
 
 entry {
     spacing: 0;
-    cursor: text;
     text-color: var(normal-foreground);
     background-color: var(nord3);
 }

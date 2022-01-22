@@ -12,7 +12,7 @@
     drac-red: #ff5555;
     drac-yel: #f1fa8c;
 
-    font: "Jetbrains Mono 14";
+    font: "Open Sans 12";
 
     foreground: @drac-fgd;
     background: @drac-bgd;
@@ -29,10 +29,12 @@
 #window {
     background-color: @background;
     border:           3;
-    border-radius: 6;
     border-color: @bordercolor;
-    padding:          5;
-    width: 75%;
+    padding:          12px;
+    border-radius: 12px;
+    width: 80%;
+    anchor: center;
+    location: center;
 }
 #mainbox {
     border:  0;
@@ -42,19 +44,21 @@
     border:       1px dash 0px 0px ;
     border-color: @separatorcolor;
     padding:      1px ;
+    border:  0;
 }
 #textbox {
     text-color: @foreground;
+    border:  0;
 }
 #listview {
     fixed-height: 0;
-    border:       2px dash 0px 0px ;
     border-color: @bordercolor;
-    spacing:      2px ;
+    spacing:      2px;
     scrollbar:    false;
     padding:      2px 0px 0px ;
     columns: 	  2;
     lines:		  15;
+    border:  0;
 }
 #element {
     border:  0;
@@ -75,14 +79,17 @@
 #element.selected.normal {
     background-color: @selected-background;
     text-color:       @foreground;
+    border-radius: 3px;
 }
 #element.selected.urgent {
     background-color: @selected-urgent-background;
     text-color:       @foreground;
+    border-radius: 3px;
 }
 #element.selected.active {
     background-color: @active-background;
     text-color:       @foreground;
+    border-radius: 3px;
 }
 #element.alternate.normal {
     background-color: @background;

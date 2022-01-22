@@ -21,7 +21,7 @@
     active:      #005F87;
     transparent: #000000aa;
     spacing: 0em;
-    font: "Iosevka Term Regular 14";
+    font: "Open Sans 12";
     padding: 0px;
     background-color: @grey;
     line-style: "none";
@@ -37,10 +37,14 @@ prompt {
 }
 
 window {
-    border-radius: 10px;
     background-color: @transparent;
     border: 2;
+    padding: 12px;
     color: @grey;
+    border-radius: 12px;
+    anchor: center;
+    location: center;
+    width: 80%;
 }
 mainbox {
     padding: 0px;
@@ -64,6 +68,8 @@ listview {
     reverse: false;
     color: #000000;
     spacing: 0.3em;
+    columns: 2;
+    lines: 12;
 }
 scrollbar {
     color: @black;

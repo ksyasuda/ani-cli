@@ -1,5 +1,5 @@
 configuration {
-    font:				    "Open Sans 11";
+    font:				    "Open Sans 12";
     display-drun:			"Dmenu";
     scroll-method:			0;
     disable-history:		false;
@@ -10,7 +10,6 @@ configuration {
 * {
     selected-normal-foreground:  rgba ( 255, 147, 5, 100 % );
     selected-normal-foreground:  rgba ( 255, 147, 5, 100 % );
-    /* foreground:                  rgba ( 196, 203, 212, 100 % ); */
     foreground:                  #ecbe7b;
     normal-foreground:           @foreground;
     alternate-normal-background: rgba ( 45, 48, 59, 1 % );
@@ -47,12 +46,12 @@ configuration {
 window {
     background-color: @background;
     border: 5px;
-    border-radius: 7px;
     border-color: #2C4762;
-    anchor: center;
-    location: center;
     padding: 25;
     width: 80%;
+    border-radius: 12px;
+    anchor: center;
+    location: center;
 }
 listview {
     lines:                          12;
