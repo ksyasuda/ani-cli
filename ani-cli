@@ -381,31 +381,31 @@ find_media() {
 	selection="$(rofi -dpi "$DPI" -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
 		-l 15 -i -sep '|' -mesg "$(generate_span "Current directory: $inp")" -a "$watched" \
 		-p "Enter selection" <<< "$inputlist")"
-
+	lg "SELECTION: $selection" 1> /dev/stderr
 	case "$selection" in
 		Back | ../)
 			dotdotslash="${inp%/*}"
 			if [ -z "$dotdotslash" ]; then
-				find_media "/"
 				insert_history "directory" "/"
+				find_media "/"
 			else
-				find_media "$dotdotslash"
 				insert_history "directory" "$dotdotslash"
+				find_media "$dotdotslash"
 			fi
 			;;
 		Quit)
 			return 1
 			;;
 		*)
-			if [ ! -d "$inp/$selection" ] && [ ! -f "$inp/$selection" ]; then
-				return 1
-			else
+			if [ -d "$inp/$selection" ]; then
 				insert_history "directory" "$inp/$selection"
 				if [ "$inp" = "/" ]; then
 					find_media "/$selection"
 				else
 					find_media "$inp/$selection"
 				fi
+			else
+				find_media "$inp/$selection"
 			fi
 			;;
 	esac
