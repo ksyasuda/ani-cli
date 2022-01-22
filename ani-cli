@@ -707,7 +707,7 @@ stream() {
 	searched="$?"
 	lg "Searched before: $searched"
 	if [ "$searched" -eq 0 ]; then
-		search_results=$(search_anime "$query")
+		search_results=$(search_anime $query) # want word splitting to account for both input cases
 		[ -z "$search_results" ] && die "No search results found"
 		lg "SEARCH RESULTS: $search_results"
 		if ! anime_selection "$search_results"; then
