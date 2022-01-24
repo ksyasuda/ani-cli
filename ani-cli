@@ -423,10 +423,9 @@ get_search_query() {
 		  ORDER BY search_date DESC;"
 
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
-	span="$(generate_span "$msg")"
 	if [ "$is_rofi" -eq 1 ]; then
 		query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
-			-mesg "$span" \
+			-mesg "$(generate_span "$msg")" \
 			-config "$ROFI_CFG" < <(run_stmt "$stmt"))
 		# Remove the id from the query
 		query="${query//[1-9]*\. /}"
