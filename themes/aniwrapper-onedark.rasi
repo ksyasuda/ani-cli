@@ -27,7 +27,7 @@
   spacing: 0;
   background-color: transparent;
 
-  font: "Knack Nerd Font 14";
+  font: "Open Sans 12";
   text-color: @text;
 }
 
@@ -35,11 +35,14 @@ window {
   transparency: "real";
   fullscreen: false;
   background-color: #282c34dd;
-  width: 75%;
+  width: 80%;
+  border-radius: 12px;
+  anchor: center;
+  location: center;
 }
 
 mainbox {
-  padding: 5%;
+  padding: 4%;
 }
 
 inputbar {
