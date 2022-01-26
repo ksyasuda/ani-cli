@@ -63,7 +63,7 @@ seppuku() {
 }
 
 quit() {
-	printf "%s\n" 'Quitting...'
+	lg 'Quitting...'
 	exit 0
 }
 
