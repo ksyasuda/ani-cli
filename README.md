@@ -189,6 +189,9 @@ aniwrapper -v
 # Connect to history database
 aniwrapper -C
 
+# Enable silent mode (suppress output to stdout) [cannot be used with -v]
+aniwrapper -S
+
 # Query the history database
 aniwrapper -Q <query>
 

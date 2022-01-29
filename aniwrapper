@@ -34,8 +34,8 @@ help_text() {
 		printf "%s\n" "$line"
 	done <<< "
 Usage:
-    aniwrapper [-cdhvq] [-t <theme> or -T <config_path>]
-    aniwrapper [-cv] [-t <theme> or -T <config_path>] -f <path_to_directory>
+    aniwrapper [-cdhvqS] [-t <theme> or -T <config_path>]
+    aniwrapper [-cvS] [-t <theme> or -T <config_path>] -f <path_to_directory>
     aniwrapper -Q <query>
     aniwrapper -C
 Options:
@@ -44,6 +44,7 @@ Options:
      -c  enable command-line mode (rofi disabled)
      -d  download episode in command-line mode
      -C  connect to history database
+	 -S  silent mode (suppress output to stdout) [cannot be used with -v]
 
      -t  <aniwrapper (default)|dracula|doomone|fancy|flamingo|material|onedark> change rofi theme
      -T  <config_path> specify custom rofi theme
