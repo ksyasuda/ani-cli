@@ -20,7 +20,4 @@ ifneq ("$(wildcard $(DESTDIR)$(PREFIX)/bin/aniwrapper)","")
 	$(RM) $(DESTDIR)$(PREFIX)/bin/aniwrapper
 endif
 
-reinstall: uninstall install
-
-.PHONY: all install uninstall dev reinstall
-
+.PHONY: all install uninstall dev
