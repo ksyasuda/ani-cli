@@ -20,6 +20,7 @@ IS_DOWNLOAD=0
 IS_PLAY_FROM_FILE=0
 IS_ROFI=1
 VERBOSE=0
+SILENT=0
 
 quit="6. Quit"
 options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$quit"
@@ -52,7 +53,7 @@ Options:
 }
 
 lg() {
-	if [[ "$VERBOSE" -eq 1 ]]; then
+	if ((VERBOSE == 1)); then
 		printf "%s\n" "$*"
 	fi
 }
@@ -68,22 +69,33 @@ quit() {
 }
 
 run() {
-	if [[ "$IS_PLAY_FROM_FILE" -eq 0 ]] && [[ "$GET_QUALITY" -eq 1 ]]; then
+	if ((IS_PLAY_FROM_FILE == 0 && GET_QUALITY == 1)); then
 		get_quality
 	fi
-	if [[ "$IS_CUSTOM_THEME" -eq 1 ]] && [[ "$VERBOSE" -eq 0 ]]; then
-		"$CMD" -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" "$@"
-	elif [[ "$IS_CUSTOM_THEME" -eq 1 ]] && [[ "$VERBOSE" -eq 1 ]]; then
-		"$CMD" -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" "$@"
-	elif [[ "$VERBOSE" -eq 0 ]]; then
-		"$CMD" -D"$DPI" -q "$QUALITY" -t "$theme" "$@"
+
+	if ((SILENT == 0)); then
+		if ((IS_CUSTOM_THEME == 0)); then
+			"$CMD" -D"$DPI" -sq "$QUALITY" -t "$theme" "$@"
+		else
+			"$CMD" -D"$DPI" -sq "$QUALITY" -T "$CFG_FILE" "$@"
+		fi
+	elif ((VERBOSE == 1)); then
+		if ((IS_CUSTOM_THEME == 0)); then
+			"$CMD" -D"$DPI" -vq "$QUALITY" -t "$theme" "$@"
+		else
+			"$CMD" -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" "$@"
+		fi
 	else
-		"$CMD" -D"$DPI" -vq "$QUALITY" -t "$theme" "$@"
+		if ((IS_CUSTOM_THEME == 0)); then
+			"$CMD" -D"$DPI" -q "$QUALITY" -t "$theme" "$@"
+		else
+			"$CMD" -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" "$@"
+		fi
 	fi
 }
 
 get_quality() {
-	if [ "$IS_ROFI" -eq 1 ]; then
+	if ((IS_ROFI == 1)); then
 		selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
 			-l 5 -selected-row 0 \
 			-theme-str 'listview {columns: 1;}' -p "Choose video quality:" \
@@ -105,7 +117,7 @@ generate_span() {
 }
 
 parse_args() {
-	while getopts 'vhqcdf:-:t:T:CQ:D:' OPT; do
+	while getopts 'vhqcdf:-:t:T:CQ:D:s' OPT; do
 		case "$OPT" in
 			h)
 				help_text
@@ -186,6 +198,9 @@ parse_args() {
 			D)
 				DPI="$OPTARG"
 				;;
+			s)
+				SILENT=1
+				;;
 			*)
 				help_text
 				exit 1
@@ -197,10 +212,13 @@ parse_args() {
 
 check_flags() {
 	# Check if command-line flag is set
-	if [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 0 ]]; then
+	if ((VERBOSE == 1 && SILENT == 1)); then
+		seppuku "verbose and silent options cannot be used together"
+	fi
+	if ((IS_ROFI == 0 && IS_DOWNLOAD == 0)); then
 		run -c
 		exit $?
-	elif [[ "$IS_ROFI" -eq 0 ]] && [[ "$IS_DOWNLOAD" -eq 1 ]]; then
+	elif ((IS_ROFI == 0 && IS_DOWNLOAD == 1)); then
 		printf "%s" "Enter download dir: "
 		read -r dl_dir
 		lg "Download dir: $dl_dir"
@@ -209,10 +227,10 @@ check_flags() {
 		fi
 		run "-cd $dl_dir"
 		exit $?
-	elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 1 ]]; then
+	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 1)); then
 		run "-f$play_path" -T "$CFG_FILE"
 		exit $?
-	elif [[ "$IS_ROFI" -eq 1 ]] && [[ "$IS_PLAY_FROM_FILE" -eq 1 ]] && [[ "$IS_CUSTOM_THEME" -eq 0 ]]; then
+	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 0)); then
 		run "-f$play_path" -t "$theme"
 		exit $?
 	fi
