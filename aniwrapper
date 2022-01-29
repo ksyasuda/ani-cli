@@ -73,11 +73,11 @@ run() {
 		get_quality
 	fi
 
-	if ((SILENT == 0)); then
+	if ((SILENT == 1)); then
 		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -sq "$QUALITY" -t "$theme" "$@"
+			"$CMD" -D"$DPI" -Sq "$QUALITY" -t "$theme" "$@"
 		else
-			"$CMD" -D"$DPI" -sq "$QUALITY" -T "$CFG_FILE" "$@"
+			"$CMD" -D"$DPI" -Sq "$QUALITY" -T "$CFG_FILE" "$@"
 		fi
 	elif ((VERBOSE == 1)); then
 		if ((IS_CUSTOM_THEME == 0)); then
@@ -117,7 +117,7 @@ generate_span() {
 }
 
 parse_args() {
-	while getopts 'vhqcdf:-:t:T:CQ:D:s' OPT; do
+	while getopts 'vhqcdf:-:t:T:CQ:D:S' OPT; do
 		case "$OPT" in
 			h)
 				help_text
@@ -198,7 +198,7 @@ parse_args() {
 			D)
 				DPI="$OPTARG"
 				;;
-			s)
+			S)
 				SILENT=1
 				;;
 			*)
