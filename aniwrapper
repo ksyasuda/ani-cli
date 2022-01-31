@@ -65,7 +65,7 @@ seppuku() {
 }
 
 quit() {
-	lg 'Quitting...'
+	((SILENT != 1)) && lg 'Quitting...'
 	exit 0
 }
 
@@ -326,7 +326,7 @@ main() {
 }
 
 parse_args "$@"
-lg "CONFIG DIR: $CFG_DIR"
-lg "ROFI CFG: $CFG_FILE"
+((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
+((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
 check_flags
 main
