@@ -13,7 +13,6 @@ VERBOSE=0
 
 player_fn="mpv"
 playable="\.mp4|\.mkv|\.ts|\.mp3|\.webm"
-playable_list="mp4,mkv,ts,mp3,webm"
 prog="ani-cli"
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -334,6 +333,7 @@ get_directory_data() {
 	[ "$search_dir" = "/" ] && cnt=0 # account for no ../ on /
 	for directory in "$1"/*; do
 		directory="${directory##*/}"
+		[ ! -d "$search_dir/$directory" ] && continue
 		[ -z "$inputlist" ] && inputlist="$directory" || inputlist="$inputlist|$directory"
 		if ! check_db "directory" "$search_dir/$directory"; then
 			lg "$search_dir/$directory opened before... adding $cnt to list" 1> /dev/stderr
@@ -343,7 +343,8 @@ get_directory_data() {
 	done
 	shopt -s nullglob   # set nullglob to avoid printing output if no files with extension exist
 	shopt -s nocaseglob # case insensitive globbing
-	for filename in "$1"/*."{$playable_list}"; do
+	for filename in "$search_dir"/*.{mp4,mkv,ts,mp3,webm}; do
+		filename="${filename##*/}"
 		[ -z "$inputlist" ] && inputlist="$filename" || inputlist="$inputlist|$filename"
 		if ! check_db "file" "$search_dir" "$filename"; then
 			lg "$filename watched before... adding $cnt to list" 1> /dev/stderr
@@ -353,13 +354,14 @@ get_directory_data() {
 	done
 	shopt -u nullglob
 	shopt -u nocaseglob
-	lg "INPUTLIST: $inputlist"
 	if [[ -n "$inputlist" && "$search_dir" != / ]]; then
 		inputlist="../|$inputlist|Back|Quit"
 	elif [[ -z "$inputlist" && "$search_dir" != / ]]; then
 		inputlist="../|Back|Quit"
 	elif [[ "$search_dir" = / ]]; then
 		inputlist="$inputlist|Back|Quit"
+	else
+		inputlist="Quit"
 	fi
 	lg "INPUT LIST: $inputlist" 1> /dev/stderr
 	lg "WATCHED LIST: $watched" 1> /dev/stderr
@@ -687,13 +689,13 @@ open_episode() {
 		{
 			mkdir -p "$dl_dir" || die "Could not create directory"
 			if command -v "notify-send" > /dev/null; then
-				if aria2c --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
+				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
 					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode"
 				else
 					notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 				fi
 			else
-				if aria2c --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
+				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
 					printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode"
 				else
 					printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
