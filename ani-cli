@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
 PLAYER_CMD="mpv"
@@ -847,9 +846,11 @@ parse_args() {
 main() {
 	case $scrape in
 		query)
+			BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 			stream
 			;;
 		history)
+			BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 			stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
 			search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
 			[ -z "$search_results" ] && die "History is empty"
