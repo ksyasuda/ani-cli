@@ -10,6 +10,7 @@ ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 DPI=96
 VERBOSE=0
+SILENT=0
 
 player_fn="mpv"
 playable="\.mp4|\.mkv|\.ts|\.mp3|\.webm"
@@ -34,17 +35,17 @@ help_text() {
 }
 
 die() {
-	printf "$c_red%s$c_reset\n" "$*" >&2
+	((SILENT != 1)) && printf "$c_red%s$c_reset\n" "$*" >&2
 	exit 1
 }
 
 err() {
-	printf "$c_red%s$c_reset\n" "$*" >&2
+	((SILENT != 1)) && printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
+# prints passed in args to stdout if $VERBOSE is set to 1
 lg() {
-	# prints passed in args to stdout if $VERBOSE is set to 1
-	[ "$VERBOSE" -eq 1 ] && printf "%s\n" "$*" >&2
+	((VERBOSE == 1)) && printf "%s\n" "$*" >&2
 }
 
 check_input() {
@@ -679,7 +680,7 @@ open_episode() {
 		if command -v "notify-send" > /dev/null; then
 			notify-send -i "$ANIWRAPPER_ICON_PATH" "Playing $anime_id - Episode $episode"
 		else
-			printf "${c_green}\nVideo playing"
+			((SILENT != 1)) && printf "${c_green}\nVideo playing"
 		fi
 	else
 		lg "Downloading episode $episode ..."
@@ -696,9 +697,9 @@ open_episode() {
 				fi
 			else
 				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
-					printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode"
+					((SILENT != 1)) && printf "${c_green}Downloaded complete for %s - Episode: %s${c_reset}\n" "${anime_id//-/ }" "$episode"
 				else
-					printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
+					((SILENT != 1)) && printf "${c_red}Download failed for %s - Episode: %s, please retry or check your internet connection${c_reset}\n" "${anime_id//-/ }" "$episode"
 				fi
 			fi
 		}
@@ -744,7 +745,7 @@ parse_args() {
 	is_download=0
 	download_dir="."
 	half_ep=0
-	while getopts 'hd:Hsvq:cf:t:T:CQ:D:' OPT; do
+	while getopts 'hd:Hsvq:cf:t:T:CQ:D:S' OPT; do
 		case "$OPT" in
 			h)
 				help_text
@@ -832,6 +833,9 @@ parse_args() {
 				;;
 			D)
 				DPI="$OPTARG"
+				;;
+			S)
+				SILENT=1
 				;;
 			*)
 				printf "%s\n" "Invalid option"
@@ -930,66 +934,67 @@ main() {
 		exit 0
 	fi
 
-	episode=${ep_choice_end:-$ep_choice_start}
+	if ((SILENT != 1)); then
+		episode=${ep_choice_end:-$ep_choice_start}
+		choice=''
+		while :; do
+			printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
+			if [ "$episode" -ne "$last_ep_number" ]; then
+				printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
+			fi
+			if [ "$episode" -ne "1" ]; then
+				printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
+			fi
+			if [ "$last_ep_number" -ne "1" ]; then
+				printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+			fi
+			printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
+			printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
+			# printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
+			printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
+			printf "${c_blue}Enter choice:${c_green} "
+			read -r choice
 
-	choice=''
-	while :; do
-		printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
-		if [ "$episode" -ne "$last_ep_number" ]; then
-			printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
-		fi
-		if [ "$episode" -ne "1" ]; then
-			printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
-		fi
-		if [ "$last_ep_number" -ne "1" ]; then
-			printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
-		fi
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
-		# printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
-		printf "${c_blue}Enter choice:${c_green} "
-		read -r choice
+			printf "$c_reset"
+			case $choice in
+				n)
+					episode=$((episode + 1))
+					;;
+				p)
+					episode=$((episode - 1))
+					;;
 
-		printf "$c_reset"
-		case $choice in
-			n)
-				episode=$((episode + 1))
-				;;
-			p)
-				episode=$((episode - 1))
-				;;
+				s)
+					printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
+					read -r episode
+					if [ "$(echo "$episode" | cut -c1-1)" = "h" ]; then
+						half_ep=1
+						episode=$(echo "$episode" | cut -c2-)
+					fi
+					printf "$c_reset"
+					[ "$episode" -eq "$episode" ] 2> /dev/null || die "Invalid number entered"
+					;;
 
-			s)
-				printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
-				read -r episode
-				if [ "$(echo "$episode" | cut -c1-1)" = "h" ]; then
-					half_ep=1
-					episode=$(echo "$episode" | cut -c2-)
-				fi
-				printf "$c_reset"
-				[ "$episode" -eq "$episode" ] 2> /dev/null || die "Invalid number entered"
-				;;
+				r)
+					episode=$((episode))
+					;;
+				a)
+					stream
+					episode=$ep_choice_start
+					lg "NEW EPISODE: $selection_id - $episode"
+					;;
 
-			r)
-				episode=$((episode))
-				;;
-			a)
-				stream
-				episode=$ep_choice_start
-				lg "NEW EPISODE: $selection_id - $episode"
-				;;
+				q)
+					break
+					;;
 
-			q)
-				break
-				;;
-
-			*)
-				die "invalid choice"
-				;;
-		esac
-		open_episode "$selection_id" "$episode" "$download_dir"
-	done
+				*)
+					die "invalid choice"
+					;;
+			esac
+			open_episode "$selection_id" "$episode" "$download_dir"
+		done
+	fi
 }
 
 dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c"

@@ -146,7 +146,7 @@ In this program, rofi is configured to search with case insensitivity and select
 Once your history starts filling up, it becomes progressively more difficult to form unique search queries
 
 ![selection with dash](https://imgur.com/vSyaoG6.png)
-The workaround for this is to prepend a dash ` -` to the search query<br/>
+The workaround for this is to append a dash ` -` to the end of the search query<br/>
 The above output was produced by searching: `isekai -`
 
 </div>
@@ -188,6 +188,9 @@ aniwrapper -v
 
 # Connect to history database
 aniwrapper -C
+
+# Enable silent mode (suppress output to stdout) [cannot be used with -v]
+aniwrapper -S
 
 # Query the history database
 aniwrapper -Q <query>
