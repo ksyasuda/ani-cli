@@ -211,7 +211,11 @@ Streaming is the default option for the `aniwrapper` script and will prompt you 
 
 <summary>Example</summary>
 
+<div align="center">
+
 ![example](https://imgur.com/wNoXjLX.gif)
+
+</div>
 
 </details>
 
@@ -233,7 +237,11 @@ This option prompts you to provide the path to your `Videos` directory. Any path
 
 <summary>Example</summary>
 
+<div align="center">
+
 ![example](https://imgur.com/ODB3lBu.gif)
+
+</div>
 
 </details>
 
@@ -255,7 +263,11 @@ Allows for changing the aniwrapper theme from the main menu
 
 <summary>Example</summary>
 
+<div align="center">
+
 ![example](https://imgur.com/o97YqLe.gif)
+
+</div>
 
 </details>
 
