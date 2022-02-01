@@ -211,7 +211,7 @@ Streaming is the default option for the `aniwrapper` script and will prompt you 
 
 <summary>Example</summary>
 
-![example](https://imgur.com/Op9XLcY.gif)
+![example](https://imgur.com/wNoXjLX.gif)
 
 </details>
 
@@ -233,7 +233,7 @@ This option prompts you to provide the path to your `Videos` directory. Any path
 
 <summary>Example</summary>
 
-![example](https://imgur.com/M2MOgso.gif)
+![example](https://imgur.com/ODB3lBu.gif)
 
 </details>
 
