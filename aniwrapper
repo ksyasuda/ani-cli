@@ -22,8 +22,8 @@ IS_ROFI=1
 VERBOSE=0
 SILENT=0
 
-quit="6. Quit"
-options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|$quit"
+quit="7. Quit"
+options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|6. Choose Theme|$quit"
 theme=default
 
 #############
@@ -123,6 +123,42 @@ generate_span() {
 	printf "%s\n" "$span"
 }
 
+set_theme() {
+	new_theme="$1"
+	lg "theme: $new_theme"
+	case "$new_theme" in
+		aniwrapper)
+			lg "Default theme chosen... doing nothing"
+			theme=default
+			;;
+		dracula)
+			ROFI_THEME=aniwrapper-dracula.rasi
+			;;
+		doomone | doom-one)
+			ROFI_THEME=aniwrapper-doomone.rasi
+			;;
+		fancy)
+			ROFI_THEME=aniwrapper-fancy.rasi
+			;;
+		flamingo)
+			ROFI_THEME=aniwrapper-flamingo.rasi
+			;;
+		material)
+			ROFI_THEME=aniwrapper-material.rasi
+			;;
+		nord)
+			ROFI_THEME=aniwrapper-nord.rasi
+			;;
+		onedark)
+			ROFI_THEME=aniwrapper-onedark.rasi
+			;;
+		*)
+			seppuku "$theme not a valid theme file.  Themes: [$THEMES]"
+			;;
+	esac
+	CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
+}
+
 parse_args() {
 	while getopts 'vhqcdf:-:t:T:CQ:D:S' OPT; do
 		case "$OPT" in
@@ -153,38 +189,7 @@ parse_args() {
 				;;
 			t)
 				theme="$OPTARG"
-				lg "custom theme provided: $theme"
-				case "$theme" in
-					aniwrapper)
-						lg "Default theme chosen... doing nothing"
-						theme=default
-						;;
-					dracula)
-						ROFI_THEME=aniwrapper-dracula.rasi
-						;;
-					doomone | doom-one)
-						ROFI_THEME=aniwrapper-doomone.rasi
-						;;
-					fancy)
-						ROFI_THEME=aniwrapper-fancy.rasi
-						;;
-					flamingo)
-						ROFI_THEME=aniwrapper-flamingo.rasi
-						;;
-					material)
-						ROFI_THEME=aniwrapper-material.rasi
-						;;
-					nord)
-						ROFI_THEME=aniwrapper-nord.rasi
-						;;
-					onedark)
-						ROFI_THEME=aniwrapper-onedark.rasi
-						;;
-					*)
-						seppuku "$theme not a valid theme file.  Themes: [$THEMES]"
-						;;
-				esac
-				CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
+				set_theme "$theme"
 				;;
 			C)
 				lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
@@ -248,7 +253,7 @@ check_flags() {
 ########
 main() {
 	choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -only-match -sep '|' \
-		-config "$CFG_FILE" -l 6 -i -p "Aniwrapper")
+		-config "$CFG_FILE" -l 7 -i -p "Aniwrapper")
 
 	[ "$choice" == "$quit" ] && quit
 
@@ -320,9 +325,21 @@ main() {
 			fi
 			;;
 		6.)
-			# ---------------------------------------------------------------------------
+			# -----------------------------------------------------------------
+			# choose theme
+			# -----------------------------------------------------------------
+			[ -z "$THEMES" ] && seppuku "No themes provided... exiting"
+			choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" \
+				-only-match -l 4 -i -p "Choose theme: " -sep '|' \
+				-theme-str 'listview { columns: 2;  }' <<< "$THEMES")
+			theme=$(awk '{ print $1 }' <<< "$choice")
+			set_theme "$theme"
+			main
+			;;
+		7.)
+			# -----------------------------------------------------------------
 			# get out
-			# ---------------------------------------------------------------------------
+			# -----------------------------------------------------------------
 			quit
 			;;
 		*)
