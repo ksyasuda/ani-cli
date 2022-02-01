@@ -103,8 +103,14 @@ get_quality() {
 			-sep '|' -only-match <<< "$QUALITIES")
 		QUALITY=$(awk '{print $2}' <<< "$selection")
 	else
-		printf "%s" "Enter quality [$QUALITIES]: "
+		qualities="best|1080p|720p|480p|360p|worst"
+		printf "%s" "Choose quality: [$qualities]: "
 		read -r QUALITY
+		while [[ ! "$QUALITY" =~ ($qualities) ]]; do
+			lg "$QUALITY not a valid quality -> [$qualities]"
+			printf "%s" "Choose quality: [$qualities]: "
+			read -r QUALITY
+		done
 	fi
 	lg "selected quality: $QUALITY"
 }
