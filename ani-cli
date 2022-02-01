@@ -9,6 +9,7 @@ THEMES="aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedar
 ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 DPI=96
+IS_ROFI=1
 VERBOSE=0
 SILENT=0
 
@@ -428,14 +429,14 @@ get_search_query() {
 		  ORDER BY search_date DESC;"
 
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
-	if [ "$is_rofi" -eq 1 ]; then
+	if [ "$IS_ROFI" -eq 1 ]; then
 		query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
 			-mesg "$(generate_span "$msg")" \
 			-config "$ROFI_CFG" < <(run_stmt "$stmt"))
 		# Remove the id from the query
 		query="${query//[1-9]*\. /}"
 		lg "Query: $query"
-	elif [ "$is_rofi" -eq 0 ]; then
+	elif [ "$IS_ROFI" -eq 0 ]; then
 		printf "Search Anime: "
 		read -r query
 	fi
@@ -477,7 +478,7 @@ search_eps() {
 anime_selection() {
 	# Select anime from query results
 	search_results=$*
-	if [ "$is_rofi" -eq 1 ]; then
+	if [ "$IS_ROFI" -eq 1 ]; then
 		count=1
 		menu=()
 		res=()
@@ -549,7 +550,7 @@ anime_selection() {
 
 	lg "CHOICE: $choice"
 
-	if [ "$is_rofi" -eq 1 ]; then
+	if [ "$IS_ROFI" -eq 1 ]; then
 		# check both choice and name are set
 		if [[ ! "$choice" ]] || [[ ! "$name" ]]; then
 			die "Invalid choice... committing seppuku"
@@ -584,7 +585,7 @@ anime_selection() {
 
 episode_selection() {
 	ep_choice_start="1"
-	if [ "$is_rofi" -eq 1 ]; then
+	if [ "$IS_ROFI" -eq 1 ]; then
 		# select episode number for anime
 		lg "Anime ID: $anime_id"
 		stmt="SELECT DISTINCT episode_number \
@@ -741,7 +742,6 @@ parse_args() {
 	trap "printf '$c_reset'" INT HUP
 	scrape=query
 	quality=best
-	is_rofi=1
 	is_download=0
 	download_dir="."
 	half_ep=0
@@ -770,7 +770,7 @@ parse_args() {
 				lg "passed in quality: $quality"
 				;;
 			c)
-				is_rofi=0
+				IS_ROFI=0
 				;;
 			f)
 				scrape="file"
@@ -950,7 +950,7 @@ main() {
 			fi
 			printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
 			printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
-			# printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
+			printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "Q" "change video quality"
 			printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 			printf "${c_blue}Enter choice:${c_green} "
 			read -r choice
@@ -965,14 +965,8 @@ main() {
 					;;
 
 				s)
-					printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
-					read -r episode
-					if [ "$(echo "$episode" | cut -c1-1)" = "h" ]; then
-						half_ep=1
-						episode=$(echo "$episode" | cut -c2-)
-					fi
-					printf "$c_reset"
-					[ "$episode" -eq "$episode" ] 2> /dev/null || die "Invalid number entered"
+					episode_selection
+					episode=$ep_choice_start
 					;;
 
 				r)
@@ -982,6 +976,23 @@ main() {
 					stream
 					episode=$ep_choice_start
 					lg "NEW EPISODE: $selection_id - $episode"
+					;;
+				Q)
+					qualities="best|1080p|720p|480p|360p|worst"
+					if ((IS_ROFI == 1)); then
+						quality=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
+							-i -l 6 -only-match -sep '|' \
+							-mesg "Choose quality:" <<< "$qualities")
+					else
+						printf "${c_blue}Choose quality: [$qualities]:$c_reset "
+						read -r quality
+						while [[ ! "$quality" =~ ($qualities) ]]; do
+							lg "$quality not a valid quality"
+							printf "${c_blue}Choose quality: [$qualities]:$c_reset "
+							read -r quality
+						done
+					fi
+					episode=$((episode))
 					;;
 
 				q)
