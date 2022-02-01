@@ -679,7 +679,7 @@ open_episode() {
 		nohup "$player_fn" --http-header-fields="Referer:$dpage_link" "$video_url" > /dev/null 2>&1 &
 		PID=$!
 		if command -v "notify-send" > /dev/null; then
-			notify-send -i "$ANIWRAPPER_ICON_PATH" "Playing $anime_id - Episode $episode"
+			((SILENT != 1)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Playing $anime_id - Episode $episode"
 		else
 			((SILENT != 1)) && printf "${c_green}\nVideo playing"
 		fi
@@ -692,9 +692,9 @@ open_episode() {
 			mkdir -p "$dl_dir" || die "Could not create directory"
 			if command -v "notify-send" > /dev/null; then
 				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
-					notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode"
+					((SILENT != 1)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode"
 				else
-					notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
+					((SILENT != 1)) && notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 				fi
 			else
 				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
