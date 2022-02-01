@@ -130,6 +130,7 @@ dep_ch() {
 }
 
 notification() {
+	((SILENT == 1)) && return 0
 	msg="$*"
 	if command -v "notify-send" > /dev/null; then
 		notify-send -i "$ANIWRAPPER_ICON_PATH" "$msg"
