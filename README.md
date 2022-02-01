@@ -4,7 +4,7 @@
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-![Aniwrapper screenshot](https://imgur.com/Nvd9oJV.png)
+![Aniwrapper screenshot](https://imgur.com/HFq5gCq.png)
 
 </div>
 
@@ -15,13 +15,13 @@ which itself is a fork of
 pystardust's [old-ani-cli](https://github.com/pystardust/ani-cli/tree/old-ani-cli)
 
 This fork is a wrapper around a modified version of ani-cli, which uses [rofi](https://github.com/davatorium/rofi)
-to gather information and control the program.
+to gather information and control the program flow.
 In addition to `rofi`, I've also changed the way saving history works by
 integrating a local [sqlite3](https://www.sqlite.org/index.html) database with a table for
-search and watch history
+search, watch, and file history
 
 While this is a fork of a fork of pystardust's old-ani-cli, I would call this more of a light fork of the [the main ani-cli](https://github.com/pystardust/ani-cli).
-I have implemented most of the main features from the main script and continue to use the same scraping logic
+I have implemented most of the main features from the original script and continue to use the same scraping logic
 
 This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
@@ -29,15 +29,12 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
 **Table of Contents**
 
--   [Aniwrapper](#aniwrapper)
 -   [Introduction](#introduction)
 -   [Setup](#setup)
     -   [Skip Intro Script](#skip-intro-script)
     -   [Installing](#installing)
         -   [Arch Linux](#arch-linux)
         -   [Manual Install](#manual-install)
-            -   [Install the Dependencies](#install-the-dependencies)
-            -   [Clone the repo](#clone-the-repo)
             -   [Run the setup and install the script](#run-the-setup-and-install-the-script)
 -   [Aniwrapper Menus](#aniwrapper-menus)
     -   [Search Anime](#search-anime)
@@ -51,6 +48,7 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
         -   [Option 3: Continue](#option-3-continue)
         -   [Option 4: Play from File](#option-4-play-from-file)
         -   [Option 5: Sync History](#option-5-sync-history)
+        -   [Option 6: Choose Theme](#option-6-choose-theme)
     -   [ani-cli](#ani-cli)
 -   [Screenshots](#screenshots)
 
@@ -97,9 +95,7 @@ yay -S aniwrapper-git
 
 ### Manual Install
 
-To install manually, make sure the dependencies are installed first
-
-#### Install the Dependencies
+Install the Dependencies
 
 ```sh
 # Arch
@@ -109,9 +105,7 @@ pacman -S --needed aria2 curl grep mpv rofi sed sqlite3
 apt install aria2 curl grep mpv rofi sed sqlite3
 ```
 
-#### Clone the repo
-
-Use the following command to clone the Git repository locally and switch into the cloned directory
+Clone and switch into the repo directory
 
 ```sh
 git clone https://github.com/ksyasuda/aniwrapper && cd aniwrapper
@@ -134,7 +128,7 @@ There are several menus used to drive the program forward
 
 The first menu consists of a search box and a list of anime titles corresponding to past valid searches. Choose an option from the menu, or enter in a unique search query to search for a new anime. The result from this will be used to query against `gogoanime` and return similar named anime
 
-As of the update on **_2022-01-01_**, if selecting an anime from the search history list, the [anime selection](#anime-selection) menu will be skipped and the program will move on to [episode selection](#episode-selection)
+If selecting an anime from the provided list, the [anime selection](#anime-selection) menu will be skipped and the program will move on to [episode selection](#episode-selection) for the chosen anime
 
 ### Dealing with conflicting search queries / rofi grabbing from search list
 
@@ -153,24 +147,22 @@ The above output was produced by searching: `isekai -`
 
 ## Anime Selection
 
-The next menu is where you select the anime to watch from a narrowed down list. Elements that have a blue border and text color indicate which anime have been watched before
+The next menu is where you select the anime to watch from a narrowed down list of candidates. Titles that are highlighed in blue indicate that anime has been selected before
 
 ## Episode Selection
 
 > Half-episodes (ex. saihate-no-paladin episode 7.5) are selectable, however they will not show up in the episodes list.
 > To select half episodes add 'h' to the beginning for episodes like '7.5' -> 'h7' to select saihate-no-paladin episode 7.5
 
-This menu will promt you to select the episode(s) to watch/download
+Here you will be prompted to select the episode(s) to watch/download
 
-Multiple episodes can be viewed/downloaded by giving the episode range like so
+Multiple episodes can be downloaded by giving the episode range like so
 
 ```
 Select Episode [1-13]: 1 6
 ```
 
 This would open/download episodes 1 2 3 4 5 6
-
-Like in the previous menu, any element with a blue border and text-color indicates that episode has been watched before
 
 # Usage
 
@@ -213,10 +205,15 @@ aniwrapper -d
 
 ### Option 1: Streaming
 
--   [click here](https://imgur.com/nLjqLCL.gif) for an example showing streaming a new anime
--   [click here](https://imgur.com/undefined.png) for an example showing streaming a previously watched anime
-
 Streaming is the default option for the `aniwrapper` script and will prompt you with each of the menus specified in the _[aniwrapper Menus](#aniwrapper-menus)_ section
+
+<details>
+
+<summary>Example</summary>
+
+![example](https://imgur.com/Op9XLcY.gif)
+
+</details>
 
 ### Option 2: Download
 
@@ -232,6 +229,14 @@ The continue option queries the `sqlite3` history databse and pulls the list of 
 
 This option prompts you to provide the path to your `Videos` directory. Any path can be provided, but the script will begin the search from the provided path. From there, follow the prompts to select the video you want to watch and it will be opened in `mpv`
 
+<details>
+
+<summary>Example</summary>
+
+![example](https://imgur.com/M2MOgso.gif)
+
+</details>
+
 ### Option 5: Sync History
 
 This option allows you to sync your search/watch history across devices. It queries the database on the remote machine and inserts/updates the necessary rows
@@ -241,6 +246,18 @@ At the moment, the requirements are as follows:
 -   You must be able to `ssh` into the remote machine
 -   The username must be the same across both devices
 -   The `history.sqlite3` file must be in the default location: `$XDG_CONFIG_HOME/aniwrapper/history.sqlite3`
+
+### Option 6: Choose Theme
+
+Allows for changing the aniwrapper theme from the main menu
+
+<details>
+
+<summary>Example</summary>
+
+![example](https://imgur.com/o97YqLe.gif)
+
+</details>
 
 ## ani-cli
 
@@ -275,13 +292,16 @@ ani-cli -c
 
 # Screenshots
 
-<div>
+<div align="center">
 
-![aniwrapper main menu](https://imgur.com/Nvd9oJV.png)
+Main Menu (default theme)
 
--   [query anime](https://imgur.com/vSyaoG6.png)
--   [aniwrapper streaming options](https://imgur.com/7JxvZz8.png)
--   [aniwrapper file selection](https://imgur.com/vFTxAgu.png)
--   [aniwrapper episode selection menu](https://imgur.com/vlOg8uc.png)
+![aniwrapper main menu](https://imgur.com/HFq5gCq.png)
+
+|                                                                                           |                                                                                                                |
+| :---------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------: |
+| <details><summary>doom-one</summary> ![doomone](https://imgur.com/zMU0i8l.png) </details> |            <details><summary>dracula</summary> ![dracula](https://imgur.com/BPdIuX3.png)</details>             |
+|    <details><summary>fancy</summary>![fancy](https://imgur.com/CZx73NL.png)</details>     |            <details><summary>material</summary>![material](https://imgur.com/eTWkxw2.png)</details>            |
+|  <details><summary>onedark</summary>![onedark](https://imgur.com/rchqtBm.png)</details>   | <details><summary>flamingo (sidebar theme)</summary>![flamingo-theme](https://imgur.com/pxF7hRE.png)</details> |
 
 </div>
