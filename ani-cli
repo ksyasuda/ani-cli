@@ -361,7 +361,7 @@ get_directory_data() {
 	elif [[ -z "$inputlist" && "$search_dir" != / ]]; then
 		inputlist="../|Back|Quit"
 	elif [[ "$search_dir" = / ]]; then
-		inputlist="$inputlist|Back|Quit"
+		inputlist="$inputlist|Quit"
 	else
 		inputlist="Quit"
 	fi
