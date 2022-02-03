@@ -225,15 +225,23 @@ insert_history() {
 		res=$?
 	else
 		lg "Row not found in DB... inserting"
-		if [[ "$1" == "directory" ]]; then
-			stmt="INSERT INTO file_history(directory, filename, watch_date) VALUES('$2', 'DIRECTORY', '$datetime');"
-		elif [[ "$1" == "file" ]]; then
-			stmt="INSERT INTO file_history(directory, filename, watch_date) VALUES('$2', '$3', '$datetime');"
-		elif [[ "$2" == "search" ]]; then
-			stmt="INSERT INTO search_history(anime_name, search_date) VALUES('$1', '$datetime');"
-		else
-			stmt="INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$1', '$2', '$datetime');"
-		fi
+		case "$1" in
+			directory)
+				stmt="INSERT INTO file_history(directory, filename, watch_date) VALUES('$2', 'DIRECTORY', '$datetime');"
+				;;
+			file)
+				stmt="INSERT INTO file_history(directory, filename, watch_date) VALUES('$2', '$3', '$datetime');"
+				;;
+			search)
+				stmt="INSERT INTO search_history(anime_name, search_date) VALUES('$2', '$datetime');"
+				;;
+			watch)
+				stmt="INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$2', '$3', '$datetime');"
+				;;
+			sync)
+				stmt="INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$2', '$3', '$4');"
+				;;
+		esac
 		lg "INSERT STATEMENT -> $stmt"
 		wait # in case there's another insert/update still running in background
 		run_stmt "$stmt"
@@ -270,7 +278,7 @@ sync_watch_history() {
 		while read -r ep; do
 			episode_num=$(awk -F '|' '{print $1}' <<< "$ep")
 			watch_date=$(awk -F '|' '{print $NF}' <<< "$ep")
-			if ! insert_history "$anime_name" "$episode_num" "$watch_date"; then
+			if ! insert_history "sync" "$anime_name" "$episode_num" "$watch_date"; then
 				((++errs))
 				continue
 			fi
@@ -538,7 +546,7 @@ anime_selection() {
 	[ -z "$name" ] && name="$anime_id"
 	[ -z "$selection_id" ] && die "Invalid number entered"
 
-	insert_history "$name" "search" &
+	insert_history "search" "$name" &
 
 	read -r last_ep_number <<- EOF
 		$(search_eps "$selection_id")
@@ -618,7 +626,7 @@ open_episode() {
 
 	# Don't update watch history if downloading episode
 	if [ "$is_download" -eq 0 ]; then
-		insert_history "$anime_id" "$episode" &
+		insert_history "watch" "$anime_id" "$episode" &
 	fi
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
@@ -691,7 +699,7 @@ stream() {
 		# skip search_anime function and assign $query
 		anime_id="${query// /}"
 		selection_id="$anime_id"
-		insert_history "$anime_id" "search" &
+		insert_history "search" "$anime_id" &
 		read -r last_ep_number <<< "$(search_eps "$selection_id")"
 	fi
 	episode_selection
