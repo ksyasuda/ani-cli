@@ -575,11 +575,9 @@ episode_selection() {
 		stmt="SELECT DISTINCT episode_number \
         FROM watch_history \
         WHERE anime_name = '$anime_id';"
-		# hist=$(run_stmt "$stmt")
 
 		# Get Watch History for $anime_id as comma separated list
 		watch_history=""
-		# for i in $hist; do
 		while read -r i; do
 			if [[ "$watch_history" == "" ]]; then
 				watch_history="$((--i))"
@@ -837,13 +835,13 @@ parse_args() {
 main() {
 	case $scrape in
 		query)
-			BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
+			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
 			stream
 			;;
 		history)
-			BASE_URL=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
+			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
 			stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
-			search_results=$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")
+			search_results="$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")"
 			[ -z "$search_results" ] && die "History is empty"
 			if ! anime_selection "${search_results[@]}"; then
 				die "No anime selection found"
@@ -894,7 +892,7 @@ main() {
 			lg "STARTING DIR: $play_dir"
 			[ ! -d "$play_dir" ] && die "$play_dir does not exist"
 			insert_history "directory" "$play_dir"
-			video_path=$(find_media "$play_dir")
+			video_path="$(find_media "$play_dir")"
 			retcode="$?"
 			if [ "$retcode" -ne 0 ]; then
 				die "QUITTING"
