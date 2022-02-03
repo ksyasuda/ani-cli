@@ -541,12 +541,6 @@ anime_selection() {
 
 	lg "CHOICE: $choice"
 
-	if [ "$IS_ROFI" -eq 1 ]; then
-		# check both choice and name are set
-		if [[ ! "$choice" ]] || [[ ! "$name" ]]; then
-			die "Invalid choice... committing seppuku"
-		fi
-	fi
 	# Check if input is a number
 	[ "$choice" -eq "$choice" ] 2> /dev/null || die "Invalid number entered"
 
@@ -562,12 +556,11 @@ anime_selection() {
 		$search_results
 	EOF
 
-	[ -z "$name" ] && name="$anime_id"
-	insert_history "$name" "search" &
-
 	printf "$c_reset"
-
+	[ -z "$name" ] && name="$anime_id"
 	[ -z "$selection_id" ] && die "Invalid number entered"
+
+	insert_history "$name" "search" &
 
 	read -r last_ep_number <<- EOF
 		$(search_eps "$selection_id")
@@ -582,17 +575,19 @@ episode_selection() {
 		stmt="SELECT DISTINCT episode_number \
         FROM watch_history \
         WHERE anime_name = '$anime_id';"
-		hist=$(run_stmt "$stmt")
+		# hist=$(run_stmt "$stmt")
 
 		# Get Watch History for $anime_id as comma separated list
 		watch_history=""
-		for i in $hist; do
+		# for i in $hist; do
+		while read -r i; do
 			if [[ "$watch_history" == "" ]]; then
 				watch_history="$((--i))"
 			else
 				watch_history="$watch_history, $((--i))"
 			fi
-		done
+		done < <(run_stmt "$stmt")
+		lg "Episode watch history -> $watch_history"
 
 		# get user choice and set the start and end
 		msg=$(printf "%s\n%s" "$(generate_span "Anime Name: $anime_id")" "$(generate_span "Range of episodes can be provided as: START_EPISODE - END_EPISODE")")
@@ -631,7 +626,6 @@ episode_selection() {
 		ep_choice_end=""
 	fi
 	printf "$c_reset"
-
 }
 
 open_episode() {
