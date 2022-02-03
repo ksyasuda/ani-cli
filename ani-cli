@@ -156,23 +156,13 @@ run_stmt() {
 # Return number of matches for anime/episode in db
 check_db() {
 	if [[ "$1" == "directory" ]]; then
-		stmt="SELECT DISTINCT COUNT(*) \
-        FROM file_history \
-        WHERE directory = '$2';"
+		stmt="SELECT DISTINCT COUNT(*) FROM file_history WHERE directory = '$2';"
 	elif [[ "$1" == "file" ]]; then
-		stmt="SELECT DISTINCT COUNT(*) \
-        FROM file_history \
-        WHERE directory = '$2' \
-        AND filename = '$3';"
+		stmt="SELECT DISTINCT COUNT(*) FROM file_history WHERE directory = '$2' AND filename = '$3';"
 	elif [[ "$2" == "search" ]]; then
-		stmt="SELECT DISTINCT COUNT(*) \
-			  FROM search_history \
-			  WHERE anime_name = '$1';"
+		stmt="SELECT DISTINCT COUNT(*) FROM search_history WHERE anime_name = '$1';"
 	else
-		stmt="SELECT DISTINCT COUNT(*) \
-			  FROM watch_history \
-			  WHERE anime_name = '$1' \
-			  AND episode_number = '$2';"
+		stmt="SELECT DISTINCT COUNT(*) FROM watch_history WHERE anime_name = '$1' AND episode_number = '$2';"
 	fi
 	res=$(run_stmt "$stmt")
 	return $res
@@ -195,16 +185,13 @@ update_date() {
 	stmt=""
 	if [[ "$1" == "directory" ]]; then
 		lg "UPDATING FILE_HISTORY: directory='$2', filename='DIRECTORY', search_date='$datetime'"
-		stmt="UPDATE file_history SET watch_date = '$datetime' \
-			WHERE directory = '$2' and filename = '$3';"
+		stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = '$3';"
 	elif [[ "$1" == "file" ]]; then
 		lg "UPDATING FILE_HISTORY: directory='$2', filename='$3', search_date='$datetime'"
-		stmt="UPDATE file_history SET watch_date = '$datetime' \
-			WHERE directory = '$2' and filename = '$3';"
+		stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = '$3';"
 	elif [[ "$2" == "search" ]]; then
 		lg "UPDATING SEARCH_HISTORY: anime_name='$1', search_date='$datetime'"
-		stmt="UPDATE search_history SET search_date = '$datetime' \
-			WHERE anime_name = '$1';"
+		stmt="UPDATE search_history SET search_date = '$datetime' WHERE anime_name = '$1';"
 	elif [[ $# -ge 3 ]]; then
 		temp_dt="${3// /:}"
 		[ -z "$temp_dt" ] && return 1
@@ -216,14 +203,10 @@ update_date() {
 			return 1
 		fi
 		lg "UPDATING watch_history from sync. watch_date -> $temp_dt"
-		stmt="UPDATE watch_history SET watch_date = '$temp_dt' \
-			WHERE anime_name = '$1' \
-			AND episode_number = $2;"
+		stmt="UPDATE watch_history SET watch_date = '$temp_dt' WHERE anime_name = '$1' AND episode_number = $2;"
 	else
 		lg "UPDATING WATCH_HISTORY: anime_name='$1', episode_number='$2' search_date='$datetime'"
-		stmt="UPDATE watch_history SET watch_date = '$datetime' \
-			WHERE anime_name = '$1' \
-			AND episode_number = $2;"
+		stmt="UPDATE watch_history SET watch_date = '$datetime' WHERE anime_name = '$1' AND episode_number = $2;"
 	fi
 	wait # in case there's another insert/update still running in background?
 	run_stmt "$stmt"
@@ -243,18 +226,13 @@ insert_history() {
 	else
 		lg "Row not found in DB... inserting"
 		if [[ "$1" == "directory" ]]; then
-			stmt="INSERT INTO file_history(directory, filename, watch_date) \
-                VALUES('$2', 'DIRECTORY', '$datetime');"
+			stmt="INSERT INTO file_history(directory, filename, watch_date) VALUES('$2', 'DIRECTORY', '$datetime');"
 		elif [[ "$1" == "file" ]]; then
-			stmt="INSERT INTO file_history(directory, filename, watch_date) \
-        VALUES('$2', '$3', '$datetime');"
+			stmt="INSERT INTO file_history(directory, filename, watch_date) VALUES('$2', '$3', '$datetime');"
 		elif [[ "$2" == "search" ]]; then
-			stmt="INSERT INTO search_history(anime_name, search_date) \
-				VALUES('$1', '$datetime');"
+			stmt="INSERT INTO search_history(anime_name, search_date) VALUES('$1', '$datetime');"
 		else
-			stmt="INSERT INTO \
-				watch_history(anime_name, episode_number, watch_date) \
-				VALUES('$1', '$2', '$datetime');"
+			stmt="INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$1', '$2', '$datetime');"
 		fi
 		lg "INSERT STATEMENT -> $stmt"
 		wait # in case there's another insert/update still running in background
@@ -933,7 +911,7 @@ main() {
 			fi
 			printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
 			printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
-			printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "Q" "change video quality"
+			printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "Q" "change video quality (current: $quality)"
 			printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 			printf "${c_blue}Enter choice:${c_green} "
 			read -r choice
@@ -961,13 +939,33 @@ main() {
 					lg "NEW EPISODE: $selection_id - $episode"
 					;;
 				Q)
-					qualities="best|1080p|720p|480p|360p|worst"
 					if ((IS_ROFI == 1)); then
+						case "$quality" in
+							best)
+								cur_quality=0
+								;;
+							1080p)
+								cur_quality=1
+								;;
+							720p)
+								cur_quality=2
+								;;
+							360p)
+								cur_quality=3
+								;;
+							worst)
+								cur_quality=4
+								;;
+							*)
+								cur_quality=0
+								;;
+						esac
 						choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
-							-i -l 5 -only-match -sep '|' \
+							-i -l 5 -only-match -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
 							-p "Choose quality:" <<< "1. best (default)|2. 1080p|3. 720p|4. 360p|5. worst")
 						quality=$(awk '{ print $2 }' <<< "$choice")
 					else
+						qualities="best|1080p|720p|480p|360p|worst"
 						printf "${c_blue}Choose quality: [$qualities]:$c_reset "
 						read -r quality
 						while [[ ! "$quality" =~ ($qualities) ]]; do
