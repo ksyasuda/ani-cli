@@ -970,7 +970,7 @@ main() {
 						esac
 						choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
 							-i -l 5 -only-match -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
-							-p "Choose quality:" <<< "1. best (default)|2. 1080p|3. 720p|4. 360p|5. worst")
+							-p "Choose quality:" <<< "1. best|2. 1080p|3. 720p|4. 360p|5. worst")
 						quality=$(awk '{ print $2 }' <<< "$choice")
 					else
 						qualities="best|1080p|720p|480p|360p|worst"
