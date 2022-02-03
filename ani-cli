@@ -480,36 +480,26 @@ anime_selection() {
 	# Select anime from query results
 	search_results=$*
 	if [ "$IS_ROFI" -eq 1 ]; then
-		count=1
 		menu=()
 		res=()
+		searched=""
+		cnt=0
+		# generate inputlist for rofi and indexes of previously searched anime
 		while read -r anime_id; do
-			menu+="$count. $anime_id\n"
-			idx=$((count - 1))
-			res["$idx"]="$anime_id"
-			count=$((count + 1))
+			menu+="$((cnt + 1)). $anime_id\n"
+			res["$cnt"]="$anime_id"
+			lg "ANIME: $anime_id"
+			if ! check_db "$anime_id" "search"; then
+				lg "$anime_id HAS BEEN SEARCHED BEFORE"
+				[ -z "$searched" ] && searched="$cnt" || searched="$searched, $cnt"
+			fi
+			((++cnt))
 		done <<- EOF
 			$search_results
 		EOF
-		menu+="$count. Quit"
+		menu+="$((++cnt)). Quit"
 
-		searched=""
-		cnt=0
-		# Get the comma separated list of indexes of anime that has been searched before
-		for anime in "${res[@]}"; do
-			lg "ANIME: $anime"
-			check_db "$anime" "search"
-			if [[ $? -gt 0 ]]; then
-				lg "$anime HAS BEEN SEARCHED BEFORE"
-				if [ -z "$searched" ]; then
-					searched="$cnt"
-				else
-					searched="$searched, $cnt"
-				fi
-			fi
-			((++cnt))
-		done
-		lg "SEARCHED: $searched"
+		lg "searched indexes: $searched"
 
 		# get the anime from indexed list
 		msg="$(generate_span "Query: $query")"
