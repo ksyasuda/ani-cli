@@ -155,17 +155,22 @@ run_stmt() {
 
 # Return number of matches for anime/episode in db
 check_db() {
-	if [[ "$1" == "directory" ]]; then
-		stmt="SELECT DISTINCT COUNT(*) FROM file_history WHERE directory = '$2';"
-	elif [[ "$1" == "file" ]]; then
-		stmt="SELECT DISTINCT COUNT(*) FROM file_history WHERE directory = '$2' AND filename = '$3';"
-	elif [[ "$2" == "search" ]]; then
-		stmt="SELECT DISTINCT COUNT(*) FROM search_history WHERE anime_name = '$1';"
-	else
-		stmt="SELECT DISTINCT COUNT(*) FROM watch_history WHERE anime_name = '$1' AND episode_number = '$2';"
-	fi
+	case "$1" in
+		directory)
+			stmt="SELECT DISTINCT COUNT(*) FROM file_history WHERE directory = '$2';"
+			;;
+		file)
+			stmt="SELECT DISTINCT COUNT(*) FROM file_history WHERE directory = '$2' AND filename = '$3';"
+			;;
+		search)
+			stmt="SELECT DISTINCT COUNT(*) FROM search_history WHERE anime_name = '$2';"
+			;;
+		watch | sync)
+			stmt="SELECT DISTINCT COUNT(*) FROM watch_history WHERE anime_name = '$2' AND episode_number = '$3';"
+			;;
+	esac
 	res=$(run_stmt "$stmt")
-	return $res
+	return "$res"
 }
 
 # return true (0) if $source_dt > $target_dt
@@ -183,31 +188,37 @@ check_date() {
 update_date() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	stmt=""
-	if [[ "$1" == "directory" ]]; then
-		lg "UPDATING FILE_HISTORY: directory='$2', filename='DIRECTORY', search_date='$datetime'"
-		stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = '$3';"
-	elif [[ "$1" == "file" ]]; then
-		lg "UPDATING FILE_HISTORY: directory='$2', filename='$3', search_date='$datetime'"
-		stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = '$3';"
-	elif [[ "$2" == "search" ]]; then
-		lg "UPDATING SEARCH_HISTORY: anime_name='$1', search_date='$datetime'"
-		stmt="UPDATE search_history SET search_date = '$datetime' WHERE anime_name = '$1';"
-	elif [[ $# -ge 3 ]]; then
-		temp_dt="${3// /:}"
-		[ -z "$temp_dt" ] && return 1
-		hist_dt=$(run_stmt "SELECT watch_date FROM watch_history WHERE anime_name='$1' AND episode_number='$2';")
-		hist_dt="${hist_dt// /:}"
-		lg "Checking if update is needed..."
-		if ! check_date "$hist_dt" "$temp_dt"; then
-			lg "Passed in date is older or same than current date... doing nothing"
-			return 1
-		fi
-		lg "UPDATING watch_history from sync. watch_date -> $temp_dt"
-		stmt="UPDATE watch_history SET watch_date = '$temp_dt' WHERE anime_name = '$1' AND episode_number = $2;"
-	else
-		lg "UPDATING WATCH_HISTORY: anime_name='$1', episode_number='$2' search_date='$datetime'"
-		stmt="UPDATE watch_history SET watch_date = '$datetime' WHERE anime_name = '$1' AND episode_number = $2;"
-	fi
+	case "$1" in
+		directory)
+			lg "UPDATING FILE_HISTORY: directory='$2', filename='DIRECTORY', search_date='$datetime'"
+			stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = '$3';"
+			;;
+		file)
+			lg "UPDATING FILE_HISTORY: directory='$2', filename='$3', watch_date='$datetime'"
+			stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = '$3';"
+			;;
+		search)
+			lg "UPDATING SEARCH_HISTORY: anime_name='$2', search_date='$datetime'"
+			stmt="UPDATE search_history SET search_date = '$datetime' WHERE anime_name = '$2';"
+			;;
+		sync)
+			temp_dt="${3// /:}"
+			[ -z "$temp_dt" ] && return 1
+			hist_dt=$(run_stmt "SELECT watch_date FROM watch_history WHERE anime_name='$2' AND episode_number='$3';")
+			hist_dt="${hist_dt// /:}"
+			lg "Checking if update is needed..."
+			if ! check_date "$hist_dt" "$temp_dt"; then
+				lg "Passed in date is older or same than current date... doing nothing"
+				return 1
+			fi
+			lg "UPDATING watch_history from sync. watch_date -> $temp_dt"
+			stmt="UPDATE watch_history SET watch_date = '$temp_dt' WHERE anime_name = '$2' AND episode_number = $3;"
+			;;
+		watch)
+			lg "UPDATING WATCH_HISTORY: anime_name='$2', episode_number='$3' watch_date='$datetime'"
+			stmt="UPDATE watch_history SET watch_date = '$datetime' WHERE anime_name = '$2' AND episode_number = $3;"
+			;;
+	esac
 	wait # in case there's another insert/update still running in background?
 	run_stmt "$stmt"
 }
@@ -274,7 +285,6 @@ sync_watch_history() {
 	errs=0
 	while read -r line; do
 		anime_name="${line/ //}"
-		# for each episode of $anime_name on the remote machine, check local
 		while read -r ep; do
 			episode_num=$(awk -F '|' '{print $1}' <<< "$ep")
 			watch_date=$(awk -F '|' '{print $NF}' <<< "$ep")
@@ -370,7 +380,6 @@ find_media() {
 	fi
 
 	get_directory_data "$inp"
-	[ -z "$inp" ] && return 1
 	selection="$(rofi -dpi "$DPI" -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
 		-l 15 -i -sep '|' -mesg "$(generate_span "Current directory: $inp")" -a "$watched" \
 		-p "Enter selection" <<< "$inputlist")"
@@ -408,12 +417,9 @@ find_media() {
 ##   main code     ##
 #####################
 
-# get query
 get_search_query() {
 	# Get search history
-	stmt="SELECT DISTINCT id || '. ' || anime_name \
-		  FROM search_history \
-		  ORDER BY search_date DESC;"
+	stmt="SELECT DISTINCT id || '. ' || anime_name FROM search_history ORDER BY search_date DESC;"
 
 	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
 	if [ "$IS_ROFI" -eq 1 ]; then
@@ -450,9 +456,7 @@ search_anime() {
 }
 
 search_eps() {
-	# get available episodes for anime_id
 	anime_id=$1
-
 	curl -s "$BASE_URL/category/$anime_id" |
 		sed -n -E '
 		/^[[:space:]]*<a href="#" class="active" ep_start/{
@@ -475,7 +479,7 @@ anime_selection() {
 			menu+="$((cnt + 1)). $anime_id\n"
 			res["$cnt"]="$anime_id"
 			lg "ANIME: $anime_id"
-			if ! check_db "$anime_id" "search"; then
+			if ! check_db "search" "$anime_id"; then
 				lg "$anime_id HAS BEEN SEARCHED BEFORE"
 				[ -z "$searched" ] && searched="$cnt" || searched="$searched, $cnt"
 			fi
@@ -558,9 +562,7 @@ episode_selection() {
 	if [ "$IS_ROFI" -eq 1 ]; then
 		# select episode number for anime
 		lg "Anime ID: $anime_id"
-		stmt="SELECT DISTINCT episode_number \
-        FROM watch_history \
-        WHERE anime_name = '$anime_id';"
+		stmt="SELECT DISTINCT episode_number FROM watch_history WHERE anime_name = '$anime_id';"
 
 		# Get Watch History for $anime_id as comma separated list
 		watch_history=""
@@ -684,7 +686,7 @@ stream() {
 	anime_id="${query// /}"
 	[ -z "$anime_id" ] && die "No anime selected or queried"
 	lg "Checking if anime: $anime_id has been searched before..."
-	check_db "$anime_id" "search"
+	check_db "search" "$anime_id"
 	searched="$?"
 	lg "Searched before: $searched"
 	if [ "$searched" -eq 0 ]; then
@@ -834,11 +836,7 @@ main() {
 			fi
 			lg "SELECTION: $selection_id"
 
-			stmt="SELECT episode_number \
-			FROM watch_history \
-			WHERE anime_name = '$selection_id' \
-			ORDER BY watch_date DESC \
-			LIMIT 1"
+			stmt="SELECT episode_number FROM watch_history WHERE anime_name = '$selection_id' ORDER BY watch_date DESC LIMIT 1;"
 			ep_choice_start=$(run_stmt "$stmt")
 			lg "Most recently watched episode: $ep_choice_start"
 			;;
