@@ -569,6 +569,7 @@ episode_selection() {
 		choice=$(
 			seq 1 "$last_ep_number" |
 				rofi -dpi "$DPI" -dmenu -l 12 \
+					-theme-str 'window {width: 45%;}' \
 					-a "$watch_history" \
 					-p "Select Episode [1, $last_ep_number]:" \
 					-mesg "$msg" \
@@ -948,6 +949,7 @@ main() {
 								;;
 						esac
 						choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
+							-theme-str 'listview {columns: 1;} window {width: 45%;}' \
 							-i -l 5 -only-match -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
 							-p "Choose quality:" <<< "1. best|2. 1080p|3. 720p|4. 360p|5. worst")
 						quality=$(awk '{ print $2 }' <<< "$choice")
