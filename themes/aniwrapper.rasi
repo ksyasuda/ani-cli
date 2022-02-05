@@ -86,16 +86,17 @@ listview {
     margin: 0px 0px 1px 0px;
 }
 element {
-    border:  2px;
+    border: 3px;
     border-color: #d19a66;
-    padding: 2px 15px;
+    padding: 3px 15px;
+    margin: 1px;
 }
 element-text {
     background-color: inherit;
     text-color:       inherit;
 }
 element.normal.normal {
-    background-color: @normal-background;
+    background-color: @alternate-normal-background;
     text-color:       @normal-foreground;
 }
 element.normal.urgent {
@@ -103,7 +104,7 @@ element.normal.urgent {
     text-color:       @urgent-foreground;
 }
 element.normal.active {
-    background-color: @active-background;
+    background-color: @alternate-normal-background;
     border-color:     @blue;
     text-color:       @blue;
 }
@@ -184,7 +185,7 @@ prompt {
 
 inputbar {
     children: [ prompt,textbox-prompt-colon,entry,case-indicator ];
-    padding: 15px 0px;
+    padding: 1px 0px;
 }
 
 textbox-prompt-colon {
