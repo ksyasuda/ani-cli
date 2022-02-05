@@ -39,7 +39,7 @@ window {
 	location: west;
 	anchor: west;
 	height: 70%;
-	width: 25%;
+	width: 45%;
 	orientation: vertical;
 	children: [mainbox];
 	border: 2px 2px 2px 0px;
