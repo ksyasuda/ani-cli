@@ -4,7 +4,7 @@
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-![Aniwrapper screenshot](https://imgur.com/HFq5gCq.png)
+![aniwrapper stream gif - konosuba](https://imgur.com/HNRphY0.gif)
 
 </div>
 
@@ -29,18 +29,13 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
 **Table of Contents**
 
+-   [Aniwrapper](#aniwrapper)
 -   [Introduction](#introduction)
--   [Setup](#setup)
-    -   [Skip Intro Script](#skip-intro-script)
+-   [MPV Extenstion - Skip Intro Script](#mpv-extenstion---skip-intro-script)
     -   [Installing](#installing)
-        -   [Arch Linux](#arch-linux)
         -   [Manual Install](#manual-install)
-            -   [Run the setup and install the script](#run-the-setup-and-install-the-script)
 -   [Aniwrapper Menus](#aniwrapper-menus)
-    -   [Search Anime](#search-anime)
-        -   [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
-    -   [Anime Selection](#anime-selection)
-    -   [Episode Selection](#episode-selection)
+-   [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
 -   [Usage](#usage)
     -   [aniwrapper](#aniwrapper-1)
         -   [Option 1: Streaming](#option-1-streaming)
@@ -50,19 +45,11 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
         -   [Option 5: Sync History](#option-5-sync-history)
         -   [Option 6: Choose Theme](#option-6-choose-theme)
     -   [ani-cli](#ani-cli)
--   [Screenshots](#screenshots)
+-   [Themes](#themes)
 
 <!-- markdown-toc end -->
 
-# Setup
-
-These are the minimum dependences required to run `aniwrapper`
-
-```
-aria2 curl grep mpv rofi sed sqlite3
-```
-
-## Skip Intro Script
+# MPV Extenstion - Skip Intro Script
 
 _This repo comes packaged with and will install the
 [skip-intro.lua](https://github.com/rui-ddc/skip-intro)
@@ -83,7 +70,13 @@ episode introduction by skipping to the next moment of silence in the video
 
 ## Installing
 
-### Arch Linux
+These are the minimum dependences required to run `aniwrapper`
+
+```
+aria2 curl grep mpv rofi sed sqlite3
+```
+
+**Arch Linux**
 
 `aniwrapper-git` is available on the [AUR](https://aur.archlinux.org/packages/aniwrapper-git/) for Arch users
 
@@ -111,9 +104,7 @@ Clone and switch into the repo directory
 git clone https://github.com/ksyasuda/aniwrapper && cd aniwrapper
 ```
 
-#### Run the setup and install the script
-
-From the `aniwrapper` directory, run the following commands to set up and install the script
+Then, from the `aniwrapper` directory, run the following commands to set up and install the script
 
 ```sh
 chmod +x setup.sh
@@ -122,15 +113,9 @@ chmod +x setup.sh
 
 # Aniwrapper Menus
 
-There are several menus used to drive the program forward
+See [aniwrapper menus](docs/aniwrapper-menus.md)
 
-## Search Anime
-
-The first menu consists of a search box and a list of anime titles corresponding to past valid searches. Choose an option from the menu, or enter in a unique search query to search for a new anime. The result from this will be used to query against `gogoanime` and return similar named anime
-
-If selecting an anime from the provided list, the [anime selection](#anime-selection) menu will be skipped and the program will move on to [episode selection](#episode-selection) for the chosen anime
-
-### Dealing with conflicting search queries / rofi grabbing from search list
+# Dealing with conflicting search queries / rofi grabbing from search list
 
 In this program, rofi is configured to search with case insensitivity and select the best match from the list if there are matches. This can make it difficult at times to write a search query that does not trigger a selection from the rofi menu
 
@@ -140,29 +125,10 @@ In this program, rofi is configured to search with case insensitivity and select
 Once your history starts filling up, it becomes progressively more difficult to form unique search queries
 
 ![selection with dash](https://imgur.com/vSyaoG6.png)
-The workaround for this is to append a dash ` -` to the end of the search query<br/>
+A workaround for this is to append a dash ` -` to the end of the search query<br/>
 The above output was produced by searching: `isekai -`
 
 </div>
-
-## Anime Selection
-
-The next menu is where you select the anime to watch from a narrowed down list of candidates. Titles that are highlighed in blue indicate that anime has been selected before
-
-## Episode Selection
-
-> Half-episodes (ex. saihate-no-paladin episode 7.5) are selectable, however they will not show up in the episodes list.
-> To select half episodes add 'h' to the beginning for episodes like '7.5' -> 'h7' to select saihate-no-paladin episode 7.5
-
-Here you will be prompted to select the episode(s) to watch/download
-
-Multiple episodes can be downloaded by giving the episode range like so
-
-```
-Select Episode [1-13]: 1 6
-```
-
-This would open/download episodes 1 2 3 4 5 6
 
 # Usage
 
@@ -205,7 +171,7 @@ aniwrapper -d
 
 ### Option 1: Streaming
 
-Streaming is the default option for the `aniwrapper` script and will prompt you with each of the menus specified in the _[aniwrapper Menus](#aniwrapper-menus)_ section
+Streaming is the default option for the `aniwrapper` script. See _[aniwrapper menus](docs/aniwrapper-menus.md)_ for more information about each menu
 
 <details>
 
@@ -223,15 +189,39 @@ Streaming is the default option for the `aniwrapper` script and will prompt you 
 
 The default download location is `$HOME/Videos/sauce` and will be chosen as the download directory unless otherwise specified
 
-After specifying the download directory (or leaving it blank for the default), you will be presented with the menus from the _[aniwrapper Menus](#aniwrapper-menus)_ section for selecting the anime and episode(s) to download
+After specifying the download directory (or leaving it blank for the default). See _[aniwrapper Menus](docs/aniwrapper-menus.md)_ for more information about each menu
+
+<details>
+
+<summary>Example</summary>
+
+<div align="center">
+
+![example](https://imgur.com/itdGCsI.gif)
+
+</div>
+
+</details>
 
 ### Option 3: Continue
 
 The continue option queries the `sqlite3` history databse and pulls the list of distinct anime names from the `watch_history` table. Select an option from the list and the most recently watched episode of the selected anime will play
 
+<details>
+
+<summary>Example</summary>
+
+<div align="center">
+
+![example](https://imgur.com/d23iYy7.gif)
+
+</div>
+
+</details>
+
 ### Option 4: Play from File
 
-This option prompts you to provide the path to your `Videos` directory. Any path can be provided, but the script will begin the search from the provided path. From there, follow the prompts to select the video you want to watch and it will be opened in `mpv`
+This option prompts you to provide a starting directory for the search function. From there, follow the prompts to select the video (or song) you want to play and it will be opened in `mpv`
 
 <details>
 
@@ -302,11 +292,11 @@ ani-cli -f <starting_directory>
 ani-cli -c
 ```
 
-# Screenshots
+# Themes
 
 <div align="center">
 
-Main Menu (default theme)
+Default theme
 
 ![aniwrapper main menu](https://imgur.com/HFq5gCq.png)
 
