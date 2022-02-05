@@ -29,23 +29,23 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
 **Table of Contents**
 
--   [Aniwrapper](#aniwrapper)
--   [Introduction](#introduction)
--   [MPV Extenstion - Skip Intro Script](#mpv-extenstion---skip-intro-script)
-    -   [Installing](#installing)
-        -   [Manual Install](#manual-install)
--   [Aniwrapper Menus](#aniwrapper-menus)
--   [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
--   [Usage](#usage)
-    -   [aniwrapper](#aniwrapper-1)
-        -   [Option 1: Streaming](#option-1-streaming)
-        -   [Option 2: Download](#option-2-download)
-        -   [Option 3: Continue](#option-3-continue)
-        -   [Option 4: Play from File](#option-4-play-from-file)
-        -   [Option 5: Sync History](#option-5-sync-history)
-        -   [Option 6: Choose Theme](#option-6-choose-theme)
-    -   [ani-cli](#ani-cli)
--   [Themes](#themes)
+- [Aniwrapper](#aniwrapper)
+- [Introduction](#introduction)
+- [MPV Extension - Skip Intro Script](#mpv-extension---skip-intro-script)
+	- [Installing](#installing)
+		- [Manual Install](#manual-install)
+- [Aniwrapper Menus](#aniwrapper-menus)
+- [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
+- [Usage](#usage)
+	- [aniwrapper](#aniwrapper-1)
+		- [Option 1: Streaming](#option-1-streaming)
+		- [Option 2: Download](#option-2-download)
+		- [Option 3: Continue](#option-3-continue)
+		- [Option 4: Play from File](#option-4-play-from-file)
+		- [Option 5: Sync History](#option-5-sync-history)
+		- [Option 6: Choose Theme](#option-6-choose-theme)
+	- [ani-cli](#ani-cli)
+- [Themes](#themes)
 
 <!-- markdown-toc end -->
 
@@ -169,9 +169,11 @@ aniwrapper -c
 aniwrapper -d
 ```
 
+See [aniwrapper menus](docs/aniwrapper-menus.md) for more information about the menus used in the following options
+
 ### Option 1: Streaming
 
-Streaming is the default option for the `aniwrapper` script. See _[aniwrapper menus](docs/aniwrapper-menus.md)_ for more information about each menu
+Streaming is the default option for the `aniwrapper` script
 
 <details>
 
@@ -188,8 +190,6 @@ Streaming is the default option for the `aniwrapper` script. See _[aniwrapper me
 ### Option 2: Download
 
 The default download location is `$HOME/Videos/sauce` and will be chosen as the download directory unless otherwise specified
-
-After specifying the download directory (or leaving it blank for the default). See _[aniwrapper Menus](docs/aniwrapper-menus.md)_ for more information about each menu
 
 <details>
 
@@ -221,8 +221,6 @@ The continue option queries the `sqlite3` history databse and pulls the list of 
 
 ### Option 4: Play from File
 
-This option prompts you to provide a starting directory for the search function. From there, follow the prompts to select the video (or song) you want to play and it will be opened in `mpv`
-
 <details>
 
 <summary>Example</summary>
@@ -247,7 +245,7 @@ At the moment, the requirements are as follows:
 
 ### Option 6: Choose Theme
 
-Allows for changing the aniwrapper theme from the main menu
+Change aniwrapper theme
 
 <details>
 
