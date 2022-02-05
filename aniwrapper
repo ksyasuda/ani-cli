@@ -73,7 +73,6 @@ run() {
 	if ((IS_PLAY_FROM_FILE == 0 && GET_QUALITY == 1)); then
 		get_quality
 	fi
-
 	if ((SILENT == 1)); then
 		if ((IS_CUSTOM_THEME == 0)); then
 			"$CMD" -D"$DPI" -Sq "$QUALITY" -t "$theme" "$@"
@@ -218,7 +217,6 @@ parse_args() {
 				;;
 		esac
 	done
-
 }
 
 check_flags() {
@@ -227,7 +225,7 @@ check_flags() {
 		seppuku "verbose and silent options cannot be used together"
 	fi
 	if ((IS_ROFI == 0 && IS_DOWNLOAD == 0)); then
-		run -c
+		run -c "$@"
 		exit $?
 	elif ((IS_ROFI == 0 && IS_DOWNLOAD == 1)); then
 		printf "%s" "Enter download dir: "
@@ -236,21 +234,33 @@ check_flags() {
 		if [ ! -d "$dl_dir" ]; then
 			mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
 		fi
-		run "-cd $dl_dir"
+		run "-cd $dl_dir" "$@"
 		exit $?
 	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 1)); then
-		run "-f$play_path" -T "$CFG_FILE"
+		run "-f$play_path" -T "$CFG_FILE" "$@"
 		exit $?
 	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 0)); then
-		run "-f$play_path" -t "$theme"
+		run "-f$play_path" -t "$theme" "$@"
 		exit $?
 	fi
+}
+
+get_dl_dir() {
+	dl_dir=$(
+		rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
+			-mesg "$(generate_span "Enter the path to the download directory, or leave blank to go with the default: $HOME/Videos/sauce/")" \
+			-l 1 -p "Enter download dir:"
+	)
+	# if dl_dir is none set to current directory
+	[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
 }
 
 ########
 # Main #
 ########
 main() {
+	((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
+	((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
 	choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -only-match -sep '|' \
 		-config "$CFG_FILE" -l 7 -i -p "Aniwrapper")
 
@@ -271,14 +281,7 @@ main() {
 			# download
 			# ---------------------------------------------------------------------------
 			lg "Download anime"
-			dl_dir=$(
-				rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-					-mesg "$(generate_span "Enter the path to the download directory, or leave blank to go with the default: $HOME/Videos/sauce/")" \
-					-l 1 -p "Enter download dir:"
-			)
-			# if dl_dir is none set to current directory
-			[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
-			run -d "$dl_dir"
+			get_dl_dir && run -d "$dl_dir"
 			;;
 		3.)
 
@@ -348,7 +351,15 @@ main() {
 }
 
 parse_args "$@"
-((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
-((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
-check_flags
-main
+shift $((OPTIND - 1))
+if [ $# -gt 0 ]; then
+	check_flags "$*"
+	if [ "$IS_DOWNLOAD" -eq 0 ]; then
+		run "$*"
+	elif [ "$IS_DOWNLOAD" -eq 1 ]; then
+		get_dl_dir && run -d "$dl_dir" "$*"
+	fi
+else
+	check_flags
+	main
+fi
