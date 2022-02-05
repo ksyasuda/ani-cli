@@ -49,7 +49,7 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
 <!-- markdown-toc end -->
 
-# MPV Extenstion - Skip Intro Script
+# MPV Extension - Skip Intro Script
 
 _This repo comes packaged with and will install the
 [skip-intro.lua](https://github.com/rui-ddc/skip-intro)
