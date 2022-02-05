@@ -46,7 +46,7 @@ This would open/download episodes 1 2 3 4 5 6
 <div align="center">
 
 ![play from file 1](https://imgur.com/Xkrdi7a.png)
-![play from file 2](https://imgur.com/i5uJIug.png)
+![play from file 2](https://imgur.com/btHUxUl.png)
 
 </div>
 
@@ -56,7 +56,7 @@ In this option, you provide the program with a path, and it will begin searching
 
 <div align="center">
 
-![choose theme menu](https://imgur.com/btHUxUl.png)
+![choose theme menu](https://imgur.com/qUQDj5g.png)
 
 </div>
 
