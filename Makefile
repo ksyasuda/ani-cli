@@ -3,10 +3,12 @@ PREFIX := /usr
 all: install
 
 install: uninstall
-	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
-	cp aniwrapper $(DESTDIR)$(PREFIX)/bin/aniwrapper
-	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
-	chmod 0755 $(DESTDIR)$(PREFIX)/bin/aniwrapper
+	install -m0755 ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
+	install -m0755 aniwrapper $(DESTDIR)$(PREFIX)/bin/aniwrapper
+	mkdir -p /usr/local/man/man1
+	install -m0644 docs/man/aniwrapper.1 /usr/local/man/man1/
+	gzip -qf /usr/local/man/man1/aniwrapper.1
+	mandb -q
 
 dev: uninstall
 	ln -sr ./ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
