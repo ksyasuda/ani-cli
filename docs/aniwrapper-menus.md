@@ -6,7 +6,6 @@
 
 </div>
 
-
 The first menu consists of a search box and a list of anime titles corresponding to past valid searches. Choose an option from the menu, or enter in a unique search query to search for a new anime. The result from this will be used to query against `gogoanime` and return similar named anime
 
 If selecting an anime from the provided list, the [anime selection](#anime-selection) menu will be skipped and the program will move on to [episode selection](#episode-selection) for the chosen anime
@@ -51,16 +50,14 @@ This would open/download episodes 1 2 3 4 5 6
 
 </div>
 
-
-In this option, you provide the program with a path, and it will begin searching the directory for subfolders or playable media in the current directory.  Once a file is found, it will be opened in `mpv`
+In this option, you provide the program with a path, and it will begin searching the directory for subfolders or playable media in the current directory. Once a file is found, it will be opened in `mpv`
 
 # Choose Theme
 
 <div align="center">
 
-![choose theme menu](https://imgur.com/qUQDj5g.png)
+![choose theme menu](https://imgur.com/btHUxUl.png)
 
 </div>
 
-
-Choose the `rofi` theme to use from the presets.  Theme selection will persist through the duration of the program
+Choose the `rofi` theme to use from the presets. Theme selection will persist through the duration of the program
