@@ -19,6 +19,7 @@ IS_CUSTOM_THEME=0
 IS_DOWNLOAD=0
 IS_PLAY_FROM_FILE=0
 IS_ROFI=1
+IS_SYNC=0
 VERBOSE=0
 SILENT=0
 
@@ -70,7 +71,7 @@ quit() {
 }
 
 run() {
-	if ((IS_PLAY_FROM_FILE == 0 && GET_QUALITY == 1)); then
+	if ((IS_PLAY_FROM_FILE == 0 && IS_SYNC == 0 && GET_QUALITY == 1)); then
 		get_quality
 	fi
 	if ((SILENT == 1)); then
@@ -314,14 +315,15 @@ main() {
 			;;
 		5.)
 			lg "Sync history database"
+			IS_SYNC=1
 			roficmd="rofi -dpi $DPI -dmenu -config $CFG_FILE -l 0 -p"
-			username=$($roficmd "Enter the username of the remote user:")
+			username=$($roficmd "Enter the username of the remote user:" -theme-str 'window {width: 45%;}')
 			[ -z "$username" ] && seppuku "No username provided... exiting"
-			host=$($roficmd "Enter the host for the remote machine (eg 192.168.1.99):")
+			host=$($roficmd "Enter the host for the remote machine (eg 192.168.1.99):" -theme-str 'window {width: 45%;}')
 			[ -z "$host" ] && seppuku "No host provided... exiting"
-			port=$($roficmd "Enter in the ssh port for remote machine or leave blank for default [22]:")
+			port=$($roficmd "Enter in the ssh port for remote machine or leave blank for default [22]:" -theme-str 'window {width: 45%;}')
 			[ -z "$port" ] && port=22
-			keypath=$($roficmd "Enter path to private key (leave blank if not needed or if unsure):")
+			keypath=$($roficmd "Enter path to private key (leave blank if not needed or if unsure):" -theme-str 'window {width: 45%;}')
 			if ! printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | run -s; then
 				lg "Aniwrapper was unable to sync the databases..."
 				exit 1
