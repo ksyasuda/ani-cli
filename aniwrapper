@@ -98,7 +98,8 @@ get_quality() {
 	if ((IS_ROFI == 1)); then
 		selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
 			-l 5 -selected-row 0 -a 0 \
-			-theme-str 'listview {columns: 1;}' -p "Choose video quality:" \
+			-theme-str 'listview {columns: 1;} window {width: 20%;}' \
+			-p "Choose video quality:" \
 			-sep '|' -only-match <<< "$QUALITIES")
 		QUALITY=$(awk '{print $2}' <<< "$selection")
 	else
@@ -248,6 +249,7 @@ check_flags() {
 get_dl_dir() {
 	dl_dir=$(
 		rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
+			-theme-str 'listview {columns: 1;} window {width: 45%;}' \
 			-mesg "$(generate_span "Enter the path to the download directory, or leave blank to go with the default: $HOME/Videos/sauce/")" \
 			-l 1 -p "Enter download dir:"
 	)
@@ -262,6 +264,7 @@ main() {
 	((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
 	((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
 	choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -only-match -sep '|' \
+		-theme-str 'listview {columns: 1;} window {width: 45%;}' \
 		-config "$CFG_FILE" -l 7 -i -p "Aniwrapper")
 
 	[ "$choice" == "$quit" ] && quit
@@ -299,6 +302,7 @@ main() {
 			IS_PLAY_FROM_FILE=1
 			span=$(printf '%s\n%s\n' "$(generate_span "Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
 			play_dir=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
+				-theme-str 'listview {columns: 1;} window {width: 45%;}' \
 				-l 1 -mesg "$span" -p "Enter path to starting directory:")
 			if [ -z "$play_dir" ]; then
 				mkdir -p "$DEFAULT_DOWNLOAD" || seppuku "error creating default download directory"
@@ -332,6 +336,7 @@ main() {
 			# -----------------------------------------------------------------
 			[ -z "$THEMES" ] && seppuku "No themes provided... exiting"
 			choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" \
+				-theme-str 'listview {columns: 1;} window {width: 45%;}' \
 				-only-match -l 4 -i -p "Choose theme: " -sep '|' \
 				-theme-str 'listview { columns: 2;  }' <<< "$THEMES")
 			theme=$(awk '{ print $1 }' <<< "$choice")
