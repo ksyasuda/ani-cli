@@ -405,9 +405,11 @@ find_media() {
 #####################
 
 get_search_query() {
-	stmt="SELECT DISTINCT id || '. ' || anime_name FROM search_history ORDER BY search_date DESC;"
-	msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
-	if [ "$IS_ROFI" -eq 1 ]; then
+	if [ $# -gt 0 ]; then
+		query="${*// /-}"
+	elif [ "$IS_ROFI" -eq 1 ]; then
+		stmt="SELECT DISTINCT id || '. ' || anime_name FROM search_history ORDER BY search_date DESC;"
+		msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
 		query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
 			-mesg "$(generate_span "$msg")" \
 			-config "$ROFI_CFG" < <(run_stmt "$stmt"))
@@ -667,16 +669,17 @@ open_episode() {
 
 stream() {
 	lg "Running stream()"
-	get_search_query
-	searched=0
-	# check if anime has been searched before
+	if [ "$#" -eq 0 ]; then
+		get_search_query
+	else
+		get_search_query "$*"
+	fi
 	anime_id="${query// /}"
 	[ -z "$anime_id" ] && die "No anime selected or queried"
+	searched=0
 	lg "Checking if anime: $anime_id has been searched before..."
-	check_db "search" "$anime_id"
-	searched="$?"
-	lg "Searched before: $searched"
-	if [ "$searched" -eq 0 ]; then
+	if check_db "search" "$anime_id"; then
+		lg "$anime_id has been searched before"
 		search_results=$(search_anime $query) # want word splitting to account for both input cases
 		[ -z "$search_results" ] && die "No search results found"
 		lg "SEARCH RESULTS: $search_results"
@@ -684,12 +687,10 @@ stream() {
 			die "No anime selection found"
 		fi
 	else
-		# if the query is a previous search
-		# skip search_anime function and assign $query
-		anime_id="${query// /}"
+		# skip search_anime function and assign $query if previously searched
 		selection_id="$anime_id"
 		insert_history "search" "$anime_id" &
-		read -r last_ep_number <<< "$(search_eps "$selection_id")"
+		read -r last_ep_number < <(search_eps "$anime_id")
 	fi
 	episode_selection
 }
@@ -796,7 +797,6 @@ parse_args() {
 				;;
 		esac
 	done
-	shift $((OPTIND - 1))
 }
 
 ########
@@ -806,7 +806,7 @@ main() {
 	case $scrape in
 		query)
 			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
-			stream
+			stream "$@"
 			;;
 		history)
 			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
@@ -979,4 +979,5 @@ main() {
 
 dep_ch "$player_fn" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c"
 parse_args "$@"
-main
+shift $((OPTIND - 1))
+main "$@"
