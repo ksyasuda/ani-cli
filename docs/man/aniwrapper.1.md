@@ -12,7 +12,7 @@ aniwrapper - A rofi wrapper around ani-cli: a command-line tool to browser, down
 
 # SYNOPSIS
 
-**aniwrapper** [-cdhvqS] [-t _theme_ | -T *config_path*]\
+**aniwrapper** [-cdhpqvS] [-t _theme_ | -T *config_path*] [*query*]\
 **aniwrapper** [-cvS] [-t *theme* | -T *config_path*] -f _path_to_directory_\
 **aniwrapper** -Q _query_\
 **aniwrapper** -C\
@@ -24,6 +24,12 @@ aniwrapper - A rofi wrapper around ani-cli: a command-line tool to browser, down
 a **sqlite3** database for tracking search/watch history.
 
 # OPTIONS
+
+Defaults:
+
+-   **rofi** enabled
+-   aniwrapper.rasi theme
+-   best quality
 
 **-c**
 : Enable command-line mode (disable **rofi**)
@@ -40,6 +46,9 @@ a **sqlite3** database for tracking search/watch history.
 **-h**
 : Display the help message
 
+**-p**
+: Enable video player selection menu
+
 **-q**
 : Enable quality selection
 
@@ -49,7 +58,7 @@ a **sqlite3** database for tracking search/watch history.
 **-S**
 : Enable silent mode (suppress all output) [cannot be used with **-v**]
 
-**-t** _<aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark>_
+**-t** _aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark_
 : Choose theme from presets
 
 **-T** _path_to_theme_
@@ -61,22 +70,29 @@ a **sqlite3** database for tracking search/watch history.
 # EXAMPLES
 
 **aniwrapper**
-: Run with default options (rofi enabled, best video quality, default theme)
+: Launch main menu with default options
 
-**aniwrapper -q**
-: Run with quality selection enabled
+**aniwrapper konosuba**
+: Run in stream mode with a search query: "konosuba"
+
+**aniwrapper -qd naruto**
+: Run in download mode with quality selection enabled and a search query:
+"naruto"
 
 **aniwrapper -vqt doomone**
 : Run with quality selection menu and _doomone_ theme
 
 **aniwrapper -cd**
-: Download an anime in command-line mode (**rofi** disabled)
+: Enable downloading an anime in command-line mode (**rofi** disabled)
 
 **aniwrapper -Q "SELECT \* FROM watch_history ORDER BY watch_date DESC LIMIT 10;"**
 : Query history database for your 10 most recently watched anime
 
 **aniwrapper -f /media/videos**
 : Run in "Play from File" mode starting the search from the _/media/videos_ directory
+
+**aniwrapper -S**
+: Run in quiet mode (suppress all output to stdout and disable notifications)
 
 # SEE ALSO
 

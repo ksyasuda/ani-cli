@@ -8,8 +8,8 @@ aniwrapper - A rofi wrapper around ani-cli: a command-line tool to
 browser, download, and stream anime
 .SH SYNOPSIS
 .PP
-\f[B]aniwrapper\f[R] [-cdhvqS] [-t \f[I]theme\f[R] | -T
-\f[I]config_path\f[R]]
+\f[B]aniwrapper\f[R] [-cdhpqvS] [-t \f[I]theme\f[R] | -T
+\f[I]config_path\f[R]] [\f[I]query\f[R]]
 .PD 0
 .P
 .PD
@@ -33,6 +33,14 @@ browser, download, and stream anime
 control the program flow, as well as a a \f[B]sqlite3\f[R] database for
 tracking search/watch history.
 .SH OPTIONS
+.PP
+Defaults:
+.IP \[bu] 2
+\f[B]rofi\f[R] enabled
+.IP \[bu] 2
+aniwrapper.rasi theme
+.IP \[bu] 2
+best quality
 .TP
 \f[B]-c\f[R]
 Enable command-line mode (disable \f[B]rofi\f[R])
@@ -50,6 +58,9 @@ Specify the starting search directory for \[lq]Play from File\[rq] mode
 \f[B]-h\f[R]
 Display the help message
 .TP
+\f[B]-p\f[R]
+Enable video player selection menu
+.TP
 \f[B]-q\f[R]
 Enable quality selection
 .TP
@@ -60,7 +71,7 @@ Run a query on the history databse
 Enable silent mode (suppress all output) [cannot be used with
 \f[B]-v\f[R]]
 .TP
-\f[B]-t\f[R] \f[I]<aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark>\f[R]
+\f[B]-t\f[R] \f[I]aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark\f[R]
 Choose theme from presets
 .TP
 \f[B]-T\f[R] \f[I]path_to_theme\f[R]
@@ -71,17 +82,21 @@ Verbose output
 .SH EXAMPLES
 .TP
 \f[B]aniwrapper\f[R]
-Run with default options (rofi enabled, best video quality, default
-theme)
+Launch main menu with default options
 .TP
-\f[B]aniwrapper -q\f[R]
-Run with quality selection enabled
+\f[B]aniwrapper konosuba\f[R]
+Run in stream mode with a search query: \[lq]konosuba\[rq]
+.TP
+\f[B]aniwrapper -qd naruto\f[R]
+Run in download mode with quality selection enabled and a search query:
+\[lq]naruto\[rq]
 .TP
 \f[B]aniwrapper -vqt doomone\f[R]
 Run with quality selection menu and \f[I]doomone\f[R] theme
 .TP
 \f[B]aniwrapper -cd\f[R]
-Download an anime in command-line mode (\f[B]rofi\f[R] disabled)
+Enable downloading an anime in command-line mode (\f[B]rofi\f[R]
+disabled)
 .TP
 \f[B]aniwrapper -Q \[lq]SELECT * FROM watch_history ORDER BY watch_date DESC LIMIT 10;\[rq]\f[R]
 Query history database for your 10 most recently watched anime
@@ -89,6 +104,10 @@ Query history database for your 10 most recently watched anime
 \f[B]aniwrapper -f /media/videos\f[R]
 Run in \[lq]Play from File\[rq] mode starting the search from the
 \f[I]/media/videos\f[R] directory
+.TP
+\f[B]aniwrapper -S\f[R]
+Run in quiet mode (suppress all output to stdout and disable
+notifications)
 .SH SEE ALSO
 .PP
 \f[B]rofi(1), rofi-theme(5), rofi-keys(5), sqlite3(1)\f[R]
