@@ -29,23 +29,23 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
 **Table of Contents**
 
-- [Aniwrapper](#aniwrapper)
-- [Introduction](#introduction)
-- [MPV Extension - Skip Intro Script](#mpv-extension---skip-intro-script)
-	- [Installing](#installing)
-		- [Manual Install](#manual-install)
-- [Aniwrapper Menus](#aniwrapper-menus)
-- [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
-- [Usage](#usage)
-	- [aniwrapper](#aniwrapper-1)
-		- [Option 1: Streaming](#option-1-streaming)
-		- [Option 2: Download](#option-2-download)
-		- [Option 3: Continue](#option-3-continue)
-		- [Option 4: Play from File](#option-4-play-from-file)
-		- [Option 5: Sync History](#option-5-sync-history)
-		- [Option 6: Choose Theme](#option-6-choose-theme)
-	- [ani-cli](#ani-cli)
-- [Themes](#themes)
+-   [Aniwrapper](#aniwrapper)
+-   [Introduction](#introduction)
+-   [MPV Extension - Skip Intro Script](#mpv-extension---skip-intro-script)
+    -   [Installing](#installing)
+        -   [Manual Install](#manual-install)
+-   [Aniwrapper Menus](#aniwrapper-menus)
+-   [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
+-   [Usage](#usage)
+    -   [aniwrapper](#aniwrapper-1)
+        -   [Option 1: Streaming](#option-1-streaming)
+        -   [Option 2: Download](#option-2-download)
+        -   [Option 3: Continue](#option-3-continue)
+        -   [Option 4: Play from File](#option-4-play-from-file)
+        -   [Option 5: Sync History](#option-5-sync-history)
+        -   [Option 6: Choose Theme](#option-6-choose-theme)
+    -   [ani-cli](#ani-cli)
+-   [Themes](#themes)
 
 <!-- markdown-toc end -->
 
@@ -140,20 +140,20 @@ aniwrapper [-cvS] [-t <theme> or -T <config_path>] -f <path_to_directory>
 aniwrapper -Q <query>
 aniwrapper -C
 
-aniwrapper <query> 						# Run in stream mode, searching for <query>
-aniwrapper -c 							# Use ani-cli command-line mode (rofi disabled)
-aniwrapper -C 							# Connect to history database
-aniwrapper -d 							# Download anime in command-line mode
-aniwrapper -d <query> 					# Run in download mode (best quality), searching for <query>
-aniwrapper -f <starting_directory> 		# Specify starting directory for play_from_file mode, bypassing main menu
-aniwrapper -h 							# Show help menu
-aniwrapper -p 							# Enable player selection menu
-aniwrapper -q 							# Launch menu with quality selection
-aniwrapper -Q <query> 					# Query the history database
-aniwrapper -S 							# Enable silent mode (suppress output to stdout) [cannot be used with -v]
-aniwrapper -t <theme> 					# Choose rofi theme from presets
-aniwrapper -T <path_to_config> 			# Specify custom rofi config
-aniwrapper -v 							# Enable verbose logging
+aniwrapper <query> # Run in stream mode, searching for <query>
+aniwrapper -c # Use ani-cli command-line mode (rofi disabled)
+aniwrapper -C # Connect to history database
+aniwrapper -d # Download anime in command-line mode
+aniwrapper -d <query> # Run in download mode (best quality), searching for <query>
+aniwrapper -f <starting_directory> # Specify starting directory for play_from_file mode, bypassing main menu
+aniwrapper -h # Show help menu
+aniwrapper -p # Enable player selection menu
+aniwrapper -q # Launch menu with quality selection
+aniwrapper -Q <query> # Query the history database
+aniwrapper -S # Enable silent mode (suppress output to stdout) [cannot be used with -v]
+aniwrapper -t <theme> # Choose rofi theme from presets
+aniwrapper -T <path_to_config> # Specify custom rofi config
+aniwrapper -v # Enable verbose logging
 ```
 
 See [aniwrapper menus](docs/aniwrapper-menus.md) for more information about the menus used in the following options
