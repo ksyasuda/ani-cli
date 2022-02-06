@@ -12,7 +12,9 @@ DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 ROFI_THEME="aniwrapper.rasi"
 THEMES="aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark"
 QUALITIES="1. best|2. 1080p|3. 720p|4. 360p|5. worst"
+SUPPORTED_PLAYERS="mpv|mplayer|vlc"
 QUALITY=best
+PLAYER_FN=mpv
 DPI=96
 GET_QUALITY=0
 IS_CUSTOM_THEME=0
@@ -20,6 +22,7 @@ IS_DOWNLOAD=0
 IS_PLAY_FROM_FILE=0
 IS_ROFI=1
 IS_SYNC=0
+IS_ALTERNATE_PLAYER=0
 VERBOSE=0
 SILENT=0
 
@@ -76,21 +79,21 @@ run() {
 	fi
 	if ((SILENT == 1)); then
 		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -Sq "$QUALITY" -t "$theme" "$@"
+			"$CMD" -D"$DPI" -Sq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
 		else
-			"$CMD" -D"$DPI" -Sq "$QUALITY" -T "$CFG_FILE" "$@"
+			"$CMD" -D"$DPI" -Sq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
 		fi
 	elif ((VERBOSE == 1)); then
 		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -vq "$QUALITY" -t "$theme" "$@"
+			"$CMD" -D"$DPI" -vq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
 		else
-			"$CMD" -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" "$@"
+			"$CMD" -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
 		fi
 	else
 		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -q "$QUALITY" -t "$theme" "$@"
+			"$CMD" -D"$DPI" -q "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
 		else
-			"$CMD" -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" "$@"
+			"$CMD" -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
 		fi
 	fi
 }
@@ -160,7 +163,7 @@ set_theme() {
 }
 
 parse_args() {
-	while getopts 'vhqcdf:-:t:T:CQ:D:S' OPT; do
+	while getopts 'vhqcdf:-:t:T:CQ:D:Sp' OPT; do
 		case "$OPT" in
 			h)
 				help_text
@@ -213,6 +216,9 @@ parse_args() {
 			S)
 				SILENT=1
 				;;
+			p)
+				IS_ALTERNATE_PLAYER=1
+				;;
 			*)
 				help_text
 				exit 1
@@ -225,6 +231,22 @@ check_flags() {
 	# Check if command-line flag is set
 	if ((VERBOSE == 1 && SILENT == 1)); then
 		seppuku "verbose and silent options cannot be used together"
+	fi
+	if ((IS_DOWNLOAD == 0 && IS_ALTERNATE_PLAYER == 1)); then
+		msg1="Choose from the supported players, or supply your own player command (full functionality not guaranteed)"
+		msg2="if using an unsupported player, it must be able to play URLs for streaming from the internet"
+		PLAYER_FN=$(
+			awk '{print $NF}' < <(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
+				-l 4 -theme-str 'listview {columns: 1;} window {width: 40%;}' \
+				-p "Enter video player:" \
+				-mesg "$(printf "%s\n%s\n" "$(generate_span "$msg1")" "$(generate_span "$msg2")")" \
+				-a 0 -sep '|' <<< "$SUPPORTED_PLAYERS")
+		)
+		[ -z "$PLAYER_FN" ] && PLAYER_FN=mpv
+		if ! command -v "$PLAYER_FN" > /dev/null; then
+			seppuku "ERROR: $PLAYER_FN does not exist"
+		fi
+		lg "SELECTED PLAYER FN -> $PLAYER_FN"
 	fi
 	if ((IS_ROFI == 0 && IS_DOWNLOAD == 0)); then
 		run -c "$@"
