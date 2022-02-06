@@ -135,23 +135,25 @@ The above output was produced by searching: `isekai -`
 ## aniwrapper
 
 ```
-aniwrapper [-cdhvqS] [-t <theme> or -T <config_path>] <query>
+aniwrapper [-cdhpqvS] [-t <theme> or -T <config_path>] <query>
 aniwrapper [-cvS] [-t <theme> or -T <config_path>] -f <path_to_directory>
 aniwrapper -Q <query>
 aniwrapper -C
 
-aniwrapper <query> # Run in stream mode, searching for <query>
-aniwrapper -d <query> # Run in download mode (best quality), searching for <query>
-aniwrapper -q # Launch menu with quality selection
-aniwrapper -v # Enable verbose logging
-aniwrapper -C # Connect to history database
-aniwrapper -S # Enable silent mode (suppress output to stdout) [cannot be used with -v]
-aniwrapper -Q <query> # Query the history database
-aniwrapper -t <aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark> # Choose rofi theme from presets
-aniwrapper -T <path_to_config> # Specify custom rofi config
-aniwrapper -f <starting_directory> # Specify starting directory for play_from_file mode, bypassing main menu
-aniwrapper -c # Use ani-cli command-line mode (rofi disabled)
-aniwrapper -d # Download anime in command-line mode
+aniwrapper <query> 						# Run in stream mode, searching for <query>
+aniwrapper -c 							# Use ani-cli command-line mode (rofi disabled)
+aniwrapper -C 							# Connect to history database
+aniwrapper -d 							# Download anime in command-line mode
+aniwrapper -d <query> 					# Run in download mode (best quality), searching for <query>
+aniwrapper -f <starting_directory> 		# Specify starting directory for play_from_file mode, bypassing main menu
+aniwrapper -h 							# Show help menu
+aniwrapper -p 							# Enable player selection menu
+aniwrapper -q 							# Launch menu with quality selection
+aniwrapper -Q <query> 					# Query the history database
+aniwrapper -S 							# Enable silent mode (suppress output to stdout) [cannot be used with -v]
+aniwrapper -t <theme> 					# Choose rofi theme from presets
+aniwrapper -T <path_to_config> 			# Specify custom rofi config
+aniwrapper -v 							# Enable verbose logging
 ```
 
 See [aniwrapper menus](docs/aniwrapper-menus.md) for more information about the menus used in the following options
