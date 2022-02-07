@@ -37,6 +37,9 @@ lg() {
 }
 
 check_input() {
+	if [[ -z "$ep_choice_start" ]] && [[ -z "$ep_choice_end" ]]; then
+		die "No episode(s) selected"
+	fi
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2> /dev/null || die "Invalid number entered: $ep_choice_start"
 	episodes=$ep_choice_start
 	if [ -n "$ep_choice_end" ]; then
@@ -592,8 +595,8 @@ episode_selection() {
 		ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
 		ep_choice_end=$ep_choice_start
 	fi
-	if [[ -z "$ep_choice_start" ]] && [[ -z "$ep_choice_end" ]]; then
-		die "No episode range entered"
+	if (((ep_choice_start <= 0 || ep_choice_start > last_ep_number) || ep_choice_end < ep_choice_start || ep_choice_end > last_ep_number)); then
+		die "Invalid episode/range entered: ep_start -> $ep_choice_start | ep_end -> $ep_choice_end"
 	fi
 	# if only one episode was entered, set ep_choice_end to empty string so only selected episode plays
 	# otherwise plays from ep 1 - ep_choice_start
