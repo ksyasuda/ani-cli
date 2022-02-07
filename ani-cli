@@ -324,13 +324,13 @@ play_file() {
 		notification "Playing $1"
 		case "$PLAYER_FN" in
 			mpv)
-				nohup "$PLAYER_FN" --force-media-title="aniwrapper: play-from-file - $1" "$1" > /dev/null 2>&1
+				nohup "$PLAYER_FN" --force-media-title="aniwrapper: play-from-file - $1" "$1" > /dev/null 2>&1 &
 				;;
 			mplayer)
-				nohup "$PLAYER_FN" -title "aniwrapper: play-from-file - $1" "$1" > /dev/null 2>&1
+				nohup "$PLAYER_FN" -title "aniwrapper: play-from-file - $1" "$1" > /dev/null 2>&1 &
 				;;
 			*)
-				nohup "$PLAYER_FN" "$1" > /dev/null 2>&1
+				nohup "$PLAYER_FN" "$1" > /dev/null 2>&1 &
 				;;
 		esac
 		return $?
