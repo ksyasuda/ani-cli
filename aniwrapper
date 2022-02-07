@@ -40,7 +40,7 @@ help_text() {
 Usage:
 	aniwrapper [-dhpqSv] [-t <theme> | -T <config_path>] [<query>]
 	aniwrapper -f <directory_path> [-t <theme> | -T <config_path>] [-pSv] [<query>]\
-	aniwrapper -c [-dhqSv] [<query>]
+	aniwrapper -c [-dhpqSv] [<query>]
 	aniwrapper -Q <query>
 	aniwrapper -C
 Options:

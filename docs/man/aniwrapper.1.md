@@ -14,7 +14,7 @@ aniwrapper - A rofi wrapper around ani-cli: a command-line tool to browser, down
 
 **aniwrapper** [-dhpqSv] [-t _theme_ | -T *config_path*] [*query*]\
 **aniwrapper** -f _directory_path_ [-t _theme_ | -T *config_path*] [-pSv] [*query*]\
-**aniwrapper** -c [-dhqSv] [*query*]\
+**aniwrapper** -c [-dhpqSv] [*query*]\
 **aniwrapper** -Q _query_\
 **aniwrapper** -C\
 

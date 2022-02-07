@@ -135,8 +135,8 @@ The above output was produced by searching: `isekai -`
 ## aniwrapper
 
 ```
-aniwrapper [-cdhpqvS] [-t <theme> or -T <config_path>] <query>
-aniwrapper [-cvS] [-t <theme> or -T <config_path>] -f <path_to_directory>
+aniwrapper [-cdhpqSv] [-t <theme> or -T <config_path>] <query>
+aniwrapper [-cpqSv] [-t <theme> or -T <config_path>] -f <path_to_directory>
 aniwrapper -Q <query>
 aniwrapper -C
 
