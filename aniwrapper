@@ -229,14 +229,10 @@ parse_args() {
 	done
 }
 
-check_flags() {
-	# Check if command-line flag is set
-	if ((VERBOSE == 1 && SILENT == 1)); then
-		seppuku "verbose and silent options cannot be used together"
-	fi
-	if ((IS_DOWNLOAD == 0 && IS_ALTERNATE_PLAYER == 1)); then
-		msg1="Choose from the supported players, or supply your own player command (full functionality not guaranteed)"
-		msg2="if using an unsupported player, it must be able to play URLs for streaming from the internet"
+get_player() {
+	msg1="Choose from the supported players, or supply your own player command (full functionality not guaranteed)"
+	msg2="if using an unsupported player, it must be able to play URLs for streaming from the internet"
+	if ((IS_ROFI == 1)); then
 		PLAYER_FN=$(
 			awk '{print $NF}' < <(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
 				-l 4 -theme-str 'listview {columns: 1;} window {width: 40%;}' \
@@ -244,10 +240,32 @@ check_flags() {
 				-mesg "$(printf "%s\n%s\n" "$(generate_span "$msg1")" "$(generate_span "$msg2")")" \
 				-a 0 -sep '|' <<< "$SUPPORTED_PLAYERS")
 		)
-		[ -z "$PLAYER_FN" ] && PLAYER_FN=mpv
-		if ! command -v "$PLAYER_FN" > /dev/null; then
-			seppuku "ERROR: $PLAYER_FN does not exist"
-		fi
+	else
+		printf "%s\n%s\n" "$msg1" "$msg2"
+		printf "%s\n" "SUPPORTED PLAYERS:"
+		# while read -r player; do
+		# 	printf "%s\n" "$player"
+		# done <<< "$(printf "%s\n" "$SUPPORTED_PLAYERS" | sed 's/|/\n/g')"
+		# bash version
+		while IFS='|' read -ra players; do
+			printf "%s\n" "${players[@]}"
+		done <<< "$SUPPORTED_PLAYERS"
+		printf "%s" "Enter player: "
+		read -r PLAYER_FN
+	fi
+	[ -z "$PLAYER_FN" ] && PLAYER_FN=mpv
+	if ! command -v "$PLAYER_FN" > /dev/null; then
+		seppuku "ERROR: $PLAYER_FN does not exist"
+	fi
+}
+
+check_flags() {
+	# Check if command-line flag is set
+	if ((VERBOSE == 1 && SILENT == 1)); then
+		seppuku "verbose and silent options cannot be used together"
+	fi
+	if ((IS_DOWNLOAD == 0 && IS_ALTERNATE_PLAYER == 1)); then
+		get_player
 		lg "SELECTED PLAYER FN -> $PLAYER_FN"
 	fi
 	if ((IS_ROFI == 0 && IS_DOWNLOAD == 0)); then
