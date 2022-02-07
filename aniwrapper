@@ -61,7 +61,7 @@ Options:
 
 lg() {
 	if ((VERBOSE == 1)); then
-		printf "%s\n" "$*"
+		inf "$*"
 	fi
 }
 
