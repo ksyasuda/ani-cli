@@ -317,27 +317,22 @@ sync_watch_history() {
 # opens the passed in file with $PLAYER_FN
 play_file() {
 	lg "Checking if file is playable"
-	if [[ "$1" =~ (\.mp4|\.mkv|\.ts|\.mp3|\.webm)$ ]]; then
+	if [[ "$1" =~ (\.mp4|\.mkv|\.ts|\.webm)$ ]]; then
 		filename="${1##*/}"
 		directory="${1%/*}"
 		insert_history "file" "$directory" "$filename" &
-		if [[ "$1" =~ .mp3 ]]; then
-			notification "Playing $1"
-			case "$PLAYER_FN" in
-				mpv)
-					nohup "$PLAYER_FN" --no-video "$1" > /dev/null 2>&1
-					;;
-				mplayer)
-					nohup "$PLAYER_FN" -novideo "$1" > /dev/null 2>&1
-					;;
-				*)
-					nohup "$PLAYER_FN" "$1" > /dev/null 2>&1
-					;;
-			esac
-		else
-			notification "Playing $1"
-			nohup "$PLAYER_FN" "$1" > /dev/null 2>&1 &
-		fi
+		notification "Playing $1"
+		case "$PLAYER_FN" in
+			mpv)
+				nohup "$PLAYER_FN" --force-media-title="aniwrapper: play-from-file - $1" "$1" > /dev/null 2>&1
+				;;
+			mplayer)
+				nohup "$PLAYER_FN" -title "aniwrapper: play-from-file - $1" "$1" > /dev/null 2>&1
+				;;
+			*)
+				nohup "$PLAYER_FN" "$1" > /dev/null 2>&1
+				;;
+		esac
 		return $?
 	else
 		die "File: $1 is not playable... Quitting"
@@ -640,10 +635,10 @@ open_episode() {
 		kill "$PID" > /dev/null 2>&1
 		case "$PLAYER_FN" in
 			mpv)
-				nohup "$PLAYER_FN" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+				nohup "$PLAYER_FN" --referrer="$dpage_link" "$video_url" --force-media-title="aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
 				;;
 			mplayer)
-				nohup "$PLAYER_FN" -referrer "$dpage_link" "$video_url" > /dev/null 2>&1 &
+				nohup "$PLAYER_FN" -referrer "$dpage_link" "$video_url" -title "aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
 				;;
 			vlc)
 				nohup "$PLAYER_FN" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
