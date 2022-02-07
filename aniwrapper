@@ -65,6 +65,16 @@ lg() {
 	fi
 }
 
+# display an informational message (first argument in green, second in magenta)
+inf() {
+	printf "\033[1;32m%s \033[1;35m%s\033[0m\n" "$1" "$2"
+}
+
+# prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
+prompt() {
+	printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
+}
+
 seppuku() {
 	printf "%s\n" "$*"
 	exit 1
@@ -110,11 +120,11 @@ get_quality() {
 		QUALITY=$(awk '{print $2}' <<< "$selection")
 	else
 		qualities="best|1080p|720p|480p|360p|worst"
-		printf "%s" "Choose quality: [$qualities]: "
+		prompt "Choose quality " "[$qualities]"
 		read -r QUALITY
 		while [[ ! "$QUALITY" =~ ($qualities) ]]; do
 			lg "$QUALITY not a valid quality -> [$qualities]"
-			printf "%s" "Choose quality: [$qualities]: "
+			prompt "Choose quality " "[$qualities]"
 			read -r QUALITY
 		done
 	fi
@@ -250,7 +260,7 @@ get_player() {
 		while IFS='|' read -ra players; do
 			printf "%s\n" "${players[@]}"
 		done <<< "$SUPPORTED_PLAYERS"
-		printf "%s" "Enter player: "
+		prompt "Enter player"
 		read -r PLAYER_FN
 	fi
 	[ -z "$PLAYER_FN" ] && PLAYER_FN=mpv
@@ -272,7 +282,7 @@ check_flags() {
 		run -c "$@"
 		exit $?
 	elif ((IS_ROFI == 0 && IS_DOWNLOAD == 1)); then
-		printf "%s" "Enter download dir: "
+		prompt "Enter download directory"
 		read -r dl_dir
 		lg "Download dir: $dl_dir"
 		if [ ! -d "$dl_dir" ]; then
@@ -298,6 +308,9 @@ get_dl_dir() {
 	)
 	# if dl_dir is none set to current directory
 	[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
+	if [ ! -d "$dl_dir" ]; then
+		mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
+	fi
 }
 
 ########
