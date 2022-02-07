@@ -34,9 +34,9 @@ theme=default
 # Functions #
 #############
 help_text() {
-	while IFS= read -r line; do
-		printf "%s\n" "$line"
-	done <<< "
+    while IFS= read -r line; do
+        printf "%s\n" "$line"
+    done <<< "
 Usage:
 	aniwrapper [-dhpqSv] [-t <theme> | -T <config_path>] [<query>]
 	aniwrapper -f <directory_path> [-t <theme> | -T <config_path>] [-pSv] [<query>]\
@@ -60,368 +60,368 @@ Options:
 }
 
 lg() {
-	if ((VERBOSE == 1)); then
-		inf "$*"
-	fi
+    if ((VERBOSE == 1)); then
+        inf "$*"
+    fi
 }
 
 # display an informational message (first argument in green, second in magenta)
 inf() {
-	printf "\033[1;32m%s \033[1;35m%s\033[0m\n" "$1" "$2"
+    printf "\033[1;32m%s \033[1;35m%s\033[0m\n" "$1" "$2"
 }
 
 # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
 prompt() {
-	printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
+    printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
 }
 
 seppuku() {
-	printf "%s\n" "$*"
-	exit 1
+    printf "%s\n" "$*"
+    exit 1
 }
 
 quit() {
-	((SILENT != 1)) && lg 'Quitting...'
-	exit 0
+    ((SILENT != 1)) && lg 'Quitting...'
+    exit 0
 }
 
 run() {
-	if ((IS_PLAY_FROM_FILE == 0 && IS_SYNC == 0 && GET_QUALITY == 1)); then
-		get_quality
-	fi
-	if ((SILENT == 1)); then
-		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -Sq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
-		else
-			"$CMD" -D"$DPI" -Sq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
-		fi
-	elif ((VERBOSE == 1)); then
-		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -vq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
-		else
-			"$CMD" -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
-		fi
-	else
-		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -q "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
-		else
-			"$CMD" -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
-		fi
-	fi
+    if ((IS_PLAY_FROM_FILE == 0 && IS_SYNC == 0 && GET_QUALITY == 1)); then
+        get_quality
+    fi
+    if ((SILENT == 1)); then
+        if ((IS_CUSTOM_THEME == 0)); then
+            "$CMD" -D"$DPI" -Sq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
+        else
+            "$CMD" -D"$DPI" -Sq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
+        fi
+    elif ((VERBOSE == 1)); then
+        if ((IS_CUSTOM_THEME == 0)); then
+            "$CMD" -D"$DPI" -vq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
+        else
+            "$CMD" -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
+        fi
+    else
+        if ((IS_CUSTOM_THEME == 0)); then
+            "$CMD" -D"$DPI" -q "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
+        else
+            "$CMD" -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
+        fi
+    fi
 }
 
 get_quality() {
-	if ((IS_ROFI == 1)); then
-		selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-			-l 5 -selected-row 0 -a 0 \
-			-theme-str 'listview {columns: 1;} window {width: 20%;}' \
-			-p "Choose video quality:" \
-			-sep '|' -only-match <<< "$QUALITIES")
-		QUALITY=$(awk '{print $2}' <<< "$selection")
-	else
-		qualities="best|1080p|720p|480p|360p|worst"
-		prompt "Choose quality " "[$qualities]"
-		read -r QUALITY
-		while [[ ! "$QUALITY" =~ ($qualities) ]]; do
-			lg "$QUALITY not a valid quality -> [$qualities]"
-			prompt "Choose quality " "[$qualities]"
-			read -r QUALITY
-		done
-	fi
-	lg "selected quality: $QUALITY"
+    if ((IS_ROFI == 1)); then
+        selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
+            -l 5 -selected-row 0 -a 0 \
+            -theme-str 'listview {columns: 1;} window {width: 20%;}' \
+            -p "Choose video quality:" \
+            -sep '|' -only-match <<< "$QUALITIES")
+        QUALITY=$(awk '{print $2}' <<< "$selection")
+    else
+        qualities="best|1080p|720p|480p|360p|worst"
+        prompt "Choose quality " "[$qualities]"
+        read -r QUALITY
+        while [[ ! "$QUALITY" =~ ($qualities) ]]; do
+            lg "$QUALITY not a valid quality -> [$qualities]"
+            prompt "Choose quality " "[$qualities]"
+            read -r QUALITY
+        done
+    fi
+    lg "selected quality: $QUALITY"
 }
 
 # generates a span mesg for rofi given
 # input: message: str
 generate_span() {
-	msg="$*"
-	span="<span foreground='#ecbe7b' style='italic' size='small'>$msg</span>"
-	printf "%s\n" "$span"
+    msg="$*"
+    span="<span foreground='#ecbe7b' style='italic' size='small'>$msg</span>"
+    printf "%s\n" "$span"
 }
 
 set_theme() {
-	new_theme="$1"
-	case "$new_theme" in
-		aniwrapper)
-			ROFI_THEME=aniwrapper.rasi
-			;;
-		dracula)
-			ROFI_THEME=aniwrapper-dracula.rasi
-			;;
-		doomone | doom-one)
-			ROFI_THEME=aniwrapper-doomone.rasi
-			;;
-		fancy)
-			ROFI_THEME=aniwrapper-fancy.rasi
-			;;
-		flamingo)
-			ROFI_THEME=aniwrapper-flamingo.rasi
-			;;
-		material)
-			ROFI_THEME=aniwrapper-material.rasi
-			;;
-		nord)
-			ROFI_THEME=aniwrapper-nord.rasi
-			;;
-		onedark)
-			ROFI_THEME=aniwrapper-onedark.rasi
-			;;
-		*)
-			seppuku "$theme not a valid theme file.  Themes: [$THEMES]"
-			;;
-	esac
-	lg "Chosen theme -> $ROFI_THEME"
-	CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
+    new_theme="$1"
+    case "$new_theme" in
+        aniwrapper)
+            ROFI_THEME=aniwrapper.rasi
+            ;;
+        dracula)
+            ROFI_THEME=aniwrapper-dracula.rasi
+            ;;
+        doomone | doom-one)
+            ROFI_THEME=aniwrapper-doomone.rasi
+            ;;
+        fancy)
+            ROFI_THEME=aniwrapper-fancy.rasi
+            ;;
+        flamingo)
+            ROFI_THEME=aniwrapper-flamingo.rasi
+            ;;
+        material)
+            ROFI_THEME=aniwrapper-material.rasi
+            ;;
+        nord)
+            ROFI_THEME=aniwrapper-nord.rasi
+            ;;
+        onedark)
+            ROFI_THEME=aniwrapper-onedark.rasi
+            ;;
+        *)
+            seppuku "$theme not a valid theme file.  Themes: [$THEMES]"
+            ;;
+    esac
+    lg "Chosen theme -> $ROFI_THEME"
+    CFG_FILE="$CFG_DIR/themes/$ROFI_THEME"
 }
 
 parse_args() {
-	while getopts 'vhqcdf:-:t:T:CQ:D:Sp' OPT; do
-		case "$OPT" in
-			h)
-				help_text
-				exit 0
-				;;
-			v)
-				VERBOSE=1
-				;;
-			q)
-				GET_QUALITY=1
-				lg "Quality prompt enabled"
-				;;
-			c)
-				IS_ROFI=0
-				lg "Command-line (ani-cli) mode set"
-				;;
-			d)
-				IS_DOWNLOAD=1
-				lg "Download flag set..."
-				;;
-			f)
-				IS_PLAY_FROM_FILE=1
-				play_path="$OPTARG"
-				lg "Play from file flag set... skipping main menu"
-				lg "PLAY_PATH: $play_path"
-				;;
-			t)
-				theme="$OPTARG"
-				set_theme "$theme"
-				;;
-			C)
-				lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
-				sqlite3 "$CFG_DIR/history.sqlite3"
-				exit $?
-				;;
-			Q)
-				query="$OPTARG"
-				lg "DATABASE QUERY: $query"
-				sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
-				exit $?
-				;;
-			T)
-				CFG_FILE="$OPTARG"
-				[ ! -f "$CFG_FILE" ] && seppuku "config file $CFG_FILE does not exist"
-				IS_CUSTOM_THEME=1
-				;;
-			D)
-				DPI="$OPTARG"
-				;;
-			S)
-				SILENT=1
-				;;
-			p)
-				IS_ALTERNATE_PLAYER=1
-				;;
-			*)
-				help_text
-				exit 1
-				;;
-		esac
-	done
+    while getopts 'vhqcdf:-:t:T:CQ:D:Sp' OPT; do
+        case "$OPT" in
+            h)
+                help_text
+                exit 0
+                ;;
+            v)
+                VERBOSE=1
+                ;;
+            q)
+                GET_QUALITY=1
+                lg "Quality prompt enabled"
+                ;;
+            c)
+                IS_ROFI=0
+                lg "Command-line (ani-cli) mode set"
+                ;;
+            d)
+                IS_DOWNLOAD=1
+                lg "Download flag set..."
+                ;;
+            f)
+                IS_PLAY_FROM_FILE=1
+                play_path="$OPTARG"
+                lg "Play from file flag set... skipping main menu"
+                lg "PLAY_PATH: $play_path"
+                ;;
+            t)
+                theme="$OPTARG"
+                set_theme "$theme"
+                ;;
+            C)
+                lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
+                sqlite3 "$CFG_DIR/history.sqlite3"
+                exit $?
+                ;;
+            Q)
+                query="$OPTARG"
+                lg "DATABASE QUERY: $query"
+                sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
+                exit $?
+                ;;
+            T)
+                CFG_FILE="$OPTARG"
+                [ ! -f "$CFG_FILE" ] && seppuku "config file $CFG_FILE does not exist"
+                IS_CUSTOM_THEME=1
+                ;;
+            D)
+                DPI="$OPTARG"
+                ;;
+            S)
+                SILENT=1
+                ;;
+            p)
+                IS_ALTERNATE_PLAYER=1
+                ;;
+            *)
+                help_text
+                exit 1
+                ;;
+        esac
+    done
 }
 
 get_player() {
-	msg1="Choose from the supported players, or supply your own player command (full functionality not guaranteed)"
-	msg2="if using an unsupported player, it must be able to play URLs for streaming from the internet"
-	if ((IS_ROFI == 1)); then
-		PLAYER_FN=$(
-			awk '{print $NF}' < <(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
-				-l 4 -theme-str 'listview {columns: 1;} window {width: 40%;}' \
-				-p "Enter video player:" \
-				-mesg "$(printf "%s\n%s\n" "$(generate_span "$msg1")" "$(generate_span "$msg2")")" \
-				-a 0 -sep '|' <<< "$SUPPORTED_PLAYERS")
-		)
-	else
-		printf "%s\n%s\n" "$msg1" "$msg2"
-		printf "%s\n" "SUPPORTED PLAYERS:"
-		# while read -r player; do
-		# 	printf "%s\n" "$player"
-		# done <<< "$(printf "%s\n" "$SUPPORTED_PLAYERS" | sed 's/|/\n/g')"
-		# bash version
-		while IFS='|' read -ra players; do
-			printf "%s\n" "${players[@]}"
-		done <<< "$SUPPORTED_PLAYERS"
-		prompt "Enter player"
-		read -r PLAYER_FN
-	fi
-	[ -z "$PLAYER_FN" ] && PLAYER_FN=mpv
-	if ! command -v "$PLAYER_FN" > /dev/null; then
-		seppuku "ERROR: $PLAYER_FN does not exist"
-	fi
+    msg1="Choose from the supported players, or supply your own player command (full functionality not guaranteed)"
+    msg2="if using an unsupported player, it must be able to play URLs for streaming from the internet"
+    if ((IS_ROFI == 1)); then
+        PLAYER_FN=$(
+            awk '{print $NF}' < <(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
+                -l 4 -theme-str 'listview {columns: 1;} window {width: 40%;}' \
+                -p "Enter video player:" \
+                -mesg "$(printf "%s\n%s\n" "$(generate_span "$msg1")" "$(generate_span "$msg2")")" \
+                -a 0 -sep '|' <<< "$SUPPORTED_PLAYERS")
+        )
+    else
+        printf "%s\n%s\n" "$msg1" "$msg2"
+        printf "%s\n" "SUPPORTED PLAYERS:"
+        # while read -r player; do
+        # 	printf "%s\n" "$player"
+        # done <<< "$(printf "%s\n" "$SUPPORTED_PLAYERS" | sed 's/|/\n/g')"
+        # bash version
+        while IFS='|' read -ra players; do
+            printf "%s\n" "${players[@]}"
+        done <<< "$SUPPORTED_PLAYERS"
+        prompt "Enter player"
+        read -r PLAYER_FN
+    fi
+    [ -z "$PLAYER_FN" ] && PLAYER_FN=mpv
+    if ! command -v "$PLAYER_FN" > /dev/null; then
+        seppuku "ERROR: $PLAYER_FN does not exist"
+    fi
 }
 
 check_flags() {
-	# Check if command-line flag is set
-	if ((VERBOSE == 1 && SILENT == 1)); then
-		seppuku "verbose and silent options cannot be used together"
-	fi
-	if ((IS_DOWNLOAD == 0 && IS_ALTERNATE_PLAYER == 1)); then
-		get_player
-		lg "SELECTED PLAYER FN -> $PLAYER_FN"
-	fi
-	if ((IS_ROFI == 0 && IS_DOWNLOAD == 0)); then
-		run -c "$@"
-		exit $?
-	elif ((IS_ROFI == 0 && IS_DOWNLOAD == 1)); then
-		prompt "Enter download directory"
-		read -r dl_dir
-		lg "Download dir: $dl_dir"
-		if [ ! -d "$dl_dir" ]; then
-			mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
-		fi
-		run "-cd $dl_dir" "$@"
-		exit $?
-	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 1)); then
-		run "-f$play_path" -T "$CFG_FILE" "$@"
-		exit $?
-	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 0)); then
-		run "-f$play_path" -t "$theme" "$@"
-		exit $?
-	fi
+    # Check if command-line flag is set
+    if ((VERBOSE == 1 && SILENT == 1)); then
+        seppuku "verbose and silent options cannot be used together"
+    fi
+    if ((IS_DOWNLOAD == 0 && IS_ALTERNATE_PLAYER == 1)); then
+        get_player
+        lg "SELECTED PLAYER FN -> $PLAYER_FN"
+    fi
+    if ((IS_ROFI == 0 && IS_DOWNLOAD == 0)); then
+        run -c "$@"
+        exit $?
+    elif ((IS_ROFI == 0 && IS_DOWNLOAD == 1)); then
+        prompt "Enter download directory"
+        read -r dl_dir
+        lg "Download dir: $dl_dir"
+        if [ ! -d "$dl_dir" ]; then
+            mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
+        fi
+        run "-cd $dl_dir" "$@"
+        exit $?
+    elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 1)); then
+        run "-f$play_path" -T "$CFG_FILE" "$@"
+        exit $?
+    elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 0)); then
+        run "-f$play_path" -t "$theme" "$@"
+        exit $?
+    fi
 }
 
 get_dl_dir() {
-	dl_dir=$(
-		rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-			-theme-str 'listview {columns: 1;} window {width: 45%;}' \
-			-mesg "$(generate_span "Enter the path to the download directory, or leave blank to go with the default: $HOME/Videos/sauce/")" \
-			-l 1 -p "Enter download dir:"
-	)
-	# if dl_dir is none set to current directory
-	[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
-	if [ ! -d "$dl_dir" ]; then
-		mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
-	fi
+    dl_dir=$(
+        rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
+            -theme-str 'listview {columns: 1;} window {width: 45%;}' \
+            -mesg "$(generate_span "Enter the path to the download directory, or leave blank to go with the default: $HOME/Videos/sauce/")" \
+            -l 1 -p "Enter download dir:"
+    )
+    # if dl_dir is none set to current directory
+    [ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
+    if [ ! -d "$dl_dir" ]; then
+        mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
+    fi
 }
 
 ########
 # Main #
 ########
 main() {
-	((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
-	((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
-	choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -only-match -sep '|' \
-		-theme-str 'listview {columns: 1;} window {width: 45%;}' \
-		-config "$CFG_FILE" -l 7 -i -p "Aniwrapper")
+    ((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
+    ((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
+    choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -only-match -sep '|' \
+        -theme-str 'listview {columns: 1;} window {width: 45%;}' \
+        -config "$CFG_FILE" -l 7 -i -p "Aniwrapper")
 
-	[ "$choice" == "$quit" ] && quit
+    [ "$choice" == "$quit" ] && quit
 
-	selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
+    selection=$(printf "%s\n" "$choice" | awk '{ print $1 }')
 
-	case "$selection" in
-		1.)
-			# ---------------------------------------------------------------------------
-			# streaming
-			# ---------------------------------------------------------------------------
-			lg "Streaming mode"
-			run
-			;;
-		2.)
-			# ---------------------------------------------------------------------------
-			# download
-			# ---------------------------------------------------------------------------
-			lg "Download anime"
-			get_dl_dir && run -d "$dl_dir"
-			;;
-		3.)
+    case "$selection" in
+        1.)
+            # ---------------------------------------------------------------------------
+            # streaming
+            # ---------------------------------------------------------------------------
+            lg "Streaming mode"
+            run
+            ;;
+        2.)
+            # ---------------------------------------------------------------------------
+            # download
+            # ---------------------------------------------------------------------------
+            lg "Download anime"
+            get_dl_dir && run -d "$dl_dir"
+            ;;
+        3.)
 
-			# ---------------------------------------------------------------------------
-			# continue
-			# ---------------------------------------------------------------------------
-			lg "Continue watching"
-			run -H
-			;;
-		4.)
-			# ---------------------------------------------------------------------------
-			# play
-			# ---------------------------------------------------------------------------
-			lg "Play from file selected"
-			IS_PLAY_FROM_FILE=1
-			span=$(printf '%s\n%s\n' "$(generate_span "Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
-			play_dir=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-				-theme-str 'listview {columns: 1;} window {width: 45%;}' \
-				-l 1 -mesg "$span" -p "Enter path to starting directory:")
-			if [ -z "$play_dir" ]; then
-				mkdir -p "$DEFAULT_DOWNLOAD" || seppuku "error creating default download directory"
-				run -f"$DEFAULT_DOWNLOAD"
-			else
-				run -f"$play_dir"
-			fi
-			exit $?
-			;;
-		5.)
-			lg "Sync history database"
-			IS_SYNC=1
-			roficmd="rofi -dpi $DPI -dmenu -config $CFG_FILE -l 0 -p"
-			username=$($roficmd "Enter the username of the remote user:" -theme-str 'window {width: 45%;}')
-			[ -z "$username" ] && seppuku "No username provided... exiting"
-			host=$($roficmd "Enter the host for the remote machine (eg 192.168.1.99):" -theme-str 'window {width: 45%;}')
-			[ -z "$host" ] && seppuku "No host provided... exiting"
-			port=$($roficmd "Enter in the ssh port for remote machine or leave blank for default [22]:" -theme-str 'window {width: 45%;}')
-			[ -z "$port" ] && port=22
-			keypath=$($roficmd "Enter path to private key (leave blank if not needed or if unsure):" -theme-str 'window {width: 45%;}')
-			if ! printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | run -s; then
-				lg "Aniwrapper was unable to sync the databases..."
-				exit 1
-			else
-				lg "Databases synced successfully"
-				quit
-			fi
-			;;
-		6.)
-			# -----------------------------------------------------------------
-			# choose theme
-			# -----------------------------------------------------------------
-			[ -z "$THEMES" ] && seppuku "No themes provided... exiting"
-			choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" \
-				-theme-str 'listview {columns: 1;} window {width: 45%;}' \
-				-only-match -l 4 -i -p "Choose theme: " -sep '|' \
-				-theme-str 'listview { columns: 2;  }' <<< "$THEMES")
-			theme=$(awk '{ print $1 }' <<< "$choice")
-			set_theme "$theme"
-			main
-			;;
-		7.)
-			# -----------------------------------------------------------------
-			# get out
-			# -----------------------------------------------------------------
-			quit
-			;;
-		*)
-			help_text
-			;;
-	esac
+            # ---------------------------------------------------------------------------
+            # continue
+            # ---------------------------------------------------------------------------
+            lg "Continue watching"
+            run -H
+            ;;
+        4.)
+            # ---------------------------------------------------------------------------
+            # play
+            # ---------------------------------------------------------------------------
+            lg "Play from file selected"
+            IS_PLAY_FROM_FILE=1
+            span=$(printf '%s\n%s\n' "$(generate_span "Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
+            play_dir=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
+                -theme-str 'listview {columns: 1;} window {width: 45%;}' \
+                -l 1 -mesg "$span" -p "Enter path to starting directory:")
+            if [ -z "$play_dir" ]; then
+                mkdir -p "$DEFAULT_DOWNLOAD" || seppuku "error creating default download directory"
+                run -f"$DEFAULT_DOWNLOAD"
+            else
+                run -f"$play_dir"
+            fi
+            exit $?
+            ;;
+        5.)
+            lg "Sync history database"
+            IS_SYNC=1
+            roficmd="rofi -dpi $DPI -dmenu -config $CFG_FILE -l 0 -p"
+            username=$($roficmd "Enter the username of the remote user:" -theme-str 'window {width: 45%;}')
+            [ -z "$username" ] && seppuku "No username provided... exiting"
+            host=$($roficmd "Enter the host for the remote machine (eg 192.168.1.99):" -theme-str 'window {width: 45%;}')
+            [ -z "$host" ] && seppuku "No host provided... exiting"
+            port=$($roficmd "Enter in the ssh port for remote machine or leave blank for default [22]:" -theme-str 'window {width: 45%;}')
+            [ -z "$port" ] && port=22
+            keypath=$($roficmd "Enter path to private key (leave blank if not needed or if unsure):" -theme-str 'window {width: 45%;}')
+            if ! printf "%s\n%s\n%d\n%s\n" "$username" "$host" "$port" "$keypath" | run -s; then
+                lg "Aniwrapper was unable to sync the databases..."
+                exit 1
+            else
+                lg "Databases synced successfully"
+                quit
+            fi
+            ;;
+        6.)
+            # -----------------------------------------------------------------
+            # choose theme
+            # -----------------------------------------------------------------
+            [ -z "$THEMES" ] && seppuku "No themes provided... exiting"
+            choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" \
+                -theme-str 'listview {columns: 1;} window {width: 45%;}' \
+                -only-match -l 4 -i -p "Choose theme: " -sep '|' \
+                -theme-str 'listview { columns: 2;  }' <<< "$THEMES")
+            theme=$(awk '{ print $1 }' <<< "$choice")
+            set_theme "$theme"
+            main
+            ;;
+        7.)
+            # -----------------------------------------------------------------
+            # get out
+            # -----------------------------------------------------------------
+            quit
+            ;;
+        *)
+            help_text
+            ;;
+    esac
 }
 
 parse_args "$@"
 shift $((OPTIND - 1))
 if [ $# -gt 0 ]; then
-	check_flags "$*"
-	if [ "$IS_DOWNLOAD" -eq 0 ]; then
-		run "$*"
-	elif [ "$IS_DOWNLOAD" -eq 1 ]; then
-		get_dl_dir && run -d "$dl_dir" "$*"
-	fi
+    check_flags "$*"
+    if [ "$IS_DOWNLOAD" -eq 0 ]; then
+        run "$*"
+    elif [ "$IS_DOWNLOAD" -eq 1 ]; then
+        get_dl_dir && run -d "$dl_dir" "$*"
+    fi
 else
-	check_flags
-	main
+    check_flags
+    main
 fi
