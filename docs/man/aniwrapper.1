@@ -8,13 +8,17 @@ aniwrapper - A rofi wrapper around ani-cli: a command-line tool to
 browser, download, and stream anime
 .SH SYNOPSIS
 .PP
-\f[B]aniwrapper\f[R] [-cdhpqvS] [-t \f[I]theme\f[R] | -T
+\f[B]aniwrapper\f[R] [-dhpqSv] [-t \f[I]theme\f[R] | -T
 \f[I]config_path\f[R]] [\f[I]query\f[R]]
 .PD 0
 .P
 .PD
-\f[B]aniwrapper\f[R] [-cvS] [-t \f[I]theme\f[R] | -T
-\f[I]config_path\f[R]] -f \f[I]path_to_directory\f[R]
+\f[B]aniwrapper\f[R] -f \f[I]directory_path\f[R] [-t \f[I]theme\f[R] |
+-T \f[I]config_path\f[R]] [-pSv] [\f[I]query\f[R]]
+.PD 0
+.P
+.PD
+\f[B]aniwrapper\f[R] -c [-dhqSv] [\f[I]query\f[R]]
 .PD 0
 .P
 .PD
@@ -85,28 +89,30 @@ Verbose output
 Launch main menu with default options
 .TP
 \f[B]aniwrapper konosuba\f[R]
-Run in stream mode with a search query: \[lq]konosuba\[rq]
+Run in \f[I]stream\f[R] mode with a \f[I]search query\f[R] =
+\[lq]konosuba\[rq]
 .TP
 \f[B]aniwrapper -qd naruto\f[R]
-Run in download mode with quality selection enabled and a search query:
-\[lq]naruto\[rq]
+Run in \f[I]download\f[R] mode with \f[I]quality selection enabled\f[R]
+and a \f[I]search query\f[R] = \[lq]naruto\[rq]
 .TP
 \f[B]aniwrapper -vqt doomone\f[R]
-Run with quality selection menu and \f[I]doomone\f[R] theme
+Run with \f[I]quality selection enabled\f[R] and the \f[I]doomone\f[R]
+theme
 .TP
-\f[B]aniwrapper -cd\f[R]
-Enable downloading an anime in command-line mode (\f[B]rofi\f[R]
-disabled)
+\f[B]aniwrapper -cqd\f[R]
+Run in \f[I]command-line\f[R] \f[I]download\f[R] mode with \f[I]quality
+selection enabled\f[R] (\f[B]rofi\f[R] disabled)
 .TP
 \f[B]aniwrapper -Q \[lq]SELECT * FROM watch_history ORDER BY watch_date DESC LIMIT 10;\[rq]\f[R]
 Query history database for your 10 most recently watched anime
 .TP
-\f[B]aniwrapper -f /media/videos\f[R]
-Run in \[lq]Play from File\[rq] mode starting the search from the
-\f[I]/media/videos\f[R] directory
+\f[B]aniwrapper -f /media/videos -t dracula\f[R]
+Run in \f[I]Play from File\f[R] mode, using the \f[I]dracula\f[R] theme,
+and with the \f[I]search\f[R] starting from \f[I]/media/videos\f[R]
 .TP
 \f[B]aniwrapper -S\f[R]
-Run in quiet mode (suppress all output to stdout and disable
+Run in \f[I]silent\f[R] mode (suppress all output to stdout and disable
 notifications)
 .SH SEE ALSO
 .PP

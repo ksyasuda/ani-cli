@@ -38,23 +38,24 @@ help_text() {
 		printf "%s\n" "$line"
 	done <<< "
 Usage:
-    aniwrapper [-cdhpqvS] [-t <theme> or -T <config_path>]
-    aniwrapper [-cvS] [-t <theme> or -T <config_path>] -f <path_to_directory>
-    aniwrapper -Q <query>
-    aniwrapper -C
+	aniwrapper [-dhpqSv] [-t <theme> | -T <config_path>] [<query>]
+	aniwrapper -f <directory_path> [-t <theme> | -T <config_path>] [-pSv] [<query>]\
+	aniwrapper -c [-dhqSv] [<query>]
+	aniwrapper -Q <query>
+	aniwrapper -C
 Options:
-     -c  enable command-line mode (rofi disabled)
-     -C  connect to history database
-     -d  download episode in command-line mode
-     -f  <path_to_directory> (no trailing slash) specify starting directory for play for file mode
-     -h  show this help text
-	 -p  enable player selection menu
-     -q  enable quality selection
-     -Q  <query> query the history database
-	 -v  verbose output
-     -S  silent mode (suppress output to stdout) [cannot be used with -v]
-     -t  <aniwrapper (default)|dracula|doomone|fancy|flamingo|material|onedark> change rofi theme
-     -T  <config_path> specify custom rofi theme
+	-c  enable command-line mode (rofi disabled)
+	-C  connect to history database
+	-d  download episode in command-line mode
+	-f  <path_to_directory> (no trailing slash) specify starting directory for play for file mode
+	-h  show this help text
+	-p  enable player selection menu
+	-q  enable quality selection
+	-Q  <query> query the history database
+	-v  verbose output
+	-S  silent mode (suppress output to stdout) [cannot be used with -v]
+	-t  <aniwrapper (default)|dracula|doomone|fancy|flamingo|material|onedark> change rofi theme
+	-T  <config_path> specify custom rofi theme
 	"
 }
 
