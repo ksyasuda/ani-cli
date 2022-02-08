@@ -72,7 +72,7 @@ check_input() {
     episodes=$ep_choice_start
     if [ -n "$ep_choice_end" ]; then
         [ "$ep_choice_end" -eq "$ep_choice_end" ] 2> /dev/null || die "Invalid number entered: $ep_choice_end"
-        episodes=$(seq $ep_choice_start $ep_choice_end)
+        episodes=$(seq "$ep_choice_start" "$ep_choice_end")
     fi
 }
 
@@ -480,66 +480,56 @@ search_eps() {
 # Select anime from query results
 anime_selection() {
     search_results=$*
-    if [ "$IS_ROFI" -eq 1 ]; then
-        menu=()
-        res=()
+    if ((IS_ROFI == 1)); then
+        menu=""
         searched=""
         cnt=0
-        # generate inputlist for rofi and indexes of previously searched anime
         while read -r anime_id; do
-            menu+="$((cnt + 1)). $anime_id\n"
-            res["$cnt"]="$anime_id"
+            [[ -z "$menu" ]] && menu="$((cnt + 1)). $anime_id" ||
+                menu="$menu|$((cnt + 1)). $anime_id"
             if ! check_db "search" "$anime_id"; then
-                [ -z "$searched" ] && searched="$cnt" || searched="$searched, $cnt"
+                [[ -z "$searched" ]] && searched="$cnt" || searched="$searched, $cnt"
             fi
             ((++cnt))
-        done <<- EOF
-			$search_results
-		EOF
-        menu+="$((++cnt)). Quit"
+        done <<< "$search_results"
+        menu="$menu|$((++cnt)). Search another anime|$((++cnt)). Quit"
 
         # get the anime from indexed list
         msg="$(generate_span "Query: $query")"
-        user_input=$(printf "${menu[@]}" |
-            rofi -dpi "$DPI" -dmenu -config "$ROFI_CFG" \
-                -a "$searched" \
-                -l 12 -i -p "Enter selection:" \
-                -async-pre-read 33 \
-                -mesg "$msg" -only-match)
-        [ -z "$user_input" ] && return 1
-        if [ "$(awk '{ print $NF }' <<< "$user_input")" = "Quit" ]; then
-            return 1
+        selection="$(rofi -dpi "$DPI" -dmenu -only-match \
+            -async-pre-read 33 -config "$ROFI_CFG" -l 15 -i -sep '|' \
+            -mesg "$msg" -a "$searched" -p "Enter selection" <<< "$menu")"
+        choice="${selection%%.*}" # remmove everything from . to end
+        lg "CHOICE: $choice"
+        if ((choice == cnt)); then
+            die "Quitting"
+        elif ((choice == --cnt)); then
+            stream
         fi
-
-        choice=$(printf '%s\n' "$user_input" | awk '{print $1}')
-        choice="${choice::-1}" # Remove period after number
-        name=$(printf '%s\n' "$user_input" | awk '{print $NF}')
     else
         count=1
         while read -r anime_id; do
             menu_line_alternate "$anime_id" "$count"
             : count=$((count += 1))
         done <<< "$search_results"
-        prompt "Enter choice: "
+        prompt "Enter choice"
         read -r choice
-        name="$anime_id"
     fi
 
     # Check if input is a number
-    [ "$choice" -eq "$choice" ] 2> /dev/null || die "Invalid number entered"
+    [[ "$choice" -eq "$choice" ]] 2> /dev/null || die "Invalid number entered"
 
     count=1
     while read -r anime_id; do
-        if [ "$count" -eq "$choice" ]; then
+        if [[ "$count" -eq "$choice" ]]; then
             selection_id=$anime_id
             break
         fi
         count=$((count + 1))
     done <<< "$search_results"
 
-    [ -z "$selection_id" ] && die "Invalid number entered"
-    [ -z "$name" ] && name="$anime_id"
-    insert_history "search" "$name" &
+    [[ -z "$selection_id" ]] && die "Invalid number entered"
+    insert_history "search" "$selection_id" &
 
     read -r last_ep_number < <(search_eps "$selection_id")
 }
@@ -547,26 +537,22 @@ anime_selection() {
 episode_selection() {
     ep_choice_start=1 first_ep_number=0
     result=$(get_dpage_link "$anime_id" "$first_ep_number")
-    [ -z "$result" ] && first_ep_number=1
-    if [ "$IS_ROFI" -eq 1 ]; then
+    [[ -z "$result" ]] && first_ep_number=1
+    if ((IS_ROFI == 1)); then
         lg "Anime ID: $anime_id"
         stmt="SELECT DISTINCT episode_number FROM watch_history WHERE anime_name = '$anime_id';"
 
         # Get Watch History for $anime_id as comma separated list
         watch_history=""
         while read -r i; do
-            if [[ "$watch_history" == "" ]]; then
-                watch_history="$((--i))"
-            else
-                watch_history="$watch_history, $((--i))"
-            fi
+            [[ -z "$watch_history" ]] && watch_history="$((--i))" || watch_history="$watch_history, $((--i))"
         done < <(run_stmt "$stmt")
         lg "Episode watch history -> $watch_history"
 
         # get user choice and set the start and end
         msg1="Anime Name: $anime_id"
         msg2="Range of episodes can be provided as: START_EPISODE - END_EPISODE"
-        [ "$is_download" -eq 1 ] && msg=$(printf "%s\n%s" "$(generate_span "$msg1")" "$(generate_span "$msg2")") || msg=$(printf "%s\n" "$(generate_span "$msg1")")
+        [[ "$is_download" -eq 1 ]] && msg=$(printf "%s\n%s" "$(generate_span "$msg1")" "$(generate_span "$msg2")") || msg=$(printf "%s\n" "$(generate_span "$msg1")")
         choice=$(
             seq "$first_ep_number" "$last_ep_number" |
                 rofi -dpi "$DPI" -dmenu -l 12 \
@@ -579,16 +565,14 @@ episode_selection() {
         ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
         ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
         lg "START: $ep_choice_start | END: $ep_choice_end"
-    elif [ "$last_ep_number" -gt 1 ]; then
-        [ "$is_download" -eq 1 ] &&
+    elif ((last_ep_number > 1)); then
+        [[ "$is_download" -eq 1 ]] &&
             inf "Range of episodes can be specified: start_number end_number"
-
-        # printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-        prompt "Choose episode " "[$first_ep_number-$last_ep_number]"
+        prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
         read -r ep_choice_start ep_choice_end
-        [ -z "$ep_choice_end" ] && ep_choice_end="$ep_choice_start"
+        [[ -z "$ep_choice_end" ]] && ep_choice_end="$ep_choice_start"
     fi
-    if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]; then
+    if [[ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]]; then
         lg "IS A HALF EPISODE"
         half_ep=1
         ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
@@ -599,9 +583,7 @@ episode_selection() {
     fi
     # if only one episode was entered, set ep_choice_end to empty string so only selected episode plays
     # otherwise plays from ep 1 - ep_choice_start
-    if [[ "$ep_choice_start" -eq "$ep_choice_end" ]]; then
-        ep_choice_end=""
-    fi
+    ((ep_choice_start == ep_choice_end)) && ep_choice_end=""
 }
 
 open_episode() {
@@ -836,29 +818,30 @@ main() {
             lg "Most recently watched episode: $ep_choice_start"
             ;;
         sync)
-            prompt "Enter username for remote user: "
+            prompt "Enter username for remote user"
             read -r username
-            prompt "Enter host for remote user: "
+            prompt "Enter host for remote user"
             read -r host
 
             connection_str="$username@$host"
-            prompt "Enter port to connect to remote host with or leave blank for default (22): "
+            prompt "Enter port to connect to remote host with or leave blank for default (22)"
             read -r port
             [ -z "$port" ] && PORT=22 || PORT="$port"
 
-            prompt "Enter path to private key (leave blank if unsure or not needed): "
+            prompt "Enter path to private key (leave blank if unsure or not needed)"
             read -r key_path
 
             lg "Syncing database with: $connection_str on port $PORT"
             temp_db="/tmp/aniwrapper_tmp_history.sqlite3"
 
             if [[ -z "$key_path" ]]; then
-                scp -P "$PORT" "$connection_str:$HISTORY_DB" "$temp_db"
+                if ! scp -P "$PORT" "$connection_str:$HISTORY_DB" "$temp_db"; then
+                    die "Error getting database file from remote host"
+                fi
             else
-                scp -P "$PORT" -i "$key_path" "$connection_str:$HISTORY_DB" "$temp_db"
-            fi
-            if [[ "$?" -ne 0 ]]; then
-                die "Error getting database file from remote host"
+                if ! scp -P "$PORT" -i "$key_path" "$connection_str:$HISTORY_DB" "$temp_db"; then
+                    die "Error getting database file from remote host"
+                fi
             fi
             sync_search_history && sync_watch_history
             exit $?
@@ -961,11 +944,11 @@ main() {
                         quality=$(awk '{ print $2 }' <<< "$choice")
                     else
                         qualities="best|1080p|720p|480p|360p|worst"
-                        prompt "Choose quality: [$qualities]"
+                        prompt "Choose quality [$qualities]"
                         read -r quality
                         while [[ ! "$quality" =~ ($qualities) ]]; do
                             lg "$quality not a valid quality"
-                            prompt "Choose quality: [$qualities]"
+                            prompt "Choose quality [$qualities]"
                             read -r quality
                         done
                     fi
