@@ -878,7 +878,7 @@ main() {
         episode=${ep_choice_end:-$ep_choice_start}
         choice=''
         while :; do
-            inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+            inf "Currently playing $selection_id episode" "${episode// /}/$last_ep_number"
             if ((episode != last_ep_number)); then
                 menu_line_alternate "next episode" "n"
             fi
