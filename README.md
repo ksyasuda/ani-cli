@@ -4,7 +4,7 @@
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-![aniwrapper stream gif - konosuba](https://imgur.com/HNRphY0.gif)
+https://user-images.githubusercontent.com/33813108/153111535-5010d44b-82c8-4800-af6b-b6c3ed51bb02.mp4
 
 </div>
 
