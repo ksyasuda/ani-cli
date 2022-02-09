@@ -32,7 +32,7 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 - [Aniwrapper](#aniwrapper)
 - [Introduction](#introduction)
 - [MPV Extension - Skip Intro Script](#mpv-extension---skip-intro-script)
-	- [Installing](#installing)
+- [Installing](#installing)
 		- [Manual Install](#manual-install)
 - [Aniwrapper Menus](#aniwrapper-menus)
 - [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
@@ -68,7 +68,7 @@ episode introduction by skipping to the next moment of silence in the video
     video/episode, then the script may fail and skip to a random point in the
     video
 
-## Installing
+# Installing
 
 These are the minimum dependences required to run `aniwrapper`
 
