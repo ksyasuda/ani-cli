@@ -4,7 +4,7 @@
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-https://user-images.githubusercontent.com/33813108/153111535-5010d44b-82c8-4800-af6b-b6c3ed51bb02.mp4
+[![aniwrapper showcase](.assets/showcase.jpg)](https://user-images.githubusercontent.com/33813108/153111535-5010d44b-82c8-4800-af6b-b6c3ed51bb02.mp4)
 
 </div>
 
@@ -29,23 +29,23 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
 **Table of Contents**
 
--   [Aniwrapper](#aniwrapper)
--   [Introduction](#introduction)
--   [MPV Extension - Skip Intro Script](#mpv-extension---skip-intro-script)
-    -   [Installing](#installing)
-        -   [Manual Install](#manual-install)
--   [Aniwrapper Menus](#aniwrapper-menus)
--   [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
--   [Usage](#usage)
-    -   [aniwrapper](#aniwrapper-1)
-        -   [Option 1: Streaming](#option-1-streaming)
-        -   [Option 2: Download](#option-2-download)
-        -   [Option 3: Continue](#option-3-continue)
-        -   [Option 4: Play from File](#option-4-play-from-file)
-        -   [Option 5: Sync History](#option-5-sync-history)
-        -   [Option 6: Choose Theme](#option-6-choose-theme)
-    -   [ani-cli](#ani-cli)
--   [Themes](#themes)
+- [Aniwrapper](#aniwrapper)
+- [Introduction](#introduction)
+- [MPV Extension - Skip Intro Script](#mpv-extension---skip-intro-script)
+- [Installing](#installing)
+		- [Manual Install](#manual-install)
+- [Aniwrapper Menus](#aniwrapper-menus)
+- [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
+- [Usage](#usage)
+	- [aniwrapper](#aniwrapper-1)
+		- [Option 1: Streaming](#option-1-streaming)
+		- [Option 2: Download](#option-2-download)
+		- [Option 3: Continue](#option-3-continue)
+		- [Option 4: Play from File](#option-4-play-from-file)
+		- [Option 5: Sync History](#option-5-sync-history)
+		- [Option 6: Choose Theme](#option-6-choose-theme)
+	- [ani-cli](#ani-cli)
+- [Themes](#themes)
 
 <!-- markdown-toc end -->
 
@@ -68,7 +68,7 @@ episode introduction by skipping to the next moment of silence in the video
     video/episode, then the script may fail and skip to a random point in the
     video
 
-## Installing
+# Installing
 
 These are the minimum dependences required to run `aniwrapper`
 
