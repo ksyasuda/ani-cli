@@ -4,7 +4,7 @@
 
 [**_Setup_**](#setup) | [**_Usage_**](#usage) | [**_Screenshots_**](#screenshots)
 
-[![aniwrapper showcase](.assets/showcase.jpg)](https://user-images.githubusercontent.com/33813108/153111535-5010d44b-82c8-4800-af6b-b6c3ed51bb02.mp4)
+[![click to view showcase](.assets/showcase.jpg)](https://user-images.githubusercontent.com/33813108/153382027-f77c8219-af79-4a06-91b2-466cc7e2157a.mp4)
 
 </div>
 
@@ -33,7 +33,7 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 - [Introduction](#introduction)
 - [MPV Extension - Skip Intro Script](#mpv-extension---skip-intro-script)
 - [Installing](#installing)
-		- [Manual Install](#manual-install)
+	- [Manual Install](#manual-install)
 - [Aniwrapper Menus](#aniwrapper-menus)
 - [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
 - [Usage](#usage)
@@ -86,7 +86,7 @@ or
 yay -S aniwrapper-git
 ```
 
-### Manual Install
+## Manual Install
 
 Install the Dependencies
 
