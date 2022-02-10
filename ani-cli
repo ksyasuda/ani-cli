@@ -805,11 +805,11 @@ main() {
             ;;
         history)
             BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
-            stmt="SELECT DISTINCT anime_name FROM watch_history ORDER BY watch_date DESC"
-            search_results="$(printf "%s\n" "$stmt" | sqlite3 -noheader "$HISTORY_DB")"
+            stmt="SELECT DISTINCT anime_name FROM search_history ORDER BY search_date DESC"
+            search_results="$(run_stmt "$stmt")"
             [ -z "$search_results" ] && die "History is empty"
             if ! anime_selection "${search_results[@]}"; then
-                die "No anime selection found"
+                die "No anime selected"
             fi
             lg "SELECTION: $selection_id"
 
@@ -939,7 +939,7 @@ main() {
                                 ;;
                         esac
                         choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
-                            -theme-str 'listview {columns: 1;} window {width: 20%;}' \
+                            -theme-str 'listview {columns: 1;} window {width: 25%;}' \
                             -i -l 6 -only-match -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
                             -p "Choose quality:" <<< "$qualities")
                         quality=$(awk '{ print $2 }' <<< "$choice")

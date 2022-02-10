@@ -114,7 +114,7 @@ get_quality() {
     if ((IS_ROFI == 1)); then
         selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
             -l 6 -selected-row 0 -a 0 \
-            -theme-str 'listview {columns: 1;} window {width: 20%;}' \
+            -theme-str 'listview {columns: 1;} window {width: 25%;}' \
             -p "Choose video quality:" \
             -sep '|' -only-match <<< "$QUALITIES")
         QUALITY=$(awk '{print $2}' <<< "$selection")
