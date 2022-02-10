@@ -4,7 +4,7 @@ CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
 ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
 ROFI_THEME="aniwrapper.rasi"
-THEMES="aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark"
+THEMES="aniwrapper (default)|dracula|doomone|fancy|material|nord|nord2|onedark"
 ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 DPI=96
@@ -738,14 +738,14 @@ parse_args() {
                     fancy)
                         ROFI_THEME=aniwrapper-fancy.rasi
                         ;;
-                    flamingo)
-                        ROFI_THEME=aniwrapper-flamingo.rasi
-                        ;;
                     material)
                         ROFI_THEME=aniwrapper-material.rasi
                         ;;
                     nord)
                         ROFI_THEME=aniwrapper-nord.rasi
+                        ;;
+                    nord2)
+                        ROFI_THEME=aniwrapper-nord2.rasi
                         ;;
                     onedark)
                         ROFI_THEME=aniwrapper-onedark.rasi

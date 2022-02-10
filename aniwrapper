@@ -10,7 +10,7 @@ CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 CFG_FILE="$CFG_DIR/themes/aniwrapper.rasi"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 ROFI_THEME="aniwrapper.rasi"
-THEMES="aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark"
+THEMES="aniwrapper (default)|dracula|doomone|fancy|material|nord|nord2|onedark"
 QUALITIES="1. best|2. 1080p|3. 720p|4. 360p|5. worst"
 SUPPORTED_PLAYERS="mpv|mplayer|vlc"
 QUALITY=best
@@ -154,14 +154,14 @@ set_theme() {
         fancy)
             ROFI_THEME=aniwrapper-fancy.rasi
             ;;
-        flamingo)
-            ROFI_THEME=aniwrapper-flamingo.rasi
-            ;;
         material)
             ROFI_THEME=aniwrapper-material.rasi
             ;;
         nord)
             ROFI_THEME=aniwrapper-nord.rasi
+            ;;
+        nord2)
+            ROFI_THEME=aniwrapper-nord2.rasi
             ;;
         onedark)
             ROFI_THEME=aniwrapper-onedark.rasi
