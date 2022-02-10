@@ -10,8 +10,8 @@ CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 CFG_FILE="$CFG_DIR/themes/aniwrapper.rasi"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 ROFI_THEME="aniwrapper.rasi"
-THEMES="aniwrapper (default)|dracula|doomone|fancy|material|nord|nord2|onedark"
-QUALITIES="1. best|2. 1080p|3. 720p|4. 360p|5. worst"
+THEMES="aniwrapper|dracula|doomone|fancy|material|nord|nord2|onedark"
+QUALITIES="1. best|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
 SUPPORTED_PLAYERS="mpv|mplayer|vlc"
 QUALITY=best
 PLAYER_FN=mpv
@@ -54,7 +54,7 @@ Options:
 	-Q  <query> query the history database
 	-v  verbose output
 	-S  silent mode (suppress output to stdout) [cannot be used with -v]
-	-t  <aniwrapper (default)|dracula|doomone|fancy|flamingo|material|onedark> change rofi theme
+	-t  <aniwrapper (default)|dracula|doomone|fancy|material|nord|nord2|onedark> change rofi theme
 	-T  <config_path> specify custom rofi theme
 	"
 }
@@ -113,7 +113,7 @@ run() {
 get_quality() {
     if ((IS_ROFI == 1)); then
         selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-            -l 5 -selected-row 0 -a 0 \
+            -l 6 -selected-row 0 -a 0 \
             -theme-str 'listview {columns: 1;} window {width: 20%;}' \
             -p "Choose video quality:" \
             -sep '|' -only-match <<< "$QUALITIES")
@@ -129,6 +129,40 @@ get_quality() {
         done
     fi
     lg "selected quality: $QUALITY"
+}
+
+# return the index in $THEMES of $ROFI_THEME
+get_theme_idx() {
+    case "$ROFI_THEME" in
+        aniwrapper.rasi)
+            theme_idx=0
+            ;;
+        aniwrapper-dracula.rasi)
+            theme_idx=1
+            ;;
+        aniwrapper-doomone.rasi)
+            theme_idx=2
+            ;;
+        aniwrapper-fancy.rasi)
+            theme_idx=3
+            ;;
+        aniwrapper-material.rasi)
+            theme_idx=4
+            ;;
+        aniwrapper-nord.rasi)
+            theme_idx=5
+            ;;
+        aniwrapper-nord2.rasi)
+            theme_idx=6
+            ;;
+        aniwrapper-onedark.rasi)
+            theme_idx=7
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+    printf "%s" "$theme_idx"
 }
 
 # generates a span mesg for rofi given
@@ -395,7 +429,8 @@ main() {
             choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" \
                 -theme-str 'listview {columns: 1;} window {width: 45%;}' \
                 -only-match -l 4 -i -p "Choose theme: " -sep '|' \
-                -theme-str 'listview { columns: 2;  }' <<< "$THEMES")
+                -theme-str 'listview { columns: 2;  }' \
+                -a "$(get_theme_idx)" <<< "$THEMES")
             theme=$(awk '{ print $1 }' <<< "$choice")
             set_theme "$theme"
             main
