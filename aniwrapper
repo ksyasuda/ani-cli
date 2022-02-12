@@ -426,11 +426,12 @@ main() {
             # choose theme
             # -----------------------------------------------------------------
             [ -z "$THEMES" ] && seppuku "No themes provided... exiting"
+            theme_idx="$(get_theme_idx)"
             choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" \
                 -theme-str 'listview {columns: 1;} window {width: 45%;}' \
                 -only-match -l 4 -i -p "Choose theme: " -sep '|' \
                 -theme-str 'listview { columns: 2;  }' \
-                -a "$(get_theme_idx)" <<< "$THEMES")
+                -a "$theme_idx" -selected-row "$theme_idx" <<< "$THEMES")
             theme=$(awk '{ print $1 }' <<< "$choice")
             set_theme "$theme"
             main

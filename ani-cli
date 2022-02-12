@@ -929,7 +929,7 @@ main() {
                         choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
                             -theme-str 'listview {columns: 1;} window {width: 25%;}' \
                             -i -l 6 -only-match -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
-                            -p "Choose quality:" <<< "$qualities")
+                            -p "Choose quality:" -selected-row "$cur_quality" <<< "$qualities")
                         quality=$(awk '{ print $2 }' <<< "$choice")
                     else
                         qualities="best|1080p|720p|480p|360p|worst"
