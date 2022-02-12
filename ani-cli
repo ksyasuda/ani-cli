@@ -918,26 +918,14 @@ main() {
                 Q)
                     if ((IS_ROFI == 1)); then
                         qualities="1. best|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
-                        case "$quality" in
-                            best)
-                                cur_quality=0
-                                ;;
-                            1080p)
-                                cur_quality=1
-                                ;;
-                            720p)
-                                cur_quality=2
-                                ;;
-                            480p)
-                                cur_quality=3
-                                ;;
-                            360p)
-                                cur_quality=4
-                                ;;
-                            worst)
-                                cur_quality=5
-                                ;;
-                        esac
+                        while IFS='|' read -ra quals; do
+                            for q in "${quals[@]}"; do
+                                if [[ "$(awk '{ print $NF }' <<< "$q")" == "$quality" ]]; then
+                                    cur_quality="$((${q:0:1} - 1))"
+                                    break
+                                fi
+                            done
+                        done <<< "$qualities"
                         choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
                             -theme-str 'listview {columns: 1;} window {width: 25%;}' \
                             -i -l 6 -only-match -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
