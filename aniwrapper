@@ -133,36 +133,18 @@ get_quality() {
 
 # return the index in $THEMES of $ROFI_THEME
 get_theme_idx() {
-    case "$ROFI_THEME" in
-        aniwrapper.rasi)
-            theme_idx=0
-            ;;
-        aniwrapper-dracula.rasi)
-            theme_idx=1
-            ;;
-        aniwrapper-doomone.rasi)
-            theme_idx=2
-            ;;
-        aniwrapper-fancy.rasi)
-            theme_idx=3
-            ;;
-        aniwrapper-material.rasi)
-            theme_idx=4
-            ;;
-        aniwrapper-nord.rasi)
-            theme_idx=5
-            ;;
-        aniwrapper-nord2.rasi)
-            theme_idx=6
-            ;;
-        aniwrapper-onedark.rasi)
-            theme_idx=7
-            ;;
-        *)
-            exit 1
-            ;;
-    esac
-    printf "%s" "$theme_idx"
+    themeslist="aniwrapper.rasi|aniwrapper-dracula.rasi|aniwrapper-doomone.rasi|aniwrapper-fancy.rasi|aniwrapper-material.rasi|aniwrapper-nord.rasi|aniwrapper-nord2.rasi|aniwrapper-onedark.rasi"
+    idx=0
+    while IFS='|' read -ra themes; do
+        for t in "${themes[@]}"; do
+            if [[ "$t" == "$ROFI_THEME" ]]; then
+                lg "theme -> $t | theme index -> $idx" > /dev/stderr
+                printf "%s\n" "$idx"
+                break
+            fi
+            ((++idx))
+        done
+    done <<< "$themeslist"
 }
 
 # generates a span mesg for rofi given
@@ -179,29 +161,8 @@ set_theme() {
         aniwrapper)
             ROFI_THEME=aniwrapper.rasi
             ;;
-        dracula)
-            ROFI_THEME=aniwrapper-dracula.rasi
-            ;;
-        doomone | doom-one)
-            ROFI_THEME=aniwrapper-doomone.rasi
-            ;;
-        fancy)
-            ROFI_THEME=aniwrapper-fancy.rasi
-            ;;
-        material)
-            ROFI_THEME=aniwrapper-material.rasi
-            ;;
-        nord)
-            ROFI_THEME=aniwrapper-nord.rasi
-            ;;
-        nord2)
-            ROFI_THEME=aniwrapper-nord2.rasi
-            ;;
-        onedark)
-            ROFI_THEME=aniwrapper-onedark.rasi
-            ;;
         *)
-            seppuku "$theme not a valid theme file.  Themes: [$THEMES]"
+            ROFI_THEME="aniwrapper-$new_theme.rasi"
             ;;
     esac
     lg "Chosen theme -> $ROFI_THEME"

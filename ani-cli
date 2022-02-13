@@ -4,7 +4,7 @@ CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
 ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
 ROFI_THEME="aniwrapper.rasi"
-THEMES="aniwrapper (default)|dracula|doomone|fancy|material|nord|nord2|onedark"
+THEMES="aniwrapper|dracula|doomone|fancy|material|nord|nord2|onedark"
 ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 DPI=96
@@ -723,35 +723,15 @@ parse_args() {
             t)
                 theme="$OPTARG"
                 case "$theme" in
-                    aniwrapper)
+                    aniwrapper | default)
                         ROFI_THEME=aniwrapper.rasi
-                        ;;
-                    default)
-                        ROFI_THEME=aniwrapper.rasi
-                        ;;
-                    dracula)
-                        ROFI_THEME=aniwrapper-dracula.rasi
-                        ;;
-                    doomone | doom-one)
-                        ROFI_THEME=aniwrapper-doomone.rasi
-                        ;;
-                    fancy)
-                        ROFI_THEME=aniwrapper-fancy.rasi
-                        ;;
-                    material)
-                        ROFI_THEME=aniwrapper-material.rasi
-                        ;;
-                    nord)
-                        ROFI_THEME=aniwrapper-nord.rasi
-                        ;;
-                    nord2)
-                        ROFI_THEME=aniwrapper-nord2.rasi
-                        ;;
-                    onedark)
-                        ROFI_THEME=aniwrapper-onedark.rasi
                         ;;
                     *)
-                        die "$theme not a valid theme file.  Themes: [$THEMES]"
+                        if [[ "$theme" =~ ($THEMES) ]]; then
+                            ROFI_THEME="aniwrapper-$theme.rasi"
+                        else
+                            die "Invalid theme: $theme.  Please choose from: $THEMES"
+                        fi
                         ;;
                 esac
                 lg "Setting theme for ani-cli -> $ROFI_THEME"
