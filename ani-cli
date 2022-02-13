@@ -800,11 +800,11 @@ parse_args() {
 main() {
     case $scrape in
         query)
-            BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
+            BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.fi)"
             stream "$@"
             ;;
         history)
-            BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
+            BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.fi)"
             stmt="SELECT DISTINCT anime_name FROM search_history ORDER BY search_date DESC"
             search_results="$(run_stmt "$stmt")"
             [ -z "$search_results" ] && die "History is empty"
