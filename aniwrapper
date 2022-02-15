@@ -113,7 +113,7 @@ run() {
 get_quality() {
     if ((IS_ROFI == 1)); then
         selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-            -l 6 -selected-row 0 -a 0 \
+            -l 6 -selected-row 0 -a 0 -window-title 'aniwrapper' \
             -theme-str 'listview {columns: 1;} window {width: 25%;}' \
             -p "Choose video quality:" \
             -sep '|' -only-match <<< "$QUALITIES")
@@ -241,7 +241,7 @@ get_player() {
         PLAYER_FN=$(
             awk '{print $NF}' < <(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
                 -l 4 -theme-str 'listview {columns: 1;} window {width: 40%;}' \
-                -p "Enter video player:" \
+                -p "Enter video player:" -window-title 'aniwrapper' \
                 -mesg "$(printf "%s\n%s\n" "$(generate_span "$msg1")" "$(generate_span "$msg2")")" \
                 -a 0 -sep '|' <<< "$SUPPORTED_PLAYERS")
         )
@@ -299,7 +299,7 @@ get_dl_dir() {
         rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
             -theme-str 'listview {columns: 1;} window {width: 45%;}' \
             -mesg "$(generate_span "Enter the path to the download directory, or leave blank to go with the default: $HOME/Videos/sauce/")" \
-            -l 1 -p "Enter download dir:"
+            -l 1 -p "Enter download dir:" -window-title 'aniwrapper'
     )
     # if dl_dir is none set to current directory
     [ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
@@ -316,7 +316,7 @@ main() {
     ((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
     choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -only-match -sep '|' \
         -theme-str 'listview {columns: 1;} window {width: 45%;}' \
-        -config "$CFG_FILE" -l 7 -i -p "Aniwrapper")
+        -config "$CFG_FILE" -l 7 -i -p "Aniwrapper" -window-title 'aniwrapper')
 
     [ "$choice" == "$quit" ] && quit
 
@@ -351,11 +351,12 @@ main() {
             # ---------------------------------------------------------------------------
             lg "Play from file selected"
             IS_PLAY_FROM_FILE=1
-            span=$(printf '%s\n%s\n' "$(generate_span "Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
+            span=$(printf '%s\n%s\n' "$(generate_span "Provide a path to a valid directory, or choose from the list below")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
             play_dir=$(
                 rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
                     -l 12 -mesg "$span" -p "Enter path to starting directory:" \
-                    -async-pre-read 24 < <(sqlite3 -noheader -list "$CFG_DIR/history.sqlite3" <<< "SELECT directory FROM file_history WHERE filename = 'DIRECTORY' ORDER BY WATCH_DATE DESC;")
+                    -async-pre-read 24 -matching 'fuzzy' -window-title 'aniwrapper' \
+                    < <(sqlite3 -noheader -list "$CFG_DIR/history.sqlite3" <<< "SELECT directory FROM file_history WHERE filename = 'DIRECTORY' ORDER BY WATCH_DATE DESC;")
             )
             # trim trailing whitespace
             play_dir="${play_dir%% }"
@@ -393,7 +394,7 @@ main() {
             # -----------------------------------------------------------------
             [ -z "$THEMES" ] && seppuku "No themes provided... exiting"
             theme_idx="$(get_theme_idx)"
-            choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" \
+            choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" -window-title 'aniwrapper' \
                 -theme-str 'listview {columns: 1;} window {width: 45%;}' \
                 -only-match -l 4 -i -p "Choose theme: " -sep '|' \
                 -theme-str 'listview { columns: 2;  }' \

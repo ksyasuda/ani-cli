@@ -396,7 +396,7 @@ find_media() {
     get_directory_data "$inp"
     selection="$(rofi -dpi "$DPI" -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
         -l 15 -i -sep '|' -mesg "$(generate_span "Current directory: $inp")" -a "$watched" \
-        -p "Enter selection" <<< "$inputlist")"
+        -p "Enter selection" -window-title 'aniwrapper' <<< "$inputlist")"
     lg "SELECTION: $selection" 1> /dev/stderr
     case "$selection" in
         Back | ../)
@@ -439,7 +439,7 @@ get_search_query() {
         msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
         query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
             -mesg "$(generate_span "$msg")" \
-            -config "$ROFI_CFG" < <(run_stmt "$stmt"))
+            -config "$ROFI_CFG" -window-title 'aniwrapper' < <(run_stmt "$stmt"))
         query="${query//[1-9]*\. /}"
     elif [ "$IS_ROFI" -eq 0 ]; then
         prompt "Search Anime"
@@ -498,7 +498,7 @@ anime_selection() {
         msg="$(generate_span "Query: $query")"
         selection="$(rofi -dpi "$DPI" -dmenu -only-match \
             -async-pre-read 33 -config "$ROFI_CFG" -l 15 -i -sep '|' \
-            -mesg "$msg" -a "$searched" -p "Enter selection" <<< "$menu")"
+            -mesg "$msg" -a "$searched" -p "Enter selection" -window-title 'aniwrapper' <<< "$menu")"
         choice="${selection%%.*}" # remmove everything from . to end
         lg "CHOICE: $choice"
         if ((choice == cnt)); then
@@ -559,7 +559,7 @@ episode_selection() {
                     -theme-str 'window {width: 45%;}' \
                     -a "$watch_history" \
                     -p "Select Episode [$first_ep_number, $last_ep_number]:" \
-                    -mesg "$msg" \
+                    -mesg "$msg" -window-title 'aniwrapper' \
                     -config "$ROFI_CFG"
         )
         ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
@@ -909,7 +909,7 @@ main() {
                         choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
                             -theme-str 'listview {columns: 1;} window {width: 25%;}' \
                             -i -l 6 -only-match -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
-                            -p "Choose quality:" -selected-row "$cur_quality" <<< "$qualities")
+                            -p "Choose quality:" -window-title 'aniwrapper' -selected-row "$cur_quality" <<< "$qualities")
                         quality=$(awk '{ print $2 }' <<< "$choice")
                     else
                         qualities="best|1080p|720p|480p|360p|worst"
