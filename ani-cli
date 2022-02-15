@@ -167,7 +167,7 @@ generate_span() {
 #####################
 
 run_stmt() {
-    printf "%s\n" "$1" | sqlite3 -noheader "$HISTORY_DB"
+    printf "%s\n" "$1" | sqlite3 -noheader -list "$HISTORY_DB"
 }
 
 # Return number of matches for anime/episode in db
@@ -207,7 +207,7 @@ update_date() {
     stmt=""
     case "$1" in
         directory)
-            stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = '$3';"
+            stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = 'DIRECTORY';"
             ;;
         file)
             stmt="UPDATE file_history SET watch_date = '$datetime' WHERE directory = '$2' and filename = '$3';"
