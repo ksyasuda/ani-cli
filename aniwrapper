@@ -116,7 +116,7 @@ get_quality() {
             -l 6 -selected-row 0 -a 0 -window-title 'aniwrapper' \
             -theme-str 'listview {columns: 1;} window {width: 25%;}' \
             -p "Choose video quality:" \
-            -sep '|' -only-match <<< "$QUALITIES")
+            -sep '|' -no-custom <<< "$QUALITIES")
         QUALITY=$(awk '{print $2}' <<< "$selection")
     else
         qualities="best|1080p|720p|480p|360p|worst"
@@ -314,7 +314,7 @@ get_dl_dir() {
 main() {
     ((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
     ((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
-    choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -only-match -sep '|' \
+    choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -no-custom -sep '|' \
         -theme-str 'listview {columns: 1;} window {width: 45%;}' \
         -config "$CFG_FILE" -l 7 -i -p "Aniwrapper" -window-title 'aniwrapper')
 
@@ -396,7 +396,7 @@ main() {
             theme_idx="$(get_theme_idx)"
             choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" -window-title 'aniwrapper' \
                 -theme-str 'listview {columns: 1;} window {width: 45%;}' \
-                -only-match -l 4 -i -p "Choose theme: " -sep '|' \
+                -no-custom -l 4 -i -p "Choose theme: " -sep '|' \
                 -theme-str 'listview { columns: 2;  }' \
                 -a "$theme_idx" -selected-row "$theme_idx" <<< "$THEMES")
             theme=$(awk '{ print $1 }' <<< "$choice")

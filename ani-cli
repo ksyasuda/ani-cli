@@ -394,7 +394,7 @@ find_media() {
     fi
 
     get_directory_data "$inp"
-    selection="$(rofi -dpi "$DPI" -dmenu -only-match -async-pre-read 33 -config "$ROFI_CFG" \
+    selection="$(rofi -dpi "$DPI" -dmenu -no-custom -async-pre-read 33 -config "$ROFI_CFG" \
         -l 15 -i -sep '|' -mesg "$(generate_span "Current directory: $inp")" -a "$watched" \
         -p "Enter selection" -window-title 'aniwrapper' <<< "$inputlist")"
     lg "SELECTION: $selection" 1> /dev/stderr
@@ -496,7 +496,7 @@ anime_selection() {
 
         # get the anime from indexed list
         msg="$(generate_span "Query: $query")"
-        selection="$(rofi -dpi "$DPI" -dmenu -only-match \
+        selection="$(rofi -dpi "$DPI" -dmenu -no-custom \
             -async-pre-read 33 -config "$ROFI_CFG" -l 15 -i -sep '|' \
             -mesg "$msg" -a "$searched" -p "Enter selection" -window-title 'aniwrapper' <<< "$menu")"
         choice="${selection%%.*}" # remmove everything from . to end
@@ -908,7 +908,7 @@ main() {
                         done <<< "$qualities"
                         choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
                             -theme-str 'listview {columns: 1;} window {width: 25%;}' \
-                            -i -l 6 -only-match -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
+                            -i -l 6 -no-custom -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
                             -p "Choose quality:" -window-title 'aniwrapper' -selected-row "$cur_quality" <<< "$qualities")
                         quality=$(awk '{ print $2 }' <<< "$choice")
                     else
