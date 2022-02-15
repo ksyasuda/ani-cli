@@ -352,9 +352,14 @@ main() {
             lg "Play from file selected"
             IS_PLAY_FROM_FILE=1
             span=$(printf '%s\n%s\n' "$(generate_span "Provide a valid path to a directory or leave blank to go with the default: $HOME/Videos/sauce/")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
-            play_dir=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-                -theme-str 'listview {columns: 1;} window {width: 45%;}' \
-                -l 1 -mesg "$span" -p "Enter path to starting directory:")
+            play_dir=$(
+                rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
+                    -l 12 -mesg "$span" -p "Enter path to starting directory:" \
+                    -async-pre-read 24 < <(sqlite3 -noheader -list "$CFG_DIR/history.sqlite3" <<< "SELECT directory FROM file_history WHERE filename = 'DIRECTORY' ORDER BY WATCH_DATE DESC;")
+            )
+            # trim trailing whitespace
+            play_dir="${play_dir%% }"
+            lg "Play dir: $play_dir"
             if [ -z "$play_dir" ]; then
                 mkdir -p "$DEFAULT_DOWNLOAD" || seppuku "error creating default download directory"
                 run -f"$DEFAULT_DOWNLOAD"
