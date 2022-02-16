@@ -356,6 +356,7 @@ main() {
                 rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
                     -l 12 -mesg "$span" -p "Enter path to starting directory:" \
                     -async-pre-read 24 -matching 'fuzzy' -window-title 'aniwrapper' \
+                    -sort -sorting-method fzf \
                     < <(sqlite3 -noheader -list "$CFG_DIR/history.sqlite3" <<< "SELECT directory FROM file_history WHERE filename = 'DIRECTORY' ORDER BY WATCH_DATE DESC;")
             )
             # trim trailing whitespace
