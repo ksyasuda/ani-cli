@@ -397,7 +397,7 @@ find_media() {
     selection="$(rofi -dpi "$DPI" -dmenu -no-custom -async-pre-read 33 -config "$ROFI_CFG" \
         -l 15 -i -sep '|' -mesg "$(generate_span "Current directory: $inp")" -a "$watched" \
         -p "Enter selection" -window-title 'aniwrapper' <<< "$inputlist")"
-    lg "SELECTION: $selection" 1> /dev/stderr
+    [ -z "$selection" ] && return 1
     case "$selection" in
         Back | ../)
             dotdotslash="${inp%/*}"
