@@ -8,29 +8,29 @@ date: February 4, 2022
 
 # NAME
 
-aniwrapper - A rofi wrapper around ani-cli: a command-line tool to browser, download, and stream anime
+aniwrapper - A rofi wrapper around ani-cli: a command-line tool to stream, download, and play anime
 
 # SYNOPSIS
 
-**aniwrapper** [-dhpqSv] [-t _theme_ | -T *config_path*] [*query*]\
-**aniwrapper** -f _directory_path_ [-t _theme_ | -T *config_path*] [-pSv] [*query*]\
-**aniwrapper** -c [-dhpqSv] [*query*]\
+**aniwrapper** [-dhpqSv] [-t _theme_ | -T _config_path_] [_query_]\
+**aniwrapper** -f _directory_path_ [-t _theme_ | -T _config_path_] [-pSv] [_query_]\
+**aniwrapper** -c [-dhpqSv] [_query_]\
 **aniwrapper** -Q _query_\
-**aniwrapper** -C\
+**aniwrapper** -C
 
 # DESCRIPTION
 
 **aniwrapper** is a wrapper around a modified version of **ani-cli**, which uses
 **rofi** to get user input and control the program flow, as well as a
-a **sqlite3** database for tracking search/watch history.
+a **sqlite3** database for tracking search/watch history
 
 # OPTIONS
 
 Defaults:
 
--   **rofi** enabled
--   aniwrapper.rasi theme
--   best quality
+- **rofi** enabled
+- aniwrapper.rasi theme
+- best quality
 
 **-c**
 : Enable command-line mode (disable **rofi**)
@@ -103,4 +103,4 @@ Defaults:
 
 Written by Kyle Yasuda <ksyasuda@umich.edu>
 
-Original code based on pystardust's _ani-cli_ (https://github.com/pystardust/ani-cli)
+Original code based on pystardust's _ani-cli_ (<https://github.com/pystardust/ani-cli>)

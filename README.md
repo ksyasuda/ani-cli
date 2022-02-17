@@ -33,18 +33,18 @@ This tool scrapes the site [gogoanime](https://gogoanime.cm).
 - [Introduction](#introduction)
 - [MPV Extension - Skip Intro Script](#mpv-extension---skip-intro-script)
 - [Installing](#installing)
-	- [Manual Install](#manual-install)
+  - [Manual Install](#manual-install)
 - [Aniwrapper Menus](#aniwrapper-menus)
 - [Dealing with conflicting search queries / rofi grabbing from search list](#dealing-with-conflicting-search-queries--rofi-grabbing-from-search-list)
 - [Usage](#usage)
-	- [aniwrapper](#aniwrapper-1)
-		- [Option 1: Streaming](#option-1-streaming)
-		- [Option 2: Download](#option-2-download)
-		- [Option 3: Continue](#option-3-continue)
-		- [Option 4: Play from File](#option-4-play-from-file)
-		- [Option 5: Sync History](#option-5-sync-history)
-		- [Option 6: Choose Theme](#option-6-choose-theme)
-	- [ani-cli](#ani-cli)
+  - [aniwrapper](#aniwrapper-1)
+    - [Option 1: Streaming](#option-1-streaming)
+    - [Option 2: Download](#option-2-download)
+    - [Option 3: Continue](#option-3-continue)
+    - [Option 4: Play from File](#option-4-play-from-file)
+    - [Option 5: Sync History](#option-5-sync-history)
+    - [Option 6: Choose Theme](#option-6-choose-theme)
+  - [ani-cli](#ani-cli)
 - [Themes](#themes)
 
 <!-- markdown-toc end -->
@@ -60,13 +60,13 @@ script for MPV during setup if it is not already installed_
 Upon activation, the skip-intro script will try its best to skip the
 episode introduction by skipping to the next moment of silence in the video
 
--   If the video has not pre-loaded past the introduction, the script will not
-    know what to do. Press `TAB` again to stop the script until the video
-    has loaded enough, or just manually skip past the intro.
--   If the video does not have a pause in audio (or a significant enough drop in
-    audio volume) between the end of the introduction and the beginning of the
-    video/episode, then the script may fail and skip to a random point in the
-    video
+- If the video has not pre-loaded past the introduction, the script will not
+  know what to do. Press `TAB` again to stop the script until the video
+  has loaded enough, or just manually skip past the intro.
+- If the video does not have a pause in audio (or a significant enough drop in
+  audio volume) between the end of the introduction and the beginning of the
+  video/episode, then the script may fail and skip to a random point in the
+  video
 
 # Installing
 
@@ -125,7 +125,7 @@ In this program, rofi is configured to search with case insensitivity and select
 Once your history starts filling up, it becomes progressively more difficult to form unique search queries
 
 ![selection with dash](https://imgur.com/vSyaoG6.png)
-A workaround for this is to append a dash ` -` to the end of the search query<br/>
+A workaround for this is to append a dash `-` to the end of the search query<br/>
 The above output was produced by searching: `isekai -`
 
 </div>
@@ -155,6 +155,9 @@ aniwrapper -t <theme> # Choose rofi theme from presets
 aniwrapper -T <path_to_config> # Specify custom rofi config
 aniwrapper -v # Enable verbose logging
 ```
+
+> Half-episodes (ex. saihate-no-paladin episode 7.5) are selectable, however they will not show up in the episodes list.
+> To select half episodes add 'h' to the beginning for episodes like '7.5' -> 'h7' to select saihate-no-paladin episode 7.5
 
 See [aniwrapper menus](docs/aniwrapper-menus.md) for more information about the menus used in the following options
 
@@ -226,9 +229,9 @@ This option allows you to sync your search/watch history across devices. It quer
 
 At the moment, the requirements are as follows:
 
--   You must be able to `ssh` into the remote machine
--   The username must be the same across both devices
--   The `history.sqlite3` file must be in the default location: `$XDG_CONFIG_HOME/aniwrapper/history.sqlite3`
+- You must be able to `ssh` into the remote machine
+- The username must be the same across both devices
+- The `history.sqlite3` file must be in the default location: `$XDG_CONFIG_HOME/aniwrapper/history.sqlite3`
 
 ### Option 6: Choose Theme
 
