@@ -10,7 +10,7 @@ CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 CFG_FILE="$CFG_DIR/themes/aniwrapper.rasi"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 ROFI_THEME="aniwrapper.rasi"
-THEMES="aniwrapper|dracula|doomone|fancy|material|nord|nord2|onedark"
+THEMES="alter|aniwrapper|dracula|doomone|fancy|material|monokai|nord|nord2|onedark"
 QUALITIES="1. best|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
 SUPPORTED_PLAYERS="mpv|mplayer|vlc"
 QUALITY=best
@@ -54,7 +54,7 @@ Options:
 	-Q  <query> query the history database
 	-v  verbose output
 	-S  silent mode (suppress output to stdout) [cannot be used with -v]
-	-t  <aniwrapper (default)|dracula|doomone|fancy|material|nord|nord2|onedark> change rofi theme
+	-t  <alter|aniwrapper (default)|dracula|doomone|fancy|material|monokai|nord|nord2|onedark> change rofi theme
 	-T  <config_path> specify custom rofi theme
 	"
 }
@@ -133,7 +133,7 @@ get_quality() {
 
 # return the index in $THEMES of $ROFI_THEME
 get_theme_idx() {
-    themeslist="aniwrapper.rasi|aniwrapper-dracula.rasi|aniwrapper-doomone.rasi|aniwrapper-fancy.rasi|aniwrapper-material.rasi|aniwrapper-nord.rasi|aniwrapper-nord2.rasi|aniwrapper-onedark.rasi"
+    themeslist="aniwrapper-alter.rasi|aniwrapper.rasi|aniwrapper-dracula.rasi|aniwrapper-doomone.rasi|aniwrapper-fancy.rasi|aniwrapper-material.rasi|aniwrapper-monokai.rasi|aniwrapper-nord.rasi|aniwrapper-nord2.rasi|aniwrapper-onedark.rasi"
     idx=0
     while IFS='|' read -ra themes; do
         for t in "${themes[@]}"; do
