@@ -59,7 +59,7 @@ Defaults:
 **-S**
 : Enable silent mode (suppress all output) [cannot be used with **-v**]
 
-**-t** _aniwrapper (default)|dracula|doomone|fancy|flamingo|material|nord|onedark_
+**-t** _alter|aniwrapper (default)|dracula|doomone|fancy|flamingo|material|monokai|nord|onedark_
 : Choose theme from presets
 
 **-T** _path_to_theme_
