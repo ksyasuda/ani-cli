@@ -395,10 +395,11 @@ main() {
             # -----------------------------------------------------------------
             [ -z "$THEMES" ] && seppuku "No themes provided... exiting"
             theme_idx="$(get_theme_idx)"
+            lg "Theme index: $theme_idx"
+            lg "NUM THEMES: $NUM_THEMES"
             choice=$(rofi -dmenu -config "$CFG_FILE" -dpi "$DPI" -window-title 'aniwrapper' \
-                -theme-str 'listview {columns: 1;} window {width: 45%;}' \
-                -no-custom -l 4 -i -p "Choose theme: " -sep '|' \
-                -theme-str 'listview { columns: 2;  }' \
+                -theme-str 'listview {columns: 2;} window {width: 45%;}' \
+                -no-custom -l 5 -i -p "Choose theme: " -sep '|' \
                 -a "$theme_idx" -selected-row "$theme_idx" <<< "$THEMES")
             theme=$(awk '{ print $1 }' <<< "$choice")
             set_theme "$theme"
