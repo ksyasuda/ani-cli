@@ -11,6 +11,7 @@ DPI=96
 IS_ROFI=1
 VERBOSE=0
 SILENT=0
+FIRST_EP_NUMBER=1
 PLAYER_FN="mpv"
 
 die() {
@@ -185,6 +186,9 @@ check_db() {
         watch | sync)
             stmt="SELECT DISTINCT COUNT(*) FROM watch_history WHERE anime_name = '$2' AND episode_number = '$3';"
             ;;
+        anime)
+            stmt="SELECT DISTINCT COUNT(*) FROM anime WHERE anime_name = '$2';"
+            ;;
     esac
     res=$(run_stmt "$stmt")
     return "$res"
@@ -229,8 +233,10 @@ update_date() {
         watch)
             stmt="UPDATE watch_history SET watch_date = '$datetime' WHERE anime_name = '$2' AND episode_number = $3;"
             ;;
+        anime)
+            return
+            ;;
     esac
-    wait # in case there's another insert/update still running in background?
     lg "UPDATE STMT -> $stmt"
     run_stmt "$stmt"
 }
@@ -264,9 +270,11 @@ insert_history() {
             sync)
                 stmt="INSERT INTO watch_history(anime_name, episode_number, watch_date) VALUES('$2', '$3', '$4');"
                 ;;
+            anime)
+                stmt="INSERT INTO anime(anime_name, start_episode, end_episode, data_date) VALUES('$2', $3, $4, '$datetime');"
+                ;;
         esac
         lg "INSERT STATEMENT -> $stmt"
-        wait # in case there's another insert/update still running in background
         run_stmt "$stmt"
         res=$?
     fi
@@ -320,7 +328,7 @@ play_file() {
     if [[ "$1" =~ (\.mp4|\.mkv|\.ts|\.webm)$ ]]; then
         filename="${1##*/}"
         directory="${1%/*}"
-        insert_history "file" "$directory" "$filename" &
+        insert_history "file" "$directory" "$filename"
         notification "Playing $1"
         case "$PLAYER_FN" in
             mpv)
@@ -468,13 +476,27 @@ search_anime() {
 
 search_eps() {
     anime_id=$1
-    curl -s "$BASE_URL/category/$anime_id" |
-        sed -n -E '
-		/^[[:space:]]*<a href="#" class="active" ep_start/{
-		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
-		q
-		}
-		'
+    if ! check_db "anime" "$anime_id"; then
+        lg "Anime $anime_id in anime database... getting last episode number" > /dev/stderr
+        FIRST_EP_NUMBER="$(run_stmt "SELECT start_episode FROM anime WHERE anime_name = '$anime_id';")"
+        LAST_EP_NUMBER="$(run_stmt "SELECT end_episode FROM anime WHERE anime_name = '$anime_id';")"
+    else
+        LAST_EP_NUMBER=$(curl -s "$BASE_URL/category/$anime_id" |
+            sed -n -E '
+            /^[[:space:]]*<a href="#" class="active" ep_start/{
+            s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
+            q
+            }
+        ')
+        result=$(get_dpage_link "$anime_id" 0)
+        FIRST_EP_NUMBER="${result:-1}"
+        lg "Anime $anime_id not in anime database... inserting into database" > /dev/stderr
+        insert_history "anime" "$anime_id" "$FIRST_EP_NUMBER" "$LAST_EP_NUMBER"
+    fi
+    FIRST_EP_NUMBER="${FIRST_EP_NUMBER%% }"
+    LAST_EP_NUMBER="${LAST_EP_NUMBER%% }"
+    lg "FIRST EP NUMBER: $FIRST_EP_NUMBER"
+    lg "LAST EP NUMBER: $LAST_EP_NUMBER"
 }
 
 # Select anime from query results
@@ -529,15 +551,13 @@ anime_selection() {
     done <<< "$search_results"
 
     [[ -z "$selection_id" ]] && die "Invalid number entered"
-    insert_history "search" "$selection_id" &
+    insert_history "search" "$selection_id"
 
-    read -r last_ep_number < <(search_eps "$selection_id")
+    search_eps "$selection_id"
 }
 
 episode_selection() {
-    ep_choice_start=1 first_ep_number=0
-    result=$(get_dpage_link "$anime_id" "$first_ep_number")
-    [[ -z "$result" ]] && first_ep_number=1
+    ep_choice_start=1
     if ((IS_ROFI == 1)); then
         lg "Anime ID: $anime_id"
         stmt="SELECT DISTINCT episode_number FROM watch_history WHERE anime_name = '$anime_id';"
@@ -554,21 +574,21 @@ episode_selection() {
         msg2="Range of episodes can be provided as: START_EPISODE - END_EPISODE"
         [[ "$is_download" -eq 1 ]] && msg=$(printf "%s\n%s" "$(generate_span "$msg1")" "$(generate_span "$msg2")") || msg=$(printf "%s\n" "$(generate_span "$msg1")")
         choice=$(
-            seq "$first_ep_number" "$last_ep_number" |
+            seq "$FIRST_EP_NUMBER" "$LAST_EP_NUMBER" |
                 rofi -dpi "$DPI" -dmenu -l 12 \
                     -theme-str 'window {width: 45%;}' \
                     -a "$watch_history" \
-                    -p "Select Episode [$first_ep_number, $last_ep_number]:" \
+                    -p "Select Episode [$FIRST_EP_NUMBER, $LAST_EP_NUMBER]:" \
                     -mesg "$msg" -window-title 'aniwrapper' \
                     -config "$ROFI_CFG"
         )
         ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
         ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
         lg "START: $ep_choice_start | END: $ep_choice_end"
-    elif ((last_ep_number > 1)); then
+    elif ((LAST_EP_NUMBER > 1)); then
         [[ "$is_download" -eq 1 ]] &&
             inf "Range of episodes can be specified: start_number end_number"
-        prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
+        prompt "Choose episode" "[$FIRST_EP_NUMBER-$LAST_EP_NUMBER]"
         read -r ep_choice_start ep_choice_end
         [[ -z "$ep_choice_end" ]] && ep_choice_end="$ep_choice_start"
     fi
@@ -578,7 +598,7 @@ episode_selection() {
         ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
         ep_choice_end=$ep_choice_start
     fi
-    if (((ep_choice_start <= 0 || ep_choice_start > last_ep_number) || ep_choice_end < ep_choice_start || ep_choice_end > last_ep_number)); then
+    if (((ep_choice_start <= 0 || ep_choice_start > LAST_EP_NUMBER) || ep_choice_end < ep_choice_start || ep_choice_end > LAST_EP_NUMBER)); then
         die "Invalid episode/range entered: ep_start -> $ep_choice_start | ep_end -> $ep_choice_end"
     fi
     # if only one episode was entered, set ep_choice_end to empty string so only selected episode plays
@@ -597,7 +617,7 @@ open_episode() {
     fi
 
     # Don't update watch history if downloading episode
-    (("$is_download" == 0)) && insert_history "watch" "$anime_id" "$episode" &
+    (("$is_download" == 0)) && insert_history "watch" "$anime_id" "$episode"
 
     lg "Getting data for episode $episode"
     dpage_link=$(get_dpage_link "$anime_id" "$episode")
@@ -679,10 +699,9 @@ stream() {
         fi
     else
         selection_id="$anime_id"
-        insert_history "search" "$anime_id" &
-        read -r last_ep_number < <(search_eps "$anime_id")
+        insert_history "search" "$anime_id"
+        search_eps "$anime_id"
     fi
-    lg "LAST EP NUMBER -> $last_ep_number"
     episode_selection
 }
 
@@ -858,14 +877,14 @@ main() {
         episode=${ep_choice_end:-$ep_choice_start}
         choice=''
         while :; do
-            inf "Currently playing $selection_id episode" "${episode// /}/$last_ep_number"
-            if ((episode != last_ep_number)); then
+            inf "Currently playing $selection_id episode" "${episode// /}/$LAST_EP_NUMBER"
+            if ((episode != LAST_EP_NUMBER)); then
                 menu_line_alternate "next episode" "n"
             fi
-            if ((episode != first_ep_number)); then
+            if ((episode != FIRST_EP_NUMBER)); then
                 menu_line_alternate "previous episode" "p"
             fi
-            if ((first_ep_number != last_ep_number)); then
+            if ((FIRST_EP_NUMBER != LAST_EP_NUMBER)); then
                 menu_line_alternate "select episode" "s"
             fi
             menu_line_alternate "replay current episode" "r"
