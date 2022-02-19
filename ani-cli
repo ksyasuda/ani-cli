@@ -477,10 +477,11 @@ search_anime() {
 search_eps() {
     anime_id=$1
     if ! check_db "anime" "$anime_id"; then
-        lg "Anime $anime_id in anime database... getting last episode number" > /dev/stderr
         FIRST_EP_NUMBER="$(run_stmt "SELECT start_episode FROM anime WHERE anime_name = '$anime_id';")"
         LAST_EP_NUMBER="$(run_stmt "SELECT end_episode FROM anime WHERE anime_name = '$anime_id';")"
     else
+        result=$(get_dpage_link "$anime_id" 0)
+        FIRST_EP_NUMBER="${result:-1}"
         LAST_EP_NUMBER=$(curl -s "$BASE_URL/category/$anime_id" |
             sed -n -E '
             /^[[:space:]]*<a href="#" class="active" ep_start/{
@@ -488,8 +489,6 @@ search_eps() {
             q
             }
         ')
-        result=$(get_dpage_link "$anime_id" 0)
-        FIRST_EP_NUMBER="${result:-1}"
         lg "Anime $anime_id not in anime database... inserting into database" > /dev/stderr
         insert_history "anime" "$anime_id" "$FIRST_EP_NUMBER" "$LAST_EP_NUMBER"
     fi
@@ -527,6 +526,7 @@ anime_selection() {
             die "Quitting"
         elif ((choice == --cnt)); then
             stream
+            return $?
         fi
     else
         count=1
@@ -552,8 +552,9 @@ anime_selection() {
 
     [[ -z "$selection_id" ]] && die "Invalid number entered"
     insert_history "search" "$selection_id"
-
-    search_eps "$selection_id"
+    lg "Selection: $selection_id"
+    search_eps "$anime_id"
+    return 0
 }
 
 episode_selection() {
