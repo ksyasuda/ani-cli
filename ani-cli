@@ -617,7 +617,7 @@ open_episode() {
 	fi
 
 	# Don't update watch history if downloading episode
-	(("$is_download" == 0)) && insert_history "watch" "$anime_id" "$episode"
+	insert_history "watch" "$anime_id" "$episode"
 
 	lg "Getting data for episode $episode"
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
