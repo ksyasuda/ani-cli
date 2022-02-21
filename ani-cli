@@ -475,22 +475,17 @@ search_anime() {
 
 search_eps() {
 	anime_id=$1
-	if ! check_db "anime" "$anime_id"; then
-		FIRST_EP_NUMBER="$(run_stmt "SELECT start_episode FROM anime WHERE anime_name = '$anime_id';")"
-		LAST_EP_NUMBER="$(run_stmt "SELECT end_episode FROM anime WHERE anime_name = '$anime_id';")"
-	else
-		result=$(get_dpage_link "$anime_id" 0)
-		FIRST_EP_NUMBER="${result:-1}"
-		LAST_EP_NUMBER=$(curl -s "$BASE_URL/category/$anime_id" |
-			sed -n -E '
-            /^[[:space:]]*<a href="#" class="active" ep_start/{
-            s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
-            q
-            }
-        ')
-		lg "Anime $anime_id not in anime database... inserting into database" > /dev/stderr
-		insert_history "anime" "$anime_id" "$FIRST_EP_NUMBER" "$LAST_EP_NUMBER"
-	fi
+	result=$(get_dpage_link "$anime_id" 0)
+	FIRST_EP_NUMBER="${result:-1}"
+	LAST_EP_NUMBER=$(curl -s "$BASE_URL/category/$anime_id" |
+		sed -n -E '
+        /^[[:space:]]*<a href="#" class="active" ep_start/{
+        s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
+        q
+        }
+    ')
+	# lg "Anime $anime_id not in anime database... inserting into database" > /dev/stderr
+	# insert_history "anime" "$anime_id" "$FIRST_EP_NUMBER" "$LAST_EP_NUMBER"
 	FIRST_EP_NUMBER="${FIRST_EP_NUMBER%% }"
 	LAST_EP_NUMBER="${LAST_EP_NUMBER%% }"
 	lg "FIRST EP NUMBER: $FIRST_EP_NUMBER"
