@@ -245,9 +245,7 @@ update_date() {
 insert_history() {
 	datetime=$(date +'%Y-%m-%d %H:%M:%S')
 	lg "Checking if ($*) exists in db"
-	check_db "$@"
-	res="$?"
-	if [[ $res -gt 0 ]]; then
+	if ! check_db "$@"; then
 		lg "Match found... Updating row in history db..."
 		update_date "$@"
 		res=$?
