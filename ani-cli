@@ -408,13 +408,9 @@ find_media() {
 	case "$selection" in
 		Back | ../)
 			dotdotslash="${inp%/*}"
-			if [ -z "$dotdotslash" ]; then
-				insert_history "directory" "/"
-				find_media "/"
-			else
-				insert_history "directory" "$dotdotslash"
-				find_media "$dotdotslash"
-			fi
+			[ -z "$dotdotslash" ] && dotdotslash="/"
+			insert_history "directory" "$dotdotslash"
+			find_media "$dotdotslash"
 			;;
 		Quit)
 			return 1
