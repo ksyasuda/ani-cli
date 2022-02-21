@@ -539,7 +539,7 @@ anime_selection() {
 	done <<< "$search_results"
 
 	[[ -z "$selection_id" ]] && die "Invalid number entered"
-	insert_history "search" "$selection_id"
+	insert_history "search" "$selection_id" &
 	lg "Selection: $selection_id"
 	search_eps "$anime_id"
 	return 0
@@ -688,7 +688,7 @@ stream() {
 		fi
 	else
 		selection_id="$anime_id"
-		insert_history "search" "$anime_id"
+		insert_history "search" "$anime_id" &
 		search_eps "$anime_id"
 	fi
 	episode_selection
