@@ -976,7 +976,7 @@ main() {
 	fi
 }
 
-dep_ch "$PLAYER_FN" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c"
+dep_ch "$PLAYER_FN" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c" "openssl"
 parse_args "$@"
 shift $((OPTIND - 1))
 main "$@"
