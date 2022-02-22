@@ -174,19 +174,19 @@ run_stmt() {
 check_db() {
 	case "$1" in
 		directory)
-			stmt="SELECT DISTINCT COUNT(*) FROM file_history WHERE directory = '$2';"
+			stmt="SELECT COUNT(*) FROM file_history WHERE directory = '$2';"
 			;;
 		file)
-			stmt="SELECT DISTINCT COUNT(*) FROM file_history WHERE directory = '$2' AND filename = '$3';"
+			stmt="SELECT COUNT(*) FROM file_history WHERE directory = '$2' AND filename = '$3';"
 			;;
 		search)
-			stmt="SELECT DISTINCT COUNT(*) FROM search_history WHERE anime_name = '$2';"
+			stmt="SELECT COUNT(*) FROM search_history WHERE anime_name = '$2';"
 			;;
 		watch | sync)
-			stmt="SELECT DISTINCT COUNT(*) FROM watch_history WHERE anime_name = '$2' AND episode_number = '$3';"
+			stmt="SELECT COUNT(*) FROM watch_history WHERE anime_name = '$2' AND episode_number = '$3';"
 			;;
 		anime)
-			stmt="SELECT DISTINCT COUNT(*) FROM anime WHERE anime_name = '$2';"
+			stmt="SELECT COUNT(*) FROM anime WHERE anime_name = '$2';"
 			;;
 	esac
 	res=$(run_stmt "$stmt")
@@ -291,7 +291,7 @@ sync_search_history() {
 			fi
 			((++cnt))
 		fi
-	done < <(sqlite3 -list -noheader "$temp_db" "SELECT DISTINCT * FROM search_history")
+	done < <(sqlite3 -list -noheader "$temp_db" "SELECT * FROM search_history")
 	lg "$cnt rows inserted into search_history table"
 	lg "$errs errors on insert"
 }
@@ -310,7 +310,7 @@ sync_watch_history() {
 			fi
 			((++cnt))
 		done < <(sqlite3 -list -noheader "$temp_db" "SELECT episode_number, watch_date FROM watch_history WHERE anime_name = '$anime_name'")
-	done < <(sqlite3 -list -noheader "$temp_db" "SELECT DISTINCT anime_name FROM watch_history")
+	done < <(sqlite3 -list -noheader "$temp_db" "SELECT anime_name FROM watch_history")
 	lg "$cnt rows inserted into watch_history table"
 	lg "$errs rows skipped on insert"
 }
@@ -436,7 +436,7 @@ get_search_query() {
 	if [ $# -gt 0 ]; then
 		query="${*// /-}"
 	elif [ "$IS_ROFI" -eq 1 ]; then
-		stmt="SELECT DISTINCT id || '. ' || anime_name FROM search_history ORDER BY search_date DESC;"
+		stmt="SELECT id || '. ' || anime_name FROM search_history ORDER BY search_date DESC;"
 		msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
 		query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
 			-mesg "$(generate_span "$msg")" \
@@ -549,7 +549,7 @@ episode_selection() {
 	ep_choice_start=1
 	if ((IS_ROFI == 1)); then
 		lg "Anime ID: $anime_id"
-		stmt="SELECT DISTINCT episode_number FROM watch_history WHERE anime_name = '$anime_id';"
+		stmt="SELECT episode_number FROM watch_history WHERE anime_name = '$anime_id';"
 
 		# Get Watch History for $anime_id as comma separated list
 		watch_history=""
@@ -793,7 +793,7 @@ main() {
 			;;
 		history)
 			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.fi)"
-			stmt="SELECT DISTINCT anime_name FROM search_history ORDER BY search_date DESC"
+			stmt="SELECT anime_name FROM search_history ORDER BY search_date DESC"
 			search_results="$(run_stmt "$stmt")"
 			[ -z "$search_results" ] && die "History is empty"
 			if ! anime_selection "${search_results[@]}"; then
