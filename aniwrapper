@@ -292,7 +292,11 @@ check_flags() {
 		if [ ! -d "$dl_dir" ]; then
 			mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
 		fi
-		run "-cd $dl_dir" "$@"
+		if ((IS_RESUME == 1)); then
+			run "-crd" "$dl_dir" "$@"
+		else
+			run "-cd $dl_dir" "$@"
+		fi
 		exit $?
 	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 1)); then
 		run "-f$play_path" -T "$CFG_FILE" "$@"
