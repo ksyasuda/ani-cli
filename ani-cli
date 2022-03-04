@@ -620,8 +620,9 @@ episode_selection() {
 		lg "START: $ep_choice_start | END: $ep_choice_end"
 	elif ((LAST_EP_NUMBER > 1)); then
 		[[ "$is_download" -eq 1 ]] &&
-			inf "Range of episodes can be specified: start_number end_number"
-		prompt "Choose episode" "[$FIRST_EP_NUMBER-$LAST_EP_NUMBER]"
+			inf "Range of episodes can be specified:" "start_number end_number"
+		inf "Anime:" "$anime_id"
+		prompt "Choose episode " "[$FIRST_EP_NUMBER-$LAST_EP_NUMBER]"
 		read -r ep_choice_start ep_choice_end
 		[[ -z "$ep_choice_end" ]] && ep_choice_end="$ep_choice_start"
 	fi
