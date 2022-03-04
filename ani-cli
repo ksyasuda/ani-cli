@@ -85,7 +85,7 @@ get_dpage_link() {
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	for params in "-episode-$ep_no" "-$ep_no" "-episode-$ep_no-1" "-camrip-episode-$ep_no"; do
 		anime_page=$(curl -s "$BASE_URL/$anime_id$params")
-		printf '%s' "$anime_page" | grep -q '404' || break
+		printf '%s' "$anime_page" | grep -q '<h1 class="entry-title">404</h1>' || break
 	done
 
 	printf '%s' "$anime_page" |
@@ -103,7 +103,7 @@ decrypt_link() {
 	#encrypt and create the final ajax
 	ajax=$(printf "%s\010\016\003\010\t\003\004\t" "$id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 	#send request and get the data(most lamest way)
-	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "$ajax_url" -d "id=$ajax" | cut -d\" -f4 | tr -d '\\')
+	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "$ajax_url" -d "id=$ajax" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
 
 	#decrypt the data to get final links
 	printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' |
@@ -837,13 +837,13 @@ main() {
 	case $scrape in
 		query)
 			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.fi)"
-			if ((is_resume == 1)); then
-				anime="$(run_stmt "SELECT anime_name FROM watch_history ORDER BY watch_date DESC LIMIT 1;")"
-				lg "Selecting last watched anime: $anime"
+			stmt="SELECT anime_name FROM watch_history ORDER BY watch_date DESC LIMIT 1;"
+			((is_resume == 1)) && anime="$(run_stmt "$stmt")" || anime="$*"
+			if [ -z "$anime" ]; then
+				stream
 			else
-				anime="$*"
+				stream "$anime"
 			fi
-			stream "$anime"
 			;;
 		history)
 			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.fi)"
