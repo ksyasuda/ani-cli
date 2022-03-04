@@ -744,12 +744,16 @@ parse_args() {
 	is_download=0
 	download_dir="."
 	half_ep=0
-	while getopts 'd:Hsvq:cf:t:T:CQ:D:Sp:' OPT; do
+	is_resume=0
+	while getopts 'd:Hsvq:cf:t:T:CQ:D:Sp:r' OPT; do
 		case "$OPT" in
 			d)
 				is_download=1
 				download_dir="$OPTARG"
 				lg "DOWNLOAD DIR: $download_dir"
+				;;
+			r)
+				is_resume=1
 				;;
 			H)
 				scrape=history
@@ -833,7 +837,13 @@ main() {
 	case $scrape in
 		query)
 			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.fi)"
-			stream "$@"
+			if ((is_resume == 1)); then
+				anime="$(run_stmt "SELECT anime_name FROM watch_history ORDER BY watch_date DESC LIMIT 1;")"
+				lg "Selecting last watched anime: $anime"
+			else
+				anime="$*"
+			fi
+			stream "$anime"
 			;;
 		history)
 			BASE_URL="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.fi)"

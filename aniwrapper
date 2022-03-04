@@ -170,11 +170,15 @@ set_theme() {
 }
 
 parse_args() {
-	while getopts 'vhqcdf:-:t:T:CQ:D:Sp' OPT; do
+	while getopts 'vhqcdf:t:T:CQ:D:Spr' OPT; do
 		case "$OPT" in
 			h)
 				help_text
 				exit 0
+				;;
+			r)
+				IS_RESUME=1
+				lg "Selecting previously watched anime"
 				;;
 			v)
 				VERBOSE=1
@@ -274,7 +278,11 @@ check_flags() {
 		lg "SELECTED PLAYER FN -> $PLAYER_FN"
 	fi
 	if ((IS_ROFI == 0 && IS_DOWNLOAD == 0)); then
-		run -c "$@"
+		if ((IS_RESUME == 1)); then
+			run -cr "$@"
+		else
+			run -c "$@"
+		fi
 		exit $?
 	elif ((IS_ROFI == 0 && IS_DOWNLOAD == 1)); then
 		prompt "Enter download directory"
@@ -290,6 +298,9 @@ check_flags() {
 		exit $?
 	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 0)); then
 		run "-f$play_path" -t "$theme" "$@"
+		exit $?
+	elif ((IS_RESUME == 1)); then
+		run -r "$@"
 		exit $?
 	fi
 }
