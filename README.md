@@ -150,6 +150,7 @@ aniwrapper -h # Show help menu
 aniwrapper -p # Enable player selection menu
 aniwrapper -q # Launch menu with quality selection
 aniwrapper -Q <query> # Query the history database
+aniwrapper -r # Launch aniwrapper in quick-resume mode (start script on episode selection for the most recently streamed anime)
 aniwrapper -S # Enable silent mode (suppress output to stdout) [cannot be used with -v]
 aniwrapper -t <theme> # Choose rofi theme from presets
 aniwrapper -T <path_to_config> # Specify custom rofi config

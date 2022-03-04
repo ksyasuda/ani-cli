@@ -12,9 +12,9 @@ aniwrapper - A rofi wrapper around ani-cli: a command-line tool to stream, downl
 
 # SYNOPSIS
 
-**aniwrapper** [-dhpqSv] [-t _theme_ | -T _config_path_] [_query_]\
+**aniwrapper** [-dhpqrSv] [-t _theme_ | -T _config_path_] [_query_]\
 **aniwrapper** -f _directory_path_ [-t _theme_ | -T _config_path_] [-pSv] [_query_]\
-**aniwrapper** -c [-dhpqSv] [_query_]\
+**aniwrapper** -c [-dhpqrSv] [_query_]\
 **aniwrapper** -Q _query_\
 **aniwrapper** -C
 
@@ -52,6 +52,9 @@ Defaults:
 
 **-q**
 : Enable quality selection
+
+**-r**
+: Start script at episode selection for the most recently watched anime
 
 **-Q** _query_
 : Run a query on the history databse
