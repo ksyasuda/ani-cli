@@ -375,9 +375,6 @@ play_file() {
 			mpv)
 				nohup "$PLAYER_FN" --force-media-title="aniwrapper: play-from-file - $1" "$1" > /dev/null 2>&1 &
 				;;
-			mplayer)
-				nohup "$PLAYER_FN" -title "aniwrapper: play-from-file - $1" "$1" > /dev/null 2>&1 &
-				;;
 			*)
 				nohup "$PLAYER_FN" "$1" > /dev/null 2>&1 &
 				;;
@@ -672,9 +669,6 @@ open_episode() {
 		case "$PLAYER_FN" in
 			mpv)
 				nohup "$PLAYER_FN" --referrer="$dpage_link" "$video_url" --force-media-title="aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
-				;;
-			mplayer)
-				nohup "$PLAYER_FN" -referrer "$dpage_link" "$video_url" -title "aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
 				;;
 			vlc)
 				nohup "$PLAYER_FN" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
