@@ -73,7 +73,7 @@ episode introduction by skipping to the next moment of silence in the video
 These are the minimum dependences required to run `aniwrapper`
 
 ```
-aria2 curl grep mpv rofi sed sqlite3
+aria2 curl ffmpeg grep mpv rofi sed sqlite3
 ```
 
 **Arch Linux**
