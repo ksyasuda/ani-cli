@@ -92,16 +92,41 @@ get_dpage_link() {
 		sed -n -E 's/.*class="active" rel="1" data-video="([^"]*)".*/\1/p' | sed 's/^/https:/g'
 }
 
+# download the episode
+# $1: dpage_link | $2: video_url | $3: anime_id | $4: episode | $5: download_dir
+download() {
+	case "$2" in
+		*mp4*)
+			aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$5" -o "${3}-${4}.mp4" --download-result=hide
+			;;
+		*)
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$5/${3}-${4}.mp4"
+			;;
+	esac
+}
+
 decrypt_link() {
 	lg "BEGIN: decrypt_link()" > /dev/stderr
 	secret_key='3235373136353338353232393338333936313634363632323738383333323838'
 	iv='31323835363732393835323338333933'
 	ajax_url="https://gogoplay4.com/encrypt-ajax.php"
 
-	crypto_data=$(curl -s "$1" | sed -nE 's/.*data-value="([^"]*)".*/\1/p')
-	id=$(printf '%s' "$crypto_data" | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | cut -d '&' -f1)
+	id=$(printf "%s" "$1" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+
+	if [ "${#id}" -lt "8" ]; then
+		#pad the id with character until it length(id) reaches to 8, no xor needed to be done on it
+		pad=$(printf "\010\016\003\010\t\003\004\t" | cut -c"$((8 - (${#id} % 16)))"-)
+		new_id=$(printf "%s$pad" "$id")
+	else
+		# xor the last character of id with 0xA if length(id) is 8, make it the new last character
+		lastchar=$(printf %s "$id" | tail -c 1)
+		lastcharval=$(printf %d "'$lastchar")
+		xor=$((lastcharval ^ 10))
+		octalval=$(printf "\\$(printf %o "$xor")")
+		new_id=$(printf "%s" "$id" | sed "s/.$/$octalval/")
+	fi
 	#encrypt and create the final ajax
-	ajax=$(printf "%s\010\016\003\010\t\003\004\t" "$id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
+	ajax=$(printf "%s\010\016\003\010\t\003\004\t" "$new_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 	#send request and get the data(most lamest way)
 	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "$ajax_url" -d "id=$ajax" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
 
@@ -652,9 +677,10 @@ open_episode() {
 
 	lg "Getting data for episode $episode"
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
-	video_url=$(get_video_quality "$dpage_link")
-	if [ -z "$video_url" ]; then
-		die "Video URL not found"
+	if [[ -z "$dpage_link" ]]; then
+		die "Could not get download page link"
+	else
+		video_url=$(get_video_quality "$dpage_link")
 	fi
 	lg "Download link: $dpage_link"
 	lg "Video url: $video_url"
@@ -690,13 +716,13 @@ open_episode() {
 		{
 			mkdir -p "$dl_dir" || die "Could not create directory"
 			if command -v "notify-send" > /dev/null; then
-				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
+				if download "$dpage_link" "$video_url" "$anime_id" "$episode.mp4" "$dl_dir"; then
 					((SILENT != 1)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode"
 				else
 					((SILENT != 1)) && notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 				fi
 			else
-				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$dl_dir" -o "$episode.mp4" --download-result=hide; then
+				if download "$dpage_link" "$video_url" "$anime_id" "$episode.mp4" "$dl_dir"; then
 					((SILENT != 1)) && inf "Download complete for" "${anime_id//-/ } - Episode $episode"
 				else
 					((SILENT != 1)) && inf "Download failed for" "${anime_id//-/ } - Episode $episode, please retry or check your internet connection"
@@ -977,7 +1003,7 @@ main() {
 	fi
 }
 
-dep_ch "$PLAYER_FN" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c" "openssl"
+dep_ch "$PLAYER_FN" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c" "openssl" "ffmpeg"
 parse_args "$@"
 shift $((OPTIND - 1))
 main "$@"
