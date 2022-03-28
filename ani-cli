@@ -100,7 +100,7 @@ download() {
 			aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$5" -o "${4}" --download-result=hide
 			;;
 		*)
-			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$5/${3}-${4}.mp4"
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$5/${4}"
 			;;
 	esac
 }
