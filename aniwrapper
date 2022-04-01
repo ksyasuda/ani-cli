@@ -30,9 +30,6 @@ quit="7. Quit"
 options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|6. Choose Theme|$quit"
 theme=default
 
-#############
-# Functions #
-#############
 help_text() {
 	while IFS= read -r line; do
 		printf "%s\n" "$line"
@@ -76,7 +73,7 @@ prompt() {
 	printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
 }
 
-seppuku() {
+die() {
 	printf "%s\n" "$*"
 	exit 1
 }
@@ -171,30 +168,23 @@ set_theme() {
 }
 
 parse_args() {
-	while getopts 'vhqcdf:t:T:CQ:D:Spr' OPT; do
+	while getopts 'cCdD:f:hpqQ:rSt:T:v' OPT; do
 		case "$OPT" in
-			h)
-				help_text
-				exit 0
-				;;
-			r)
-				IS_RESUME=1
-				lg "Selecting previously watched anime"
-				;;
-			v)
-				VERBOSE=1
-				;;
-			q)
-				GET_QUALITY=1
-				lg "Quality prompt enabled"
-				;;
 			c)
 				IS_ROFI=0
 				lg "Command-line (ani-cli) mode set"
 				;;
+			C)
+				lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
+				sqlite3 "$CFG_DIR/history.sqlite3"
+				exit $?
+				;;
 			d)
 				IS_DOWNLOAD=1
 				lg "Download flag set..."
+				;;
+			D)
+				DPI="$OPTARG"
 				;;
 			f)
 				IS_PLAY_FROM_FILE=1
@@ -202,14 +192,16 @@ parse_args() {
 				lg "Play from file flag set... skipping main menu"
 				lg "PLAY_PATH: $play_path"
 				;;
-			t)
-				theme="$OPTARG"
-				set_theme "$theme"
+			h)
+				help_text
+				exit 0
 				;;
-			C)
-				lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
-				sqlite3 "$CFG_DIR/history.sqlite3"
-				exit $?
+			p)
+				IS_ALTERNATE_PLAYER=1
+				;;
+			q)
+				GET_QUALITY=1
+				lg "Quality prompt enabled"
 				;;
 			Q)
 				query="$OPTARG"
@@ -217,19 +209,24 @@ parse_args() {
 				sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
 				exit $?
 				;;
-			T)
-				CFG_FILE="$OPTARG"
-				[ ! -f "$CFG_FILE" ] && seppuku "config file $CFG_FILE does not exist"
-				IS_CUSTOM_THEME=1
-				;;
-			D)
-				DPI="$OPTARG"
+			r)
+				IS_RESUME=1
+				lg "Selecting previously watched anime"
 				;;
 			S)
 				SILENT=1
 				;;
-			p)
-				IS_ALTERNATE_PLAYER=1
+			t)
+				theme="$OPTARG"
+				set_theme "$theme"
+				;;
+			T)
+				CFG_FILE="$OPTARG"
+				[ ! -f "$CFG_FILE" ] && die "config file $CFG_FILE does not exist"
+				IS_CUSTOM_THEME=1
+				;;
+			v)
+				VERBOSE=1
 				;;
 			*)
 				help_text
@@ -253,10 +250,6 @@ get_player() {
 	else
 		printf "%s\n%s\n" "$msg1" "$msg2"
 		printf "%s\n" "SUPPORTED PLAYERS:"
-		# while read -r player; do
-		# 	printf "%s\n" "$player"
-		# done <<< "$(printf "%s\n" "$SUPPORTED_PLAYERS" | sed 's/|/\n/g')"
-		# bash version
 		while IFS='|' read -ra players; do
 			printf "%s\n" "${players[@]}"
 		done <<< "$SUPPORTED_PLAYERS"
@@ -265,14 +258,14 @@ get_player() {
 	fi
 	[ -z "$PLAYER_FN" ] && PLAYER_FN=mpv
 	if ! command -v "$PLAYER_FN" > /dev/null; then
-		seppuku "ERROR: $PLAYER_FN does not exist"
+		die "ERROR: $PLAYER_FN does not exist"
 	fi
 }
 
 check_flags() {
 	# Check if command-line flag is set
 	if ((VERBOSE == 1 && SILENT == 1)); then
-		seppuku "verbose and silent options cannot be used together"
+		die "verbose and silent options cannot be used together"
 	fi
 	if ((IS_DOWNLOAD == 0 && IS_ALTERNATE_PLAYER == 1)); then
 		get_player
@@ -290,7 +283,7 @@ check_flags() {
 		read -r dl_dir
 		lg "Download dir: $dl_dir"
 		if [ ! -d "$dl_dir" ]; then
-			mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
+			mkdir -p "$dl_dir" || die "Error creating directory: $dl_dir"
 		fi
 		if ((IS_RESUME == 1)); then
 			run "-crd" "$dl_dir" "$@"
@@ -320,13 +313,10 @@ get_dl_dir() {
 	# if dl_dir is none set to current directory
 	[ "$dl_dir" == "" ] && dl_dir="$DEFAULT_DOWNLOAD"
 	if [ ! -d "$dl_dir" ]; then
-		mkdir -p "$dl_dir" || seppuku "Error creating directory: $dl_dir"
+		mkdir -p "$dl_dir" || die "Error creating directory: $dl_dir"
 	fi
 }
 
-########
-# Main #
-########
 main() {
 	((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
 	((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
@@ -340,31 +330,18 @@ main() {
 
 	case "$selection" in
 		1.)
-			# ---------------------------------------------------------------------------
-			# streaming
-			# ---------------------------------------------------------------------------
 			lg "Streaming mode"
 			run
 			;;
 		2.)
-			# ---------------------------------------------------------------------------
-			# download
-			# ---------------------------------------------------------------------------
 			lg "Download anime"
 			get_dl_dir && run -d "$dl_dir"
 			;;
 		3.)
-
-			# ---------------------------------------------------------------------------
-			# continue
-			# ---------------------------------------------------------------------------
 			lg "Continue watching"
 			run -H
 			;;
 		4.)
-			# ---------------------------------------------------------------------------
-			# play
-			# ---------------------------------------------------------------------------
 			lg "Play from file selected"
 			IS_PLAY_FROM_FILE=1
 			span=$(printf '%s\n%s\n' "$(generate_span "Provide a path to a valid directory, or choose from the list below")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
@@ -379,7 +356,7 @@ main() {
 			play_dir="${play_dir%% }"
 			lg "Play dir: $play_dir"
 			if [ -z "$play_dir" ]; then
-				mkdir -p "$DEFAULT_DOWNLOAD" || seppuku "error creating default download directory"
+				mkdir -p "$DEFAULT_DOWNLOAD" || die "error creating default download directory"
 				run -f"$DEFAULT_DOWNLOAD"
 			else
 				run -f"$play_dir"
@@ -391,9 +368,9 @@ main() {
 			IS_SYNC=1
 			roficmd="rofi -dpi $DPI -dmenu -config $CFG_FILE -l 0 -p"
 			username=$($roficmd "Enter the username of the remote user:" -theme-str 'window {width: 45%;}')
-			[ -z "$username" ] && seppuku "No username provided... exiting"
+			[ -z "$username" ] && die "No username provided... exiting"
 			host=$($roficmd "Enter the host for the remote machine (eg 192.168.1.99):" -theme-str 'window {width: 45%;}')
-			[ -z "$host" ] && seppuku "No host provided... exiting"
+			[ -z "$host" ] && die "No host provided... exiting"
 			port=$($roficmd "Enter in the ssh port for remote machine or leave blank for default [22]:" -theme-str 'window {width: 45%;}')
 			[ -z "$port" ] && port=22
 			keypath=$($roficmd "Enter path to private key (leave blank if not needed or if unsure):" -theme-str 'window {width: 45%;}')
@@ -406,10 +383,7 @@ main() {
 			fi
 			;;
 		6.)
-			# -----------------------------------------------------------------
-			# choose theme
-			# -----------------------------------------------------------------
-			[ -z "$THEMES" ] && seppuku "No themes provided... exiting"
+			[ -z "$THEMES" ] && die "No themes provided... exiting"
 			theme_idx="$(get_theme_idx)"
 			lg "Theme index: $theme_idx"
 			lg "NUM THEMES: $NUM_THEMES"
@@ -422,9 +396,6 @@ main() {
 			main
 			;;
 		7.)
-			# -----------------------------------------------------------------
-			# get out
-			# -----------------------------------------------------------------
 			quit
 			;;
 		*)
@@ -437,9 +408,9 @@ parse_args "$@"
 shift $((OPTIND - 1))
 if [ $# -gt 0 ]; then
 	check_flags "$*"
-	if [ "$IS_DOWNLOAD" -eq 0 ]; then
+	if ((IS_DOWNLOAD == 0)); then
 		run "$*"
-	elif [ "$IS_DOWNLOAD" -eq 1 ]; then
+	elif ((IS_DOWNLOAD == 1)); then
 		get_dl_dir && run -d "$dl_dir" "$*"
 	fi
 else
