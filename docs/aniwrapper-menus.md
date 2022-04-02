@@ -28,9 +28,6 @@ The next menu is where you select the anime to watch from a narrowed down list o
 
 </div>
 
-> Half-episodes (ex. saihate-no-paladin episode 7.5) are selectable, however they will not show up in the episodes list.
-> To select half episodes add 'h' to the beginning for episodes like '7.5' -> 'h7' to select saihate-no-paladin episode 7.5
-
 Here you will be prompted to select the episode(s) to download
 
 Multiple episodes can be downloaded by giving the episode range like so

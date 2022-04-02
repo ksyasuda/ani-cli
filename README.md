@@ -156,10 +156,6 @@ aniwrapper -t <theme> # Choose rofi theme from presets
 aniwrapper -T <path_to_config> # Specify custom rofi config
 aniwrapper -v # Enable verbose logging
 ```
-
-> Half-episodes (ex. saihate-no-paladin episode 7.5) are selectable, however they will not show up in the episodes list.
-> To select half episodes add 'h' to the beginning for episodes like '7.5' -> 'h7' to select saihate-no-paladin episode 7.5
-
 See [aniwrapper menus](docs/aniwrapper-menus.md) for more information about the menus used in the following options
 
 ### Option 1: Streaming
