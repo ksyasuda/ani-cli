@@ -92,10 +92,10 @@ Install the Dependencies
 
 ```sh
 # Arch
-pacman -S --needed aria2 curl grep mpv rofi sed sqlite3
+pacman -S --needed aria2 curl ffmpeg grep mpv rofi sed sqlite3
 
 # Debian
-apt install aria2 curl grep mpv rofi sed sqlite3
+apt install aria2 curl ffmpeg grep mpv rofi sed sqlite3
 ```
 
 Clone and switch into the repo directory
@@ -272,7 +272,7 @@ ani-cli -s
 ani-cli -q <best (default)|1080p|720p|480p|360p|worst>
 
 # choose rofi theme from presets
-ani-cli -t <aniwrapper (default)|dracula|fancy|flamingo|material|nord|onedark>
+ani-cli -t <aniwrapper (default)|dracula|fancy|material|monokai|nord|nord2|onedark>
 
 # Specify starting directory for play_from_file mode (does not work with -c)
 ani-cli -f <starting_directory>
