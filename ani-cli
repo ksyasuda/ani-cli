@@ -969,13 +969,11 @@ main() {
 				d)
 					get_dl_dir
 					is_download=1
-					break
 					;;
 				D)
 					get_dl_dir
 					set_video_quality
 					is_download=1
-					break
 					;;
 				q)
 					break
