@@ -509,14 +509,13 @@ search_anime() {
 process_search() {
 	search_results=$(search_anime "$@")
 	while [ -z "$search_results" ]; do
-		lg "No results found for $*" 1> /dev/stderr
 		extended_search_results=$(extended_search "$@")
 		if [ -n "$extended_search_results" ]; then
 			extended_search_results=$(printf '%s' "$extended_search_results" | head -n 1)
 			search_results=$(search_anime "$extended_search_results")
 			break
 		fi
-		err 'No search results found'
+		err 'No search results found for '"$*"''
 		if [ "$IS_ROFI" -eq 1 ]; then
 			stmt="SELECT id || '. ' || anime_name FROM search_history ORDER BY search_date DESC;"
 			msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
@@ -528,6 +527,7 @@ process_search() {
 			prompt "Search Anime"
 			read -r query
 		fi
+		[ -z "$query" ] && return 1
 		search_results=$(search_anime "$query")
 	done
 	lg "Search Results: $search_results"
@@ -740,6 +740,7 @@ stream() {
 	if check_db "search" "$anime_id"; then
 		lg "$anime_id has been searched before"
 		search_results=$(process_search $query) # want word splitting to account for both input cases
+		[ -z "$search_results" ] && die
 		if ! anime_selection "$search_results"; then
 			die "No anime selection found"
 		fi
