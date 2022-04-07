@@ -749,7 +749,11 @@ stream() {
 		insert_history "search" "$anime_id" &
 		search_eps "$anime_id"
 	fi
-	episode_selection
+	if (((FIRST_EP_NUMBER == LAST_EP_NUMBER && FIRST_EP_NUMBER == 1))); then
+		ep_choice_start=1
+	else
+		episode_selection
+	fi
 }
 
 parse_args() {
