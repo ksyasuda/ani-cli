@@ -737,17 +737,17 @@ stream() {
 	[ -z "$anime_id" ] && die "No anime selected or queried"
 	searched=0
 	lg "Checking if anime: $anime_id has been searched before..."
-	if check_db "search" "$anime_id"; then
+	if ! check_db "search" "$anime_id"; then
 		lg "$anime_id has been searched before"
+		selection_id="$anime_id"
+		insert_history "search" "$anime_id" &
+		search_eps "$anime_id"
+	else
 		search_results=$(process_search $query) # want word splitting to account for both input cases
 		[ -z "$search_results" ] && die
 		if ! anime_selection "$search_results"; then
 			die "No anime selection found"
 		fi
-	else
-		selection_id="$anime_id"
-		insert_history "search" "$anime_id" &
-		search_eps "$anime_id"
 	fi
 	if (((FIRST_EP_NUMBER == LAST_EP_NUMBER && FIRST_EP_NUMBER == 1))); then
 		ep_choice_start=1
