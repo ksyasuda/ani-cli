@@ -104,8 +104,8 @@ download() {
 
 decrypt_link() {
 	lg "BEGIN: decrypt_link()" > /dev/stderr
-	secret_key='3633393736383832383733353336383139363339393232303833323735393037'
-	iv='34373836343433393639343138323637'
+	secret_key='3534323530333734323633343039393638353434373737363735393932343330'
+	iv='39333130363136353733343634303435'
 	ajax_url="https://goload.pro/encrypt-ajax.php"
 	id=$(printf "%s" "$1" | sed -nE 's/.*id=(.*)&title.*/\1/p')
 	ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" | base64)
