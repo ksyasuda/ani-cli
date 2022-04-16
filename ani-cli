@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASE_URL="https://gogoplay4.com"
+BASE_URL="https://goload.pro"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
 ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
@@ -104,13 +104,15 @@ download() {
 
 decrypt_link() {
 	lg "BEGIN: decrypt_link()" > /dev/stderr
-	secret_key='3534323530333734323633343039393638353434373737363735393932343330'
-	iv='39333130363136353733343634303435'
-	ajax_url="https://goload.pro/encrypt-ajax.php"
+	ajax_url="$BASE_URL/encrypt-ajax.php"
 	id=$(printf "%s" "$1" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+	resp=$(curl -s "$1")
+	secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+	iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+	second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 	ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" | base64)
-	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "$ajax_url" -d "id=$ajax" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-	printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' |
+	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "$ajax_url" -d "id=$ajax" -d "alias=$id" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+	printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$second_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' |
 		grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*'
 	lg "END: decrypt_link()" > /dev/stderr
 }
