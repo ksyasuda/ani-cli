@@ -2,6 +2,7 @@
 
 BASE_URL="https://goload.pro"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
+URLFILE="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper/ani-url"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
 ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
 ROFI_THEME="aniwrapper.rasi"
@@ -97,7 +98,7 @@ download() {
 			aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$5" -o "${4}" --download-result=hide
 			;;
 		*)
-			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$5/${4}"
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -map "0:p:$((idx - 1))?" -c copy "$5/${4}"
 			;;
 	esac
 }
@@ -117,28 +118,64 @@ decrypt_link() {
 }
 
 # chooses the link for the set quality
-get_video_quality() {
+get_video_link() {
 	dpage_url=$1
 	video_links=$(decrypt_link "$dpage_url")
+	lg "Quality: $quality" > /dev/stderr
+	if printf '%s' "$video_links" | grep -q "mp4"; then
+		video_url=$(get_video_quality_mp4 "$video_links")
+		idx=1
+	else
+		video_url="$video_links"
+		get_video_quality_m3u8
+	fi
+}
+
+get_video_quality_mp4() {
+	lg "BEGIN: get_video_quality_mp4()" > /dev/stderr
 	case $quality in
 		best)
-			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
 			;;
 
 		worst)
-			video_link=$(printf '%s' "$video_links" | head -n 1)
+			video_url=$(printf '%s' "$1" | head -n 1)
 			;;
 
 		*)
-			video_link=$(printf '%s' "$video_links" | grep -i "${quality}" | head -n 1)
-			if [ -z "$video_link" ]; then
+			video_url=$(printf '%s' "$1" | grep -i "${quality}" | head -n 1)
+			if [ -z "$video_url" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
 				quality=best
-				video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
 			fi
 			;;
 	esac
-	printf '%s' "$video_link"
+	lg "END: get_video_quality_mp4()" > /dev/stderr
+	printf '%s' "$video_url"
+}
+
+get_video_quality_m3u8() {
+	lg "BEGIN: get_video_quality_m3u8()" > /dev/stderr
+	case $quality in
+		worst | 360p)
+			idx=2
+			;;
+		480p)
+			idx=3
+			;;
+		720p)
+			idx=4
+			;;
+		1080p | best)
+			idx=5
+			;;
+		*)
+			idx=5
+			;;
+	esac
+	lg "END: get_video_quality_m3u8() -> idx = $idx" > /dev/stderr
+	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx - 1))
 }
 
 # sets the video quality
@@ -543,12 +580,17 @@ extended_search() {
 		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
 }
 
+#update main url to latest one
+updateurl() {
+	prev_url=$(printf "%s" "$BASE_URL" | cut -d"/" -f3)
+	new_url=$(printf "%s" "$dpage_link" | cut -d"/" -f3)
+	[ "$prev_url" != "$new_url" ] && printf "%s" "$new_url" > "$URLFILE"
+}
+
 check_episode() {
 	data=$(curl -s "$BASE_URL/videos/$1")
-	if [ "$data" != "404" ]; then
-		del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
-		printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
-	fi
+	del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
+	[ -n "$del" ] && printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
 }
 
 search_eps() {
@@ -680,7 +722,7 @@ open_episode() {
 	if [[ -z "$dpage_link" ]]; then
 		die "Could not get download page link"
 	else
-		video_url=$(get_video_quality "$dpage_link")
+		get_video_link "$dpage_link"
 	fi
 	lg "Download link: $dpage_link"
 	lg "Video url: $video_url"
@@ -689,7 +731,7 @@ open_episode() {
 		kill "$PID" > /dev/null 2>&1
 		case "$PLAYER_FN" in
 			mpv)
-				nohup "$PLAYER_FN" --referrer="$dpage_link" "$video_url" --force-media-title="aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
+				nohup "$PLAYER_FN" --vid="$idx" --referrer="$dpage_link" "$video_url" --force-media-title="aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
 				;;
 			vlc)
 				nohup "$PLAYER_FN" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
@@ -997,3 +1039,4 @@ dep_ch "$PLAYER_FN" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c" "openssl
 parse_args "$@"
 shift $((OPTIND - 1))
 main "$@"
+updateurl &
