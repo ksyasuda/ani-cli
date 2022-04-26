@@ -678,7 +678,11 @@ episode_selection() {
 		# Get Watch History for $anime_id as comma separated list
 		watch_history=""
 		while read -r i; do
-			[[ -z "$watch_history" ]] && watch_history="$((--i))" || watch_history="$watch_history, $((--i))"
+			if ((FIRST_EP_NUMBER == 0)); then
+				[[ -z "$watch_history" ]] && watch_history="$((i))" || watch_history="$watch_history, $((i))"
+			else
+				[[ -z "$watch_history" ]] && watch_history="$((--i))" || watch_history="$watch_history, $((--i))"
+			fi
 		done < <(run_stmt "$stmt")
 		lg "Episode watch history -> $watch_history"
 
