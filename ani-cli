@@ -794,7 +794,7 @@ stream() {
 			die "No anime selection found"
 		fi
 	fi
-	if (((FIRST_EP_NUMBER == LAST_EP_NUMBER && FIRST_EP_NUMBER == 1))); then
+	if (((FIRST_EP_NUMBER == LAST_EP_NUMBER && (FIRST_EP_NUMBER == 0 || FIRST_EP_NUMBER == 1)))); then
 		ep_choice_start=1
 	else
 		episode_selection
