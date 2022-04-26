@@ -706,7 +706,7 @@ episode_selection() {
 		read -r ep_choice_start ep_choice_end
 		[[ -z "$ep_choice_end" ]] && ep_choice_end="$ep_choice_start"
 	fi
-	if (((ep_choice_start <= 0 || ep_choice_start > LAST_EP_NUMBER) || ep_choice_end < ep_choice_start || ep_choice_end > LAST_EP_NUMBER)); then
+	if (((ep_choice_start < 0 || ep_choice_start > LAST_EP_NUMBER) || ep_choice_end < ep_choice_start || ep_choice_end > LAST_EP_NUMBER)); then
 		die "Invalid episode/range entered: ep_start -> $ep_choice_start | ep_end -> $ep_choice_end"
 	fi
 }

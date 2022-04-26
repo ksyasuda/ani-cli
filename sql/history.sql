@@ -24,7 +24,6 @@ CREATE TABLE IF NOT EXISTS watch_history (
     episode_number integer NOT NULL,
     watch_date DATETIME NOT NULL,
     CHECK (LENGTH(anime_name) > 0),
-    CHECK (episode_number > 0),
     UNIQUE (anime_name, episode_number, watch_date)
 );
 
