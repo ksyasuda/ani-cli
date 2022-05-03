@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+AGENT="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
 BASE_URL="https://goload.pro"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 URLFILE="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper/ani-url"
@@ -86,7 +87,7 @@ check_input() {
 get_dpage_link() {
 	anime_id=$1
 	ep_no=$2
-	curl -s "$BASE_URL/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
+	curl -A "$AGENT" -s "$BASE_URL/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
 		sed 's/^/https:/g'
 }
 
@@ -94,62 +95,69 @@ get_dpage_link() {
 # $1: dpage_link | $2: video_url | $3: anime_id | $4: episode | $5: download_dir
 download() {
 	case "$2" in
-		*mp4*)
-			aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$5" -o "${4}" --download-result=hide
+		*m3u8*)
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -map "0:p:$((idx - 1))?" -c copy "$5/${4}"
 			;;
 		*)
-			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -map "0:p:$((idx - 1))?" -c copy "$5/${4}"
+			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$5" -o "${4}" --download-result=hide
 			;;
 	esac
 }
 
-decrypt_link() {
-	lg "BEGIN: decrypt_link()" > /dev/stderr
-	ajax_url="$BASE_URL/encrypt-ajax.php"
-	id=$(printf "%s" "$1" | sed -nE 's/.*id=(.*)&title.*/\1/p')
-	resp=$(curl -s "$1")
-	secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-	iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-	second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-	token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
-	ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" | base64)
-	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-	printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$second_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' |
-		grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*'
-	lg "END: decrypt_link()" > /dev/stderr
-}
+generate_link() {
+	lg "BEGIN: generate_link()" > /dev/stderr
+	lg "ARG: $1" > /dev/stderr
+	case "$1" in
+		1)
+			refr=$(printf "%s" "$links" | grep "mp4upload")
+			[ -z "$refr" ] || video_links="$(curl -A "$AGENT" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
+			;;
+		2)
+			dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
+			refr="https://dood.ws/d/$dood_id"
+			[ -z "$dood_id" ] || dood_link=$(curl -A "$AGENT" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
+			sleep 0.5
+			[ -z "$dood_link" ] || video_links="$(curl -A "$AGENT" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")"
+			;;
 
-# chooses the link for the set quality
-get_video_link() {
-	dpage_url=$1
-	video_links=$(decrypt_link "$dpage_url")
-	lg "Quality: $quality" > /dev/stderr
-	if printf '%s' "$video_links" | grep -q "mp4"; then
-		video_url=$(get_video_quality_mp4 "$video_links")
-		idx=1
-	else
-		video_url="$video_links"
-		get_video_quality_m3u8
-	fi
+		3)
+			fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
+			refr="https://fembed-hd.com/v/$fb_id"
+			[ -z "$fb_id" ] || video_links="$(curl -A "$AGENT" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
+			;;
+		*)
+			ajax_url="$BASE_URL/encrypt-ajax.php"
+			refr="$dpage_url"
+			id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+			secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
+			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" | base64)
+			data=$(curl -A "$AGENT" -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+			video_links="$(printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$second_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')"
+			;;
+	esac
+	lg "END: generate_link()" > /dev/stderr
 }
 
 get_video_quality_mp4() {
 	lg "BEGIN: get_video_quality_mp4()" > /dev/stderr
 	case $quality in
 		best)
-			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
+			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1 | cut -d">" -f2)
 			;;
 
 		worst)
-			video_url=$(printf '%s' "$1" | head -n 1)
+			video_url=$(printf '%s' "$1" | head -n 1 | cut -d">" -f2)
 			;;
 
 		*)
-			video_url=$(printf '%s' "$1" | grep -i "${quality}" | head -n 1)
+			video_url=$(printf '%s' "$1" | grep -i "${quality}p" | head -n 1 | cut -d">" -f2)
 			if [ -z "$video_url" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
 				quality=best
-				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
+				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1 | cut -d">" -f2)
 			fi
 			;;
 	esac
@@ -159,6 +167,7 @@ get_video_quality_mp4() {
 
 get_video_quality_m3u8() {
 	lg "BEGIN: get_video_quality_m3u8()" > /dev/stderr
+	m3u8_links_count=$(curl -A "$AGENT" -s --referer "$dpage_link" "$video_url" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d' | wc -w)
 	case $quality in
 		worst | 360p)
 			idx=2
@@ -169,21 +178,49 @@ get_video_quality_m3u8() {
 		720p)
 			idx=4
 			;;
-		1080p | best)
-			idx=5
-			;;
-		*)
-			idx=5
+		1080p | best | *)
+			idx="auto"
 			;;
 	esac
+	if [ "$idx" -lt 1 ] 2> /dev/null || [ "$idx" -gt "$m3u8_links_count" ] 2> /dev/null; then
+		err "Current video quality is not available (defaulting to best quality)"
+		idx="auto"
+	fi
 	lg "END: get_video_quality_m3u8() -> idx = $idx" > /dev/stderr
-	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx - 1))
+	[ "$idx" != "auto" ] 2> /dev/null && printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx - 1))
+}
+
+# chooses the link for the set quality
+get_video_link() {
+	dpage_url="$1"
+	resp=$(curl -A "$AGENT" -s "$1")
+	if [ "$is_download" -eq 1 ]; then
+		i=1
+		[ "$quality" != "best" ] && i=3
+	else
+		i=4
+	fi
+	links=$(printf "%s" "$resp" | sed -nE 's/.*data-status="1".*data-video="(.*)">.*/\1/p')
+	while [ -z "$video_links" ]; do
+		generate_link "$i"
+		[ "$is_download" -eq 1 ] && i=$((i + 1)) || i=$((i - 1))
+	done
+	if printf '%s' "$video_links" | grep -q "m3u8"; then
+		is_m3u8=1
+		video_url="$video_links"
+		get_video_quality_m3u8
+	else
+		is_m3u8=0
+		lg "VIDEO_LINKS: $video_links" > /dev/stderr
+		video_url=$(get_video_quality_mp4 "$video_links")
+		idx=1
+	fi
 }
 
 # sets the video quality
 set_video_quality() {
 	if ((IS_ROFI == 1)); then
-		qualities="1. best|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
+		((is_m3u8 == 1)) && qualities="1. best|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst" || qualities="1. best|2. worst"
 		while IFS='|' read -ra quals; do
 			for q in "${quals[@]}"; do
 				if [[ "$(awk '{ print $NF }' <<< "$q")" == "$quality" ]]; then
@@ -198,7 +235,7 @@ set_video_quality() {
 			-p "Choose quality:" -window-title 'aniwrapper' -selected-row "$cur_quality" <<< "$qualities")
 		quality=$(awk '{ print $2 }' <<< "$choice")
 	else
-		qualities="best|1080p|720p|480p|360p|worst"
+		((is_m3u8 == 1)) && qualities="best|1080p|720p|480p|360p|worst" || qualities="best|worst"
 		prompt "Choose quality [$qualities]"
 		read -r quality
 		while [[ ! "$quality" =~ ($qualities) ]]; do
@@ -716,8 +753,8 @@ episode_selection() {
 }
 
 open_episode() {
-	anime_id=$1
-	episode=$2
+	anime_id="$1"
+	episode="$2"
 	ddir="$3"
 
 	# Don't update watch history if downloading episode
@@ -725,22 +762,23 @@ open_episode() {
 
 	lg "Getting data for episode $episode"
 	dpage_link=$(get_dpage_link "$anime_id-episode-" "$episode")
+	lg "dpage_link: $dpage_link"
 	if [[ -z "$dpage_link" ]]; then
 		die "Could not get download page link"
 	else
 		get_video_link "$dpage_link"
 	fi
-	lg "Download link: $dpage_link"
 	lg "Video url: $video_url"
 
 	if [ "$is_download" -eq 0 ]; then
 		kill "$PID" > /dev/null 2>&1
+		lg "PLAYING: $video_url with player: $PLAYER_FN"
 		case "$PLAYER_FN" in
 			mpv)
-				nohup "$PLAYER_FN" --vid="$idx" --referrer="$dpage_link" "$video_url" --force-media-title="aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
+				nohup "$PLAYER_FN" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
 				;;
 			vlc)
-				nohup "$PLAYER_FN" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+				nohup "$PLAYER_FN" --play-and-exit --http-referrer="$refr" "$video_url" > /dev/null 2>&1 &
 				;;
 			*)
 				nohup "$PLAYER_FN" "$video_url" > /dev/null 2>&1 & # try to open with just the video url
@@ -759,13 +797,13 @@ open_episode() {
 		{
 			mkdir -p "$dl_dir" || die "Could not create directory"
 			if command -v "notify-send" > /dev/null; then
-				if download "$dpage_link" "$video_url" "$anime_id" "$episode.mp4" "$dl_dir"; then
+				if download "$refr" "$video_url" "$anime_id" "$episode.mp4" "$dl_dir"; then
 					((SILENT != 1)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode"
 				else
 					((SILENT != 1)) && notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
 				fi
 			else
-				if download "$dpage_link" "$video_url" "$anime_id" "$episode.mp4" "$dl_dir"; then
+				if download "$refr" "$video_url" "$anime_id" "$episode.mp4" "$dl_dir"; then
 					((SILENT != 1)) && inf "Download complete for" "${anime_id//-/ } - Episode $episode"
 				else
 					((SILENT != 1)) && inf "Download failed for" "${anime_id//-/ } - Episode $episode, please retry or check your internet connection"
@@ -806,10 +844,10 @@ stream() {
 }
 
 parse_args() {
+	download_dir="."
 	scrape=query
 	quality=best
 	is_download=0
-	download_dir="."
 	is_resume=0
 	while getopts 'd:Hsvq:cf:t:T:CQ:D:Sp:r' OPT; do
 		case "$OPT" in
