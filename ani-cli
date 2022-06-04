@@ -811,7 +811,7 @@ open_episode() {
 		if ((is_autoplay == 1)); then
 			lg "Waiting for video to finish playing..."
 			wait "$PID"
-			if continue_watching; then
+			if ((episode + 1 <= LAST_EP_NUMBER)) && continue_watching; then
 				open_episode "$anime_id" "$((episode + 1))" "$ddir"
 			else
 				exit 0
