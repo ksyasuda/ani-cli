@@ -756,10 +756,11 @@ episode_selection() {
 
 continue_watching() {
 	if ((IS_ROFI == 1)); then
+		msg="$(printf '%s\n%s' "$(generate_span "Anime: $anime_id")" "$(generate_span "Next episode: $((episode + 1))")")"
 		choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
 			-theme-str 'listview {columns: 1;} window {width: 25%;}' \
-			-i -l 2 -no-custom -sep '|' -a 0 -mesg "$(generate_span "Next episode: $((episode + 1))")" \
-			-p "Continue watching $selection_id?:" -window-title 'aniwrapper' <<< "Yes|No")
+			-i -l 2 -no-custom -sep '|' -a 0 -mesg "$msg" \
+			-p "Continue watching?" -window-title 'aniwrapper' <<< "Yes|No")
 	else
 		inf "Continue watching $selection_id?"
 		prompt "Next episode -> $((episode + 1)) [y/n]"
@@ -808,6 +809,7 @@ open_episode() {
 			((SILENT != 1)) && inf "Playing $anime_id - Episode $episode"
 		fi
 		if ((is_autoplay == 1)); then
+			lg "Waiting for video to finish playing..."
 			wait "$PID"
 			if continue_watching; then
 				open_episode "$anime_id" "$((episode + 1))" "$ddir"
