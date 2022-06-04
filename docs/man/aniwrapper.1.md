@@ -12,7 +12,7 @@ aniwrapper - A rofi wrapper around ani-cli: a command-line tool to stream, downl
 
 # SYNOPSIS
 
-**aniwrapper** [-dhpqrSv] [-t _theme_ | -T _config_path_] [_query_]\
+**aniwrapper** [-adhpqrSv] [-t _theme_ | -T _config_path_] [_query_]\
 **aniwrapper** -f _directory_path_ [-t _theme_ | -T _config_path_] [-pSv] [_query_]\
 **aniwrapper** -c [-dhpqrSv] [_query_]\
 **aniwrapper** -Q _query_\
@@ -31,6 +31,9 @@ Defaults:
 - **rofi** enabled
 - aniwrapper.rasi theme
 - best quality
+
+**-a**
+: Enable autoplay in streaming mode
 
 **-c**
 : Enable command-line mode (disable **rofi**)

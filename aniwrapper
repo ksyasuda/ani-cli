@@ -36,12 +36,13 @@ help_text() {
 		printf "%s\n" "$line"
 	done <<< "
 Usage:
-	aniwrapper [-dhpqSv] [-t <theme> | -T <config_path>] [<query>]
+	aniwrapper [-adhpqSv] [-t <theme> | -T <config_path>] [<query>]
 	aniwrapper -f <directory_path> [-t <theme> | -T <config_path>] [-pSv] [<query>]\
 	aniwrapper -c [-dhpqSv] [<query>]
 	aniwrapper -Q <query>
 	aniwrapper -C
 Options:
+    -a  enable autoplay
 	-c  enable command-line mode (rofi disabled)
 	-C  connect to history database
 	-d  download episode in command-line mode
