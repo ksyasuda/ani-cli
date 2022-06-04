@@ -16,6 +16,7 @@ SUPPORTED_PLAYERS="mpv|vlc"
 QUALITY=best
 PLAYER_FN=mpv
 DPI=96
+IS_AUTOPLAY=0
 GET_QUALITY=0
 IS_CUSTOM_THEME=0
 IS_DOWNLOAD=0
@@ -87,23 +88,26 @@ run() {
 	if ((IS_PLAY_FROM_FILE == 0 && IS_SYNC == 0 && GET_QUALITY == 1)); then
 		get_quality
 	fi
+	if ((IS_AUTOPLAY)); then
+		CMD="$CMD -a"
+	fi
 	if ((SILENT == 1)); then
 		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -Sq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
+			$CMD -D"$DPI" -Sq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
 		else
-			"$CMD" -D"$DPI" -Sq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
+			$CMD -D"$DPI" -Sq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
 		fi
 	elif ((VERBOSE == 1)); then
 		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -vq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
+			$CMD -D"$DPI" -vq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
 		else
-			"$CMD" -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
+			$CMD -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
 		fi
 	else
 		if ((IS_CUSTOM_THEME == 0)); then
-			"$CMD" -D"$DPI" -q "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
+			$CMD -D"$DPI" -q "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
 		else
-			"$CMD" -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
+			$CMD -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
 		fi
 	fi
 }
@@ -168,8 +172,11 @@ set_theme() {
 }
 
 parse_args() {
-	while getopts 'cCdD:f:hpqQ:rSt:T:v' OPT; do
+	while getopts 'acCdD:f:hpqQ:rSt:T:v' OPT; do
 		case "$OPT" in
+			a)
+				IS_AUTOPLAY=1
+				;;
 			c)
 				IS_ROFI=0
 				lg "Command-line (ani-cli) mode set"
@@ -267,6 +274,9 @@ check_flags() {
 	if ((VERBOSE == 1 && SILENT == 1)); then
 		die "verbose and silent options cannot be used together"
 	fi
+	if ((IS_DOWNLOAD == 1 && IS_AUTOPLAY == 1)); then
+		die "autoplay and download options cannot be used together"
+	fi
 	if ((IS_DOWNLOAD == 0 && IS_ALTERNATE_PLAYER == 1)); then
 		get_player
 		lg "SELECTED PLAYER FN -> $PLAYER_FN"
@@ -347,7 +357,7 @@ main() {
 			span=$(printf '%s\n%s\n' "$(generate_span "Provide a path to a valid directory, or choose from the list below")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
 			play_dir=$(
 				rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
-					-l 12 -mesg "$span" -p "Enter path to starting directory:" \
+					-i -l 12 -mesg "$span" -p "Enter path to starting directory:" \
 					-async-pre-read 24 -matching 'fuzzy' -window-title 'aniwrapper' \
 					-sort -sorting-method fzf \
 					< <(sqlite3 -noheader -list "$CFG_DIR/history.sqlite3" <<< "SELECT directory FROM file_history WHERE filename = 'DIRECTORY' ORDER BY WATCH_DATE DESC;")
