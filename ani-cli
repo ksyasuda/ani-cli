@@ -776,7 +776,6 @@ open_episode() {
 	episode="$2"
 	ddir="$3"
 
-	# Don't update watch history if downloading episode
 	insert_history "watch" "$anime_id" "$episode"
 
 	lg "Getting data for episode $episode"
@@ -1110,9 +1109,7 @@ main() {
 	if ((is_download == 1)); then
 		lg "Finished downloading episodes: $episodes for $selection_id... exiting"
 		exit 0
-	fi
-
-	if ((is_autoplay == 0)); then
+	elif ((is_autoplay == 0)); then
 		show_menu
 	fi
 }
