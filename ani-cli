@@ -763,8 +763,9 @@ continue_watching() {
 			-p "Continue watching?" -window-title 'aniwrapper' <<< "Yes|No")
 	else
 		inf "Continue watching $selection_id?"
-		prompt "Next episode -> $((episode + 1)) [y/n]"
+		prompt "Next episode -> $((episode + 1)) [Y/n]"
 		read -r choice
+		[ -z "$choice" ] && choice="y"
 	fi
 
 	[[ "$choice" =~ ^(y|Y|Yes)$ ]] && return 0 || return 1
