@@ -754,12 +754,28 @@ episode_selection() {
 	fi
 }
 
+continue_watching() {
+	if ((IS_ROFI == 1)); then
+		msg="$(printf '%s\n%s' "$(generate_span "Anime: $anime_id")" "$(generate_span "Next episode: $((episode + 1))")")"
+		choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
+			-theme-str 'listview {columns: 1;} window {width: 25%;}' \
+			-i -l 2 -no-custom -sep '|' -a 0 -mesg "$msg" \
+			-p "Continue watching?" -window-title 'aniwrapper' <<< "Yes|No")
+	else
+		inf "Continue watching $selection_id?"
+		prompt "Next episode -> $((episode + 1)) [Y/n]"
+		read -r choice
+		[ -z "$choice" ] && choice="y"
+	fi
+
+	[[ "$choice" =~ ^(y|Y|Yes)$ ]] && return 0 || return 1
+}
+
 open_episode() {
 	anime_id="$1"
 	episode="$2"
 	ddir="$3"
 
-	# Don't update watch history if downloading episode
 	insert_history "watch" "$anime_id" "$episode"
 
 	lg "Getting data for episode $episode"
@@ -791,6 +807,15 @@ open_episode() {
 			((SILENT != 1)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Playing $anime_id - Episode $episode"
 		else
 			((SILENT != 1)) && inf "Playing $anime_id - Episode $episode"
+		fi
+		if ((is_autoplay == 1)); then
+			lg "Waiting for video to finish playing..."
+			wait "$PID"
+			if ((episode + 1 <= LAST_EP_NUMBER)) && continue_watching; then
+				open_episode "$anime_id" "$((episode + 1))" "$ddir"
+			else
+				exit 0
+			fi
 		fi
 	else
 		lg "Downloading episode $episode ..."
@@ -851,8 +876,12 @@ parse_args() {
 	quality=best
 	is_download=0
 	is_resume=0
-	while getopts 'd:Hsvq:cf:t:T:CQ:D:Sp:r' OPT; do
+	is_autoplay=0
+	while getopts 'ad:Hsvq:cf:t:T:CQ:D:Sp:r' OPT; do
 		case "$OPT" in
+			a)
+				is_autoplay=1
+				;;
 			d)
 				is_download=1
 				download_dir="$OPTARG"
@@ -936,6 +965,71 @@ parse_args() {
 	done
 }
 
+show_menu() {
+	if ((SILENT != 1)); then
+		episode=${ep_choice_end:-$ep_choice_start}
+		choice=''
+		while :; do
+			inf "Currently playing $selection_id episode" "${episode// /}/$LAST_EP_NUMBER"
+			((episode != LAST_EP_NUMBER)) && menu_line_alternate "next episode" "n"
+			((episode != FIRST_EP_NUMBER)) && menu_line_alternate "previous episode" "p"
+			((FIRST_EP_NUMBER != LAST_EP_NUMBER)) && menu_line_alternate "select episode" "s"
+			menu_line_alternate "replay current episode" "r"
+			menu_line_alternate "search for another anime" "a"
+			menu_line_alternate "download current episode" "d"
+			menu_line_alternate "download current episode (with quality selection)" "D"
+			menu_line_alternate "select video quality (current: $quality)" "Q"
+			menu_line_strong "exit" "q"
+			prompt "Enter choice"
+			read -r choice
+			case $choice in
+				n)
+					episode=$((episode + 1))
+					;;
+				p)
+					episode=$((episode - 1))
+					;;
+
+				s)
+					episode_selection
+					episode=$ep_choice_start
+					;;
+
+				r)
+					episode=$((episode))
+					;;
+				a)
+					stream
+					episode=$ep_choice_start
+					lg "NEW EPISODE: $selection_id - $episode"
+					;;
+				Q)
+					set_video_quality
+					episode=$((episode))
+					;;
+
+				d)
+					get_dl_dir
+					is_download=1
+					;;
+				D)
+					get_dl_dir
+					set_video_quality
+					is_download=1
+					;;
+				q)
+					break
+					;;
+
+				*)
+					die "invalid choice"
+					;;
+			esac
+			open_episode "$selection_id" "$episode" "$download_dir"
+		done
+	fi
+}
+
 main() {
 	case $scrape in
 		query)
@@ -1012,72 +1106,11 @@ main() {
 		open_episode "$selection_id" "$ep" "$download_dir"
 	done
 
-	if [[ "$is_download" -eq 1 ]]; then
+	if ((is_download == 1)); then
 		lg "Finished downloading episodes: $episodes for $selection_id... exiting"
 		exit 0
-	fi
-
-	if ((SILENT != 1)); then
-		episode=${ep_choice_end:-$ep_choice_start}
-		choice=''
-		while :; do
-			inf "Currently playing $selection_id episode" "${episode// /}/$LAST_EP_NUMBER"
-			((episode != LAST_EP_NUMBER)) && menu_line_alternate "next episode" "n"
-			((episode != FIRST_EP_NUMBER)) && menu_line_alternate "previous episode" "p"
-			((FIRST_EP_NUMBER != LAST_EP_NUMBER)) && menu_line_alternate "select episode" "s"
-			menu_line_alternate "replay current episode" "r"
-			menu_line_alternate "search for another anime" "a"
-			menu_line_alternate "download current episode" "d"
-			menu_line_alternate "download current episode (with quality selection)" "D"
-			menu_line_alternate "select video quality (current: $quality)" "Q"
-			menu_line_strong "exit" "q"
-			prompt "Enter choice"
-			read -r choice
-			case $choice in
-				n)
-					episode=$((episode + 1))
-					;;
-				p)
-					episode=$((episode - 1))
-					;;
-
-				s)
-					episode_selection
-					episode=$ep_choice_start
-					;;
-
-				r)
-					episode=$((episode))
-					;;
-				a)
-					stream
-					episode=$ep_choice_start
-					lg "NEW EPISODE: $selection_id - $episode"
-					;;
-				Q)
-					set_video_quality
-					episode=$((episode))
-					;;
-
-				d)
-					get_dl_dir
-					is_download=1
-					;;
-				D)
-					get_dl_dir
-					set_video_quality
-					is_download=1
-					;;
-				q)
-					break
-					;;
-
-				*)
-					die "invalid choice"
-					;;
-			esac
-			open_episode "$selection_id" "$episode" "$download_dir"
-		done
+	elif ((is_autoplay == 0)); then
+		show_menu
 	fi
 }
 
