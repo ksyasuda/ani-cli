@@ -27,8 +27,8 @@ IS_ALTERNATE_PLAYER=0
 VERBOSE=0
 SILENT=0
 
-quit="7. Quit"
-options="1. Stream|2. Download|3. Continue|4. Play from File|5. Sync History|6. Choose Theme|$quit"
+quit="8. Quit"
+options="1. Stream|2. Download|3. Continue|4. Recently Updated|5. Play from File|6. Sync History|7. Choose Theme|$quit"
 theme=default
 
 help_text() {
@@ -332,8 +332,8 @@ main() {
 	((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
 	((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
 	choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -no-custom -sep '|' \
-		-theme-str 'listview {columns: 1;} window {width: 45%;}' \
-		-config "$CFG_FILE" -l 7 -i -p "Aniwrapper" -window-title 'aniwrapper')
+		-theme-str 'listview {columns: 2;} window {width: 45%;}' \
+		-config "$CFG_FILE" -l 4 -i -p "Aniwrapper" -window-title 'aniwrapper')
 
 	[ "$choice" == "$quit" ] && quit
 
@@ -353,6 +353,10 @@ main() {
 			run -H
 			;;
 		4.)
+			lg "Showing recently updated anime"
+			run -R
+			;;
+		5.)
 			lg "Play from file selected"
 			IS_PLAY_FROM_FILE=1
 			span=$(printf '%s\n%s\n' "$(generate_span "Provide a path to a valid directory, or choose from the list below")" "$(generate_span "The program will begin searching for media files from the supplied directory")")
@@ -374,7 +378,7 @@ main() {
 			fi
 			exit $?
 			;;
-		5.)
+		6.)
 			lg "Sync history database"
 			IS_SYNC=1
 			roficmd="rofi -dpi $DPI -dmenu -config $CFG_FILE -l 0 -p"
@@ -393,7 +397,7 @@ main() {
 				quit
 			fi
 			;;
-		6.)
+		7.)
 			[ -z "$THEMES" ] && die "No themes provided... exiting"
 			theme_idx="$(get_theme_idx)"
 			lg "Theme index: $theme_idx"
@@ -406,7 +410,7 @@ main() {
 			set_theme "$theme"
 			main
 			;;
-		7.)
+		8.)
 			quit
 			;;
 		*)

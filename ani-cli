@@ -877,7 +877,7 @@ parse_args() {
 	is_download=0
 	is_resume=0
 	is_autoplay=0
-	while getopts 'ad:Hsvq:cf:t:T:CQ:D:Sp:r' OPT; do
+	while getopts 'ad:Hsvq:cf:t:T:CQ:D:Sp:rR' OPT; do
 		case "$OPT" in
 			a)
 				is_autoplay=1
@@ -889,6 +889,9 @@ parse_args() {
 				;;
 			r)
 				is_resume=1
+				;;
+			R)
+				scrape=recent
 				;;
 			H)
 				scrape=history
@@ -1097,6 +1100,35 @@ main() {
 			lg "VIDEO PATH: $video_path"
 			play_file "$video_path"
 			exit $?
+			;;
+		recent)
+			# get list of recently added anime from $BASE_URL
+			recently_updated="$(curl -s https://goload.pro | sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p')"
+			while read -r updated_episode; do
+				anime_name=$(printf "%s" "$updated_episode" | sed -E 's/\-episode\-.*//')
+				lg "ANIME NAME: $anime_name"
+				if ! check_db "search" "$anime_name"; then
+					stmt="SELECT COUNT(*) FROM watch_history WHERE anime_name = '$anime_name' AND episode_number = '${updated_episode##*-episode-}';"
+					lg "QUERY: $stmt"
+					if [[ "$(run_stmt "$stmt")" -ne 0 ]]; then
+						lg "$updated_episode watched before... adding to watched list"
+						[[ -z "$watched" ]] && watched="$cnt" || watched="$watched, $cnt"
+					fi
+				fi
+				((++cnt))
+			done <<< "$recently_updated"
+			selection="$(rofi -dpi "$DPI" -dmenu -no-custom -config "$ROFI_CFG" \
+				-l 15 -a "$watched" -i -p "Enter selection" -async-pre-read 30 \
+				-window-title 'aniwrapper' <<< "$recently_updated")"
+			if [ -z "$selection" ]; then
+				die "No selection made"
+			fi
+			lg "SELECTION: $selection"
+			# get everything before -episode-
+			selection_id="${selection%%-episode-*}"
+			# get everything after -episode-
+			ep_choice_start="${selection##*-episode-}"
+			search_eps "$selection_id" "$ep_choice_start"
 			;;
 	esac
 
