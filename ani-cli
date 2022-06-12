@@ -1103,7 +1103,7 @@ main() {
 			;;
 		recent)
 			# get list of recently added anime from $BASE_URL
-			recently_updated="$(curl -s https://goload.pro | sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p')"
+			recently_updated="$(curl -s "$BASE_URL" | sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p')"
 			while read -r updated_episode; do
 				anime_name=$(printf "%s" "$updated_episode" | sed -E 's/\-episode\-.*//')
 				lg "ANIME NAME: $anime_name"
