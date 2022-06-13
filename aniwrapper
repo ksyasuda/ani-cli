@@ -279,7 +279,7 @@ check_flags() {
 		args+=(-d"$dl_dir")
 	fi
 	if ((IS_DOWNLOAD)); then
-		args+=(-d)
+		args+=(-d "$DEFAULT_DOWNLOAD")
 	fi
 	if ((IS_PLAY_FROM_FILE)); then
 		args+=(-f"$play_path")
