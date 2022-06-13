@@ -222,18 +222,6 @@ This option will present the name and episode number of 30 recently updated anim
 
 </details>
 
-<details>
-
-<summary>Example</summary>
-
-<div align="center">
-
-![example](https://imgur.com/d23iYy7.gif)
-
-</div>
-
-</details>
-
 ### Option 5: Play from File
 
 <details>
