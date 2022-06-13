@@ -290,7 +290,7 @@ check_flags() {
 	if ((IS_RESUME)); then
 		args+=(-r)
 	fi
-	if ((IS_SILENT)); then
+	if ((SILENT)); then
 		args+=(-S)
 	fi
 	if ((IS_CUSTOM_THEME)); then
@@ -303,7 +303,7 @@ check_flags() {
 	fi
 
 	lg "ARGS: ${args[*]}"
-	if ((IS_DOWNLOAD || !IS_ROFI || IS_RESUME || IS_PLAY_FROM_FILE)); then
+	if ((IS_AUTOPLAY || IS_DOWNLOAD || !IS_ROFI || IS_RESUME || IS_PLAY_FROM_FILE)); then
 		run "${args[@]}" "$@"
 		exit $?
 	fi
@@ -337,6 +337,7 @@ main() {
 	case "$selection" in
 		1.)
 			lg "Streaming mode"
+			echo "ARGS: ${args[*]}"
 			run "${args[@]}"
 			;;
 		2.)
