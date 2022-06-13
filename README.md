@@ -156,6 +156,7 @@ aniwrapper -t <theme> # Choose rofi theme from presets
 aniwrapper -T <path_to_config> # Specify custom rofi config
 aniwrapper -v # Enable verbose logging
 ```
+
 See [aniwrapper menus](docs/aniwrapper-menus.md) for more information about the menus used in the following options
 
 ### Option 1: Streaming
@@ -206,7 +207,34 @@ The continue option queries the `sqlite3` history databse and pulls the list of 
 
 </details>
 
-### Option 4: Play from File
+### Option 4: Recently Updated Anime
+
+This option will present the name and episode number of 30 recently updated anime on gogoanime
+
+<details>
+<summary>Example</summary>
+
+<div align="center">
+
+![example](https://thumbor.sudacode.com/svHFsX6ti3HZey32mX8uvEAjsLs=/600x0/smart/https%3A%2F%2Fthumbor.sudacode.com%2Fimage%2F395af378c5c44e0c9d45b0a44ea072ed%2Faniwrapper-recently-updated)
+
+</div>
+
+</details>
+
+<details>
+
+<summary>Example</summary>
+
+<div align="center">
+
+![example](https://imgur.com/d23iYy7.gif)
+
+</div>
+
+</details>
+
+### Option 5: Play from File
 
 <details>
 
@@ -220,7 +248,7 @@ The continue option queries the `sqlite3` history databse and pulls the list of 
 
 </details>
 
-### Option 5: Sync History
+### Option 6: Sync History
 
 This option allows you to sync your search/watch history across devices. It queries the database on the remote machine and inserts/updates the necessary rows
 
@@ -230,7 +258,7 @@ At the moment, the requirements are as follows:
 - The username must be the same across both devices
 - The `history.sqlite3` file must be in the default location: `$XDG_CONFIG_HOME/aniwrapper/history.sqlite3`
 
-### Option 6: Choose Theme
+### Option 7: Choose Theme
 
 Change aniwrapper theme
 
