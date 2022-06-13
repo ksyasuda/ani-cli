@@ -60,7 +60,7 @@ Options:
 }
 
 lg() {
-	if ((VERBOSE == 1)); then
+	if ((VERBOSE)); then
 		inf "$*"
 	fi
 }
@@ -86,35 +86,14 @@ quit() {
 }
 
 run() {
-	if ((IS_PLAY_FROM_FILE == 0 && IS_SYNC == 0 && GET_QUALITY == 1)); then
+	if ((!IS_PLAY_FROM_FILE && !IS_SYNC && GET_QUALITY)); then
 		get_quality
 	fi
-	if ((IS_AUTOPLAY)); then
-		CMD="$CMD -a"
-	fi
-	if ((SILENT == 1)); then
-		if ((IS_CUSTOM_THEME == 0)); then
-			$CMD -D"$DPI" -Sq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
-		else
-			$CMD -D"$DPI" -Sq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
-		fi
-	elif ((VERBOSE == 1)); then
-		if ((IS_CUSTOM_THEME == 0)); then
-			$CMD -D"$DPI" -vq "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
-		else
-			$CMD -D"$DPI" -vq "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
-		fi
-	else
-		if ((IS_CUSTOM_THEME == 0)); then
-			$CMD -D"$DPI" -q "$QUALITY" -t "$theme" -p "$PLAYER_FN" "$@"
-		else
-			$CMD -D"$DPI" -q "$QUALITY" -T "$CFG_FILE" -p "$PLAYER_FN" "$@"
-		fi
-	fi
+	$CMD -D"$DPI" "$@"
 }
 
 get_quality() {
-	if ((IS_ROFI == 1)); then
+	if ((IS_ROFI)); then
 		selection=$(rofi -dpi "$DPI" -dmenu -config "$CFG_FILE" \
 			-l 6 -selected-row 0 -a 0 -window-title 'aniwrapper' \
 			-theme-str 'listview {columns: 1;} window {width: 25%;}' \
@@ -247,7 +226,7 @@ parse_args() {
 get_player() {
 	msg1="Choose from the supported players, or supply your own player command (full functionality not guaranteed)"
 	msg2="if using an unsupported player, it must be able to play URLs for streaming from the internet"
-	if ((IS_ROFI == 1)); then
+	if ((IS_ROFI)); then
 		PLAYER_FN=$(
 			awk '{print $NF}' < <(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
 				-l 4 -theme-str 'listview {columns: 1;} window {width: 40%;}' \
@@ -270,46 +249,62 @@ get_player() {
 	fi
 }
 
+# Check passed in flags and set cli arguments
 check_flags() {
-	# Check if command-line flag is set
-	if ((VERBOSE == 1 && SILENT == 1)); then
+	if ((VERBOSE && SILENT)); then
 		die "verbose and silent options cannot be used together"
 	fi
-	if ((IS_DOWNLOAD == 1 && IS_AUTOPLAY == 1)); then
+	if ((IS_DOWNLOAD && IS_AUTOPLAY)); then
 		die "autoplay and download options cannot be used together"
 	fi
-	if ((IS_DOWNLOAD == 0 && IS_ALTERNATE_PLAYER == 1)); then
+	if ((IS_DOWNLOAD && IS_PLAY_FROM_FILE)); then
+		die "download and play from file options cannot be used together"
+	fi
+	if ((!IS_DOWNLOAD && IS_ALTERNATE_PLAYER)); then
 		get_player
 		lg "SELECTED PLAYER FN -> $PLAYER_FN"
 	fi
-	if ((IS_ROFI == 0 && IS_DOWNLOAD == 0)); then
-		if ((IS_RESUME == 1)); then
-			run -cr "$@"
-		else
-			run -c "$@"
-		fi
-		exit $?
-	elif ((IS_ROFI == 0 && IS_DOWNLOAD == 1)); then
+	args=()
+	if ((IS_AUTOPLAY)); then
+		args+=(-a)
+	fi
+	if ((!IS_ROFI)); then
+		args+=(-c)
 		prompt "Enter download directory"
 		read -r dl_dir
 		lg "Download dir: $dl_dir"
 		if [ ! -d "$dl_dir" ]; then
 			mkdir -p "$dl_dir" || die "Error creating directory: $dl_dir"
 		fi
-		if ((IS_RESUME == 1)); then
-			run "-crd" "$dl_dir" "$@"
-		else
-			run "-cd $dl_dir" "$@"
-		fi
-		exit $?
-	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 1)); then
-		run "-f$play_path" -T "$CFG_FILE" "$@"
-		exit $?
-	elif ((IS_ROFI == 1 && IS_PLAY_FROM_FILE == 1 && IS_CUSTOM_THEME == 0)); then
-		run "-f$play_path" -t "$theme" "$@"
-		exit $?
-	elif ((IS_RESUME == 1)); then
-		run -r "$@"
+		args+=(-d "$dl_dir")
+	fi
+	if ((IS_DOWNLOAD)); then
+		args+=(-d)
+	fi
+	if ((IS_PLAY_FROM_FILE)); then
+		args+=(-f "$play_path")
+	fi
+	if ((IS_ALTERNATE_PLAYER)); then
+		args+=(-p "$PLAYER_FN")
+	fi
+	if ((IS_RESUME)); then
+		args+=(-r)
+	fi
+	if ((IS_SILENT)); then
+		args+=(-S)
+	fi
+	if ((IS_CUSTOM_THEME)); then
+		args+=(-T "$CFG_FILE")
+	elif ((!IS_CUSTOM_THEME)); then
+		args+=(-t "$theme")
+	fi
+	if ((IS_VERBOSE)); then
+		args+=(-v)
+	fi
+
+	lg "ARGS: ${args[*]}"
+	if ((IS_DOWNLOAD || !IS_ROFI || IS_RESUME || IS_PLAY_FROM_FILE)); then
+		run "${args[@]}" "$@"
 		exit $?
 	fi
 }
@@ -329,8 +324,8 @@ get_dl_dir() {
 }
 
 main() {
-	((SILENT != 1)) && lg "CONFIG DIR: $CFG_DIR"
-	((SILENT != 1)) && lg "ROFI CFG: $CFG_FILE"
+	((!SILENT)) && lg "CONFIG DIR: $CFG_DIR"
+	((!SILENT)) && lg "ROFI CFG: $CFG_FILE"
 	choice=$(echo "${options[@]}" | rofi -dpi "$DPI" -dmenu -no-custom -sep '|' \
 		-theme-str 'listview {columns: 2;} window {width: 45%;}' \
 		-config "$CFG_FILE" -l 4 -i -p "Aniwrapper" -window-title 'aniwrapper')
@@ -342,19 +337,19 @@ main() {
 	case "$selection" in
 		1.)
 			lg "Streaming mode"
-			run
+			run "${args[@]}"
 			;;
 		2.)
 			lg "Download anime"
-			get_dl_dir && run -d "$dl_dir"
+			get_dl_dir && run "${args[@]}" -d "$dl_dir"
 			;;
 		3.)
 			lg "Continue watching"
-			run -H
+			run -H "${args[@]}"
 			;;
 		4.)
 			lg "Showing recently updated anime"
-			run -R
+			run -R "${args[@]}"
 			;;
 		5.)
 			lg "Play from file selected"
@@ -372,9 +367,9 @@ main() {
 			lg "Play dir: $play_dir"
 			if [ -z "$play_dir" ]; then
 				mkdir -p "$DEFAULT_DOWNLOAD" || die "error creating default download directory"
-				run -f"$DEFAULT_DOWNLOAD"
+				run -f"$DEFAULT_DOWNLOAD" "${args[@]}"
 			else
-				run -f"$play_dir"
+				run -f"$play_dir" "${args[@]}"
 			fi
 			exit $?
 			;;
@@ -423,9 +418,9 @@ parse_args "$@"
 shift $((OPTIND - 1))
 if [ $# -gt 0 ]; then
 	check_flags "$*"
-	if ((IS_DOWNLOAD == 0)); then
+	if ((!IS_DOWNLOAD)); then
 		run "$*"
-	elif ((IS_DOWNLOAD == 1)); then
+	elif ((IS_DOWNLOAD)); then
 		get_dl_dir && run -d "$dl_dir" "$*"
 	fi
 else
