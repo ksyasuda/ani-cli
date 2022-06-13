@@ -276,13 +276,13 @@ check_flags() {
 		if [ ! -d "$dl_dir" ]; then
 			mkdir -p "$dl_dir" || die "Error creating directory: $dl_dir"
 		fi
-		args+=(-d "$dl_dir")
+		args+=(-d"$dl_dir")
 	fi
 	if ((IS_DOWNLOAD)); then
 		args+=(-d)
 	fi
 	if ((IS_PLAY_FROM_FILE)); then
-		args+=(-f "$play_path")
+		args+=(-f"$play_path")
 	fi
 	if ((IS_ALTERNATE_PLAYER)); then
 		args+=(-p "$PLAYER_FN")
@@ -294,9 +294,9 @@ check_flags() {
 		args+=(-S)
 	fi
 	if ((IS_CUSTOM_THEME)); then
-		args+=(-T "$CFG_FILE")
+		args+=(-T"$CFG_FILE")
 	elif ((!IS_CUSTOM_THEME)); then
-		args+=(-t "$theme")
+		args+=(-t"$theme")
 	fi
 	if ((IS_VERBOSE)); then
 		args+=(-v)
