@@ -337,7 +337,6 @@ main() {
 	case "$selection" in
 		1.)
 			lg "Streaming mode"
-			echo "ARGS: ${args[*]}"
 			run "${args[@]}"
 			;;
 		2.)
