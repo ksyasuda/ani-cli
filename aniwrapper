@@ -89,7 +89,12 @@ run() {
 	if ((!IS_PLAY_FROM_FILE && !IS_SYNC && GET_QUALITY)); then
 		get_quality
 	fi
-	$CMD -D"$DPI" "$@"
+	if ((IS_CUSTOM_THEME)); then
+		args+=(-T"$CFG_FILE")
+	elif ((!IS_CUSTOM_THEME)); then
+		args+=(-t"$theme")
+	fi
+	$CMD "${args[@]}" -D"$DPI" "$@"
 }
 
 get_quality() {
@@ -293,11 +298,6 @@ check_flags() {
 	if ((SILENT)); then
 		args+=(-S)
 	fi
-	if ((IS_CUSTOM_THEME)); then
-		args+=(-T"$CFG_FILE")
-	elif ((!IS_CUSTOM_THEME)); then
-		args+=(-t"$theme")
-	fi
 	if ((IS_VERBOSE)); then
 		args+=(-v)
 	fi
@@ -337,19 +337,19 @@ main() {
 	case "$selection" in
 		1.)
 			lg "Streaming mode"
-			run "${args[@]}"
+			run
 			;;
 		2.)
 			lg "Download anime"
-			get_dl_dir && run "${args[@]}" -d "$dl_dir"
+			get_dl_dir && run -d "$dl_dir"
 			;;
 		3.)
 			lg "Continue watching"
-			run -H "${args[@]}"
+			run -H
 			;;
 		4.)
 			lg "Showing recently updated anime"
-			run -R "${args[@]}"
+			run -R
 			;;
 		5.)
 			lg "Play from file selected"
@@ -367,9 +367,9 @@ main() {
 			lg "Play dir: $play_dir"
 			if [ -z "$play_dir" ]; then
 				mkdir -p "$DEFAULT_DOWNLOAD" || die "error creating default download directory"
-				run -f"$DEFAULT_DOWNLOAD" "${args[@]}"
+				run -f"$DEFAULT_DOWNLOAD"
 			else
-				run -f"$play_dir" "${args[@]}"
+				run -f"$play_dir"
 			fi
 			exit $?
 			;;
