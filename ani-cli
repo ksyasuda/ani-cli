@@ -637,7 +637,7 @@ check_episode() {
 search_eps() {
 	anime_id=$1
 	lg "Searching for episodes of $anime_id"
-	select_ep_result=$(check_episode "$anime_id-episode-1" "$anime_id" | sed -E 's/\-episode\-//')
+	select_ep_result=$(check_episode "$anime_id-episode-1" "$anime_id" | sed -E 's/\-episode\-//' | sed -E 's/0-.//')
 	lg "Select Episode Result: $select_ep_result"
 	FIRST_EP_NUMBER=$(printf "%s" "$select_ep_result" | tail -n 1)
 	LAST_EP_NUMBER=$(printf "%s" "$select_ep_result" | head -n 1)
