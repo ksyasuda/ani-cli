@@ -46,7 +46,7 @@ inf() {
 }
 
 progress() {
-	((!SILENT)) && printf "\33[2K\r\033[1;34m%s\033[0m\n" "$1"
+	((!SILENT)) && printf "\33[2K\r\033[1;34m%s\033[0m\n" "$1" >&2
 }
 
 # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
@@ -665,7 +665,7 @@ search_anime() {
 
 # only lets the user pass in case of a valid search
 process_search() {
-	progress "Searching $scrape.."
+	progress "Searching $query.."
 	search_results=$(search_anime "$query")
 	while [ -z "$search_results" ]; do
 		retry 'No search results found'
