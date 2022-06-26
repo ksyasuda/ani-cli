@@ -24,7 +24,7 @@ IS_PLAY_FROM_FILE=0
 IS_ROFI=1
 IS_SYNC=0
 IS_ALTERNATE_PLAYER=0
-VERBOSE=0
+IS_VERBOSE=0
 SILENT=0
 
 quit="8. Quit"
@@ -60,7 +60,7 @@ Options:
 }
 
 lg() {
-	if ((VERBOSE)); then
+	if ((IS_VERBOSE)); then
 		inf "$*"
 	fi
 }
@@ -94,6 +94,7 @@ run() {
 	elif ((!IS_CUSTOM_THEME)); then
 		args+=(-t"$theme")
 	fi
+	lg "Running $CMD ${args[*]} -D$DPI $*"
 	$CMD "${args[@]}" -D"$DPI" "$@"
 }
 
@@ -218,7 +219,7 @@ parse_args() {
 				IS_CUSTOM_THEME=1
 				;;
 			v)
-				VERBOSE=1
+				IS_VERBOSE=1
 				;;
 			*)
 				help_text
@@ -256,7 +257,7 @@ get_player() {
 
 # Check passed in flags and set cli arguments
 check_flags() {
-	if ((VERBOSE && SILENT)); then
+	if ((IS_VERBOSE && SILENT)); then
 		die "verbose and silent options cannot be used together"
 	fi
 	if ((IS_DOWNLOAD && IS_AUTOPLAY)); then
