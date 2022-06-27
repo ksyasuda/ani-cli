@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 AGENT="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
-BASE_URL="https://goload.pro"
+BASE_URL="https://animixplay.to"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
-URLFILE="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper/ani-url"
+JOBFILE="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-jobs"
+TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-temp"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
 ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
 ROFI_THEME="aniwrapper.rasi"
@@ -16,58 +17,44 @@ VERBOSE=0
 SILENT=0
 FIRST_EP_NUMBER=1
 PLAYER_FN="mpv"
+PID=0
 
 # display error message and exit
 die() {
-	((SILENT != 1)) && printf "\033[1;31m%s\033[0m\n" "$*" >&2
+	((!SILENT)) && printf "\033[1;31m%s\033[0m\n" "$*" >&2
 	exit 1
-}
-
-# display an error message to stderr (in red)
-err() {
-	((SILENT != 1)) && printf "\033[1;31m%s\033[0m\n" "$*" >&2
 }
 
 # display a log message if verbose mode is enabled
 lg() {
-	((VERBOSE == 1)) && printf "\033[1;35m%s\033[0m\n" "$*" >&2
+	((VERBOSE)) && printf "\033[1;35m%s\033[0m\n" "$*" >&2
 }
 
 # display an informational message (first argument in green, second in magenta)
 inf() {
-	printf "\033[1;35m%s \033[1;35m%s\033[0m\n" "$1" "$2"
+	printf "\33[2K\r\033[1;35m%s \033[1;35m%s\033[0m\n" "$1" "$2"
 }
 
-# prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
-prompt() {
-	printf "\033[1;35m%s\033[1;35m%s\033[1;34m\033[0m: " "$1" "$2"
+progress() {
+	((!SILENT)) && printf "\33[2K\r\033[1;34m%s\033[0m\n" "$1" >&2
 }
 
-# displays an even (cyan) line of a menu line with $2 as an indicator in [] and $1 as the option
-menu_line_even() {
-	printf "\033[1;36m(\033[1;36m%s\033[1;36m) \033[1;36m%s\033[0m\n" "$2" "$1"
-}
-
-# displays an odd (yellow) line of a menu line with $2 as an indicator in [] and $1 as the option
-menu_line_odd() {
-	printf "\033[1;33m(\033[1;33m%s\033[1;33m) \033[1;33m%s\033[0m\n" "$2" "$1"
-}
-
-# display alternating menu lines (even and odd)
-menu_line_alternate() {
-	menu_line_parity=${menu_line_parity:-0}
-	if [ "$menu_line_parity" -eq 0 ]; then
-		menu_line_odd "$1" "$2"
-		menu_line_parity=1
+# sends a notification to notify-send if available, else prints to stdout
+notification() {
+	((SILENT)) && return 0
+	msg="$*"
+	if command -v "notify-send" > /dev/null; then
+		notify-send -i "$ANIWRAPPER_ICON_PATH" "$msg"
 	else
-		menu_line_even "$1" "$2"
-		menu_line_parity=0
+		inf "$msg"
 	fi
 }
 
-# displays a warning (red) line of a menu line with $2 as an indicator in [] and $1 as the option
-menu_line_strong() {
-	printf "\033[1;34m[\033[1;33m%s\033[1;34m] \033[1;33m%s\033[0m\n" "$2" "$1"
+# generates a pre-styled span tag with the given msg
+generate_span() {
+	msg="$*"
+	span="<span foreground='#ecbe7b' style='italic' size='small'>$msg</span>"
+	printf "%s\n" "$span"
 }
 
 # check if input is valid and assings value/range to episodes variable
@@ -83,189 +70,206 @@ check_input() {
 	fi
 }
 
-# get the download page url
-get_dpage_link() {
-	anime_id=$1
-	ep_no=$2
-	curl -A "$AGENT" -s "$BASE_URL/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
-		sed 's/^/https:/g'
-}
-
 # download the episode
 # $1: dpage_link | $2: video_url | $3: anime_id | $4: episode | $5: download_dir
 download() {
-	case "$2" in
+	case $2 in
+		*manifest*m3u8*)
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$3/$4.mp4"
+			;;
 		*m3u8*)
-			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -map "0:p:$((idx - 1))?" -c copy "$5/${4}"
+			progress "Fetching Metadata.."
+			[ -d "$TMPDIR" ] || mkdir "$TMPDIR"
+			m3u8_data="$(curl -s "$2")"
+			key_uri="$(printf "%s" "$m3u8_data" | sed -nE 's/^#EXT-X-KEY.*URI="([^"]*)"/\1/p')"
+			m3u8_data="$(printf "%s" "$m3u8_data" | sed "/#/d")"
+			printf "%s" "$m3u8_data" | grep -q "http" || relative_url=$(printf "%s" "$2" | sed "s|[^/]*$||")
+			range=$(printf "%s\n" "$m3u8_data" | wc -l)
+			# Getting and 'decrypting' encryption key
+			if [ -n "$key_uri" ]; then
+				key=$(curl -s "$key_uri" | od -A n -t x1 | tr -d ' |\n')
+				iv=$(openssl rand -hex 16)
+			fi
+			# Asyncronously downloading pieces to temporary directory
+			inf "pieces : $range"
+			for i in $(seq "$range"); do
+				curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$TMPDIR/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ %s / %s done" "$i" "$range" &
+				jobs -p > "$JOBFILE"
+				while [ "$(wc -w "$JOBFILE" | cut -d' ' -f1)" -ge 35 ]; do
+					jobs > "$JOBFILE"
+					sleep 0.05
+				done
+			done
+			wait
+			# Decrypting and concatenating the pieces
+			if [ -n "$key_uri" ]; then
+				progress "Decrypting and Concatenating pieces into single file.."
+				for i in "$TMPDIR"/*; do
+					openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts < "$i"
+				done
+			else
+				progress "Concatenating pieces into single file.."
+				cat "$TMPDIR"/* >> video.ts
+			fi
+			# cleanup and encoding
+			rm -rdf "$TMPDIR" "$JOBFILE"
+			inf "Encoding file to mp4 video.."
+			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$3/$4.mp4"
+			rm -f video.ts
 			;;
 		*)
-			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$5" -o "${4}" --download-result=hide
+			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$5" -o "$4.mp4" --download-result=hide
 			;;
 	esac
 }
 
 generate_link() {
-	lg "BEGIN: generate_link()" > /dev/stderr
-	lg "ARG: $1" > /dev/stderr
-	case "$1" in
+	case $1 in
 		1)
-			refr=$(printf "%s" "$links" | grep "mp4upload")
-			[ -z "$refr" ] || result_links="$(curl -A "$AGENT" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
+			progress "Fetching Mp4upload links.."
+			refr=$(printf "%s" "$al_links" | grep "mp4upload")
+			[ -z "$refr" ] && refr=$(printf "%s" "$resp" | grep "mp4upload")
+			[ -z "$refr" ] && return 0
+			result_links="$(curl -A "$AGENT" -s "$refr" -H "DNT: 1" -L |
+				sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
 			;;
 		2)
-			dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
-			refr="https://dood.ws/d/$dood_id"
-			[ -z "$dood_id" ] || dood_link=$(curl -A "$AGENT" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
-			sleep 0.5
-			[ -z "$dood_link" ] || result_links="$(curl -A "$AGENT" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")"
+			progress "Fetching Doodstream links.."
+			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
+			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
+			refr="https://dood.pm/e/$dood_id"
+			[ -z "$dood_id" ] || dood_md5=$(curl -A "$AGENT" -s "$refr" --max-time 10 | sed -nE "s|.*'(.*pass_md5.*)', func.*|\1|p")
+			[ -z "$dood_md5" ] && return 0
+			result_links="$(curl -A "$AGENT" -s "https://dood.pm${dood_md5}" -e "$refr" || true)doodstream?token=$(printf "%s" "$dood_md5" | cut -d'/' -f4 || true)&expiry=$(date +%s)000"
 			;;
-
 		3)
-			fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
+			progress "Fetching Streamlare links.."
+			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
+			[ -z "$lare_id" ] && lare_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
+			refr="https://streamlare.com/e/$lare_id"
+			[ -z "$lare_id" ] && return 0
+			lare_token=$(curl -s -A "$AGENT" "$refr" -L | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
+			[ -z "$lare_token" ] || result_links="$(curl -s -A "$AGENT" -H "x-requested-with:XMLHttpRequest" -X POST "https://streamlare.com/api/video/download/get" -d "{\"id\":\"$lare_id\"}" \
+				-H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | sed 's/\\//g' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
+			;;
+		4)
+			progress "Fetching Okru links.."
+			ok_id=$(printf "%s" "$al_links" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
+			[ -z "$ok_id" ] && ok_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
+			refr="https://odnoklassniki.ru/videoembed/$ok_id"
+			[ -z "$ok_id" ] && return 0
+			result_links="$(curl -s "$refr" | sed -nE 's_.*data-options="([^"]*)".*_\1_p' | sed -e 's/&quot;/"/g' -e 's/\u0026/\&/g' -e 's/amp;//g' | sed 's/\\//g' | sed -nE 's/.*videos":(.*),"metadataE.*/\1/p' | tr '{|}' '\n' |
+				sed -nE 's/"name":"mobile","url":"(.*)",.*/144p >\1/p ;
+						s/"name":"lowest","url":"(.*)",.*/240p >\1/p ;
+						s/"name":"low","url":"(.*)",.*/360p >\1/p ;
+						s/"name":"sd","url":"(.*)",.*/480p >\1/p ;
+						s/"name":"hd","url":"(.*)",.*/720p >\1/p ;
+						s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
+			;;
+		5)
+			progress "Fetching Xstreamcdn links.."
+			fb_id=$(printf "%s" "$resp" | sed -n "s_.*fembed.*/v/__p")
 			refr="https://fembed-hd.com/v/$fb_id"
-			[ -z "$fb_id" ] || result_links="$(curl -A "$AGENT" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
+			[ -z "$fb_id" ] && return 0
+			result_links="$(curl -A "$AGENT" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" |
+				sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
+			;;
+		6)
+			progress "Fetching Animixplay Direct links.."
+			refr="$BASE_URL"
+			[ -z "$id" ] && return 0
+			enc_id=$(printf "%s" "$id" | base64)
+			ani_id=$(printf "%sLTXs3GrU8we9O%s" "$id" "$enc_id" | base64)
+			result_links="$(curl -s "$BASE_URL/api/live${ani_id}" -A "$AGENT" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
 			;;
 		*)
-			ajax_url="$BASE_URL/encrypt-ajax.php"
-			refr="$dpage_url"
-			id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
-			secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-			iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-			second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-			token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
-			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" | base64)
-			data=$(curl -A "$AGENT" -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-			result_links="$(printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$second_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')"
+			progress "Fetching Goload Direct links.."
+			refr="https://goload.pro"
+			[ -z "$id" ] && return 0
+			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			iv=$(printf "%s" "$resp" | sed -n '3p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			second_key=$(printf "%s" "$resp" | sed -n '4p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			token=$(printf "%s" "$resp" | head -1 | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
+			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" -a)
+			data=$(curl -A "$AGENT" -s -H "X-Requested-With:XMLHttpRequest" "https://goload.pro/encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+			result_links="$(printf '%s' "$data" | base64 -d 2> /dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2> /dev/null |
+				sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')"
 			;;
 	esac
-	lg "END: generate_link()" > /dev/stderr
 }
 
 get_video_quality_mp4() {
-	lg "BEGIN: get_video_quality_mp4()" > /dev/stderr
 	case $quality in
 		best)
-			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1 | cut -d">" -f2)
+			video_url=$(printf '%s' "$1" | tail -n 1 | cut -d">" -f2)
 			;;
-
 		worst)
 			video_url=$(printf '%s' "$1" | head -n 1 | cut -d">" -f2)
 			;;
-
 		*)
 			video_url=$(printf '%s' "$1" | grep -i "${quality}p" | head -n 1 | cut -d">" -f2)
 			if [ -z "$video_url" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
-				quality=best
-				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1 | cut -d">" -f2)
+				video_url=$(printf '%s' "$1" | tail -n 1 | cut -d">" -f2)
 			fi
 			;;
 	esac
-	lg "END: get_video_quality_mp4()" > /dev/stderr
 	printf '%s' "$video_url"
 }
 
 get_video_quality_m3u8() {
-	lg "BEGIN: get_video_quality_m3u8()" > /dev/stderr
-	m3u8_links_count=$(curl -A "$AGENT" -s --referer "$dpage_link" "$video_url" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d' | wc -w)
+	printf '%s' "$1" | grep -qE "manifest.*m3u.*" && video_url=$1 && return 0
+	m3u8_links=$(curl -A "$AGENT" -s --referer "$dpage_link" "$1")
 	case $quality in
-		worst | 360p)
-			idx=2
+		best)
+			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1)
 			;;
-		480p)
-			idx=3
+		worst)
+			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | tail -1)
 			;;
-		720p)
-			idx=4
-			;;
-		1080p | best | *)
-			idx="auto"
+		*)
+			res_selector=$quality
+			if ! (printf '%s' "$m3u8_links" | grep -q "$quality,"); then
+				err "Current video quality is not available (defaulting to best quality)"
+				res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1)
+			fi
 			;;
 	esac
-	if [ "$idx" -lt 1 ] 2> /dev/null || [ "$idx" -gt "$m3u8_links_count" ] 2> /dev/null; then
-		err "Current video quality is not available (defaulting to best quality)"
-		idx="auto"
-	fi
-	lg "END: get_video_quality_m3u8() -> idx = $idx" > /dev/stderr
-	[ "$idx" != "auto" ] 2> /dev/null && printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx - 1))
+	video_url=$(printf '%s' "$m3u8_links" | sed -n "/$res_selector,/{n;p;}" | tr -d '\r')
+	printf "%s" "$m3u8_links" | grep -q "http" || video_url="$(printf "%s" "$1" | sed 's|[^/]*$||')$video_url" || true
 }
 
 # chooses the link for the set quality
 get_video_link() {
 	dpage_url="$1"
-	resp=$(curl -A "$AGENT" -s "$1")
-	if [ "$is_download" -eq 1 ]; then
-		i=1
-	else
-		i=2
-	fi
-	[ "$quality" != "best" ] && i=3
-	links=$(printf "%s" "$resp" | sed -nE 's/.*data-status="1".*data-video="(.*)">.*/\1/p')
-	while [ "$i" -ge 1 ] && [ "$i" -le 4 ] && [ -z "$result_links" ]; do
-		generate_link "$i"
-		i=$((i + 1))
+	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+	al_links=$(printf "%s" "$al_data" | sed -e 's_:\[_\n_g' -e 's_:"_\n"_g' | sed -e 's/].*//g' -e '1,2d' | sed -n "${episode}p" | tr -d '"' | tr "," "\n")
+	[ -z "$id" ] && id=$(printf "%s" "$al_links" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
+	resp="$(curl -A "$AGENT" -s "https://goload.pro/streaming.php?id=$id" |
+		sed -nE 's/.*class="container-(.*)">/\1/p ;
+			s/.*class="wrapper container-(.*)">/\1/p ;
+			s/.*class=".*videocontent-(.*)">/\1/p ;
+			s/.*data-value="(.*)">.*/\1/p ;
+			s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
+	# providers: Doodstream for default, mp4upload for downloading. For best quality use okru, for fallback use goload. Then it's a round robin of which links are returned.
+	provider=2
+	uname -a | grep -qE '[Aa]ndroid' && provider=3
+	[ "$is_download" -eq 1 ] && provider=1
+	[ "$quality" != "best" ] && provider=4
+	[ -n "$select_provider" ] && provider="$select_provider"
+	i=0
+	while [ "$i" -lt 7 ] && [ -z "$result_links" ]; do
+		generate_link "$provider"
+		provider=$((provider % 7 + 1))
+		: $((i += 1))
 	done
-	video_links="$result_links"
+	if printf '%s' "$result_links" | grep -q "m3u8"; then
+		get_video_quality_m3u8 "$result_links"
+	else
+		video_url=$(get_video_quality_mp4 "$result_links")
+	fi
 	unset result_links
-	if printf '%s' "$video_links" | grep -q "m3u8"; then
-		is_m3u8=1
-		video_url="$video_links"
-		get_video_quality_m3u8
-	else
-		is_m3u8=0
-		lg "VIDEO_LINKS: $video_links" > /dev/stderr
-		video_url=$(get_video_quality_mp4 "$video_links")
-		idx=1
-	fi
-}
-
-# sets the video quality
-set_video_quality() {
-	if ((IS_ROFI == 1)); then
-		((is_m3u8 == 1)) && qualities="1. best|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst" || qualities="1. best|2. worst"
-		while IFS='|' read -ra quals; do
-			for q in "${quals[@]}"; do
-				if [[ "$(awk '{ print $NF }' <<< "$q")" == "$quality" ]]; then
-					cur_quality="$((${q:0:1} - 1))"
-					break
-				fi
-			done
-		done <<< "$qualities"
-		choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
-			-theme-str 'listview {columns: 1;} window {width: 25%;}' \
-			-i -l 6 -no-custom -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
-			-p "Choose quality:" -window-title 'aniwrapper' -selected-row "$cur_quality" <<< "$qualities")
-		quality=$(awk '{ print $2 }' <<< "$choice")
-	else
-		((is_m3u8 == 1)) && qualities="best|1080p|720p|480p|360p|worst" || qualities="best|worst"
-		prompt "Choose quality [$qualities]"
-		read -r quality
-		while [[ ! "$quality" =~ ($qualities) ]]; do
-			lg "$quality not a valid quality"
-			prompt "Choose quality [$qualities]"
-			read -r quality
-		done
-	fi
-	[ -z "$quality" ] && die "No quality selected"
-}
-
-get_dl_dir() {
-	if ((IS_ROFI == 1)); then
-		download_dir=$(
-			rofi -dpi "$DPI" -dmenu -config "$ROFI_CFG" \
-				-theme-str 'listview {columns: 1;} window {width: 45%;}' \
-				-mesg "$(generate_span "Enter the path to the download directory, or leave blank to go with the default: $HOME/Videos/sauce/")" \
-				-l 1 -p "Enter download dir:" -window-title 'aniwrapper'
-		)
-	else
-		prompt "Enter download directory"
-		read -r download_dir
-	fi
-	lg "Download dir: $download_dir"
-	[ -z "$download_dir" ] && download_dir="$HOME/Videos/sauce/"
-	if [ ! -d "$download_dir" ]; then
-		mkdir -p "$download_dir" || die "Error creating directory: $download_dir"
-	fi
 }
 
 dep_ch() {
@@ -276,22 +280,447 @@ dep_ch() {
 	done
 }
 
-# sends a notification to notify-send if available, else prints to stdout
-notification() {
-	((SILENT == 1)) && return 0
-	msg="$*"
-	if command -v "notify-send" > /dev/null; then
-		notify-send -i "$ANIWRAPPER_ICON_PATH" "$msg"
+# get anime name along with its id
+search_anime() {
+	if [[ $# -gt 1 ]]; then
+		# if multi-word query, concatenate into one string and replace spaces with '-'
+		search="$*"
+		search="${search// /-}"
 	else
-		inf "$msg"
+		# if one word, remove leading or trailing whitespace
+		search="${1// /}"
+	fi
+	lg "Search Query: $search"
+	curl -s "https://gogoanime.lu//search.html?keyword=$search" -L |
+		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*_\1_p'
+}
+
+# only lets the user pass in case of a valid search
+process_search() {
+	progress "Searching $query.."
+	search_results=$(search_anime "$query")
+	while [ -z "$search_results" ]; do
+		retry 'No search results found'
+		query="$REPLY $REPLY2"
+		progress "Searching $scrape.."
+		search_results=$(search_anime "$query")
+	done
+	lg "Search Results: $search_results"
+	printf "%s\n" "$search_results"
+}
+
+# searches on gogoanime (instead of gogoplay) because they index english titles
+extended_search() {
+	indexing_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
+	search=$(printf '%s' "$1" | tr ' ' '-')
+	curl -s "$indexing_url//search.html" -G -d "keyword=$search" |
+		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
+}
+
+episode_list() {
+	data=$(curl -A "$AGENT" -s "$BASE_URL/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p" | tr -d '\r')
+	#extract all embed links of all episode from data
+	select_ep_result=$(printf "%s" "$data" | head -1 | tr "," "\n" | sed '/extra/d' | sed -nE 's_".*":"(.*)".*_\1_p')
+	lg "Episode List: $select_ep_result"
+	FIRST_EP_NUMBER=1
+	[ -z "$select_ep_result" ] && LAST_EP_NUMBER=0 || LAST_EP_NUMBER=$(printf "%s\n" "$select_ep_result" | wc -l)
+	lg "First Ep: $FIRST_EP_NUMBER, Last Ep: $LAST_EP_NUMBER"
+}
+
+#from allanime server
+al_episode_list() {
+	ext_id=$(printf "%s" "$data" | tail -1)
+	al_server_link=$(curl -s -H "x-requested-with:XMLHttpRequest" -X POST "https://animixplay.to/api/search" -d "recomended=$ext_id" -A "$AGENT" |
+		sed -nE 's_.*"AL","items":\[(.*)\]\},.*_\1_p' | tr '{|}' '\n' | sed -nE 's_"url":"(.*)",.*title.*_\1_p')
+	[ -z "$al_server_link" ] && return 0
+	progress "(Allanime) Searching Episodes.."
+	if printf "%s" "$selection_id" | grep -q "dub"; then
+		al_server_link=$(printf "%s" "$al_server_link" | grep "dub" | head -1)
+	else
+		al_server_link=$(printf "%s" "$al_server_link" | sed 's/-dub//' | head -1)
+	fi
+	al_data=$(curl -s "${BASE_URL}${al_server_link}" -A "$AGENT" | sed -nE 's_.*epslistplace.*>(.*)</div>_\1_p')
+}
+
+open_episode() {
+	anime_id="$1"
+	episode="$2"
+	ddir="$3"
+	tput clear
+	progress "Loading episode $episode of $anime_id"
+
+	insert_history "watch" "$anime_id" "$episode"
+
+	dpage_link=$(printf "%s" "$select_ep_result" | sed -n "${episode}p")
+	lg "dpage_link: $dpage_link"
+	if [[ -z "$dpage_link" ]]; then
+		die "Could not get download page link"
+	else
+		get_video_link "$dpage_link"
+	fi
+	lg "Video url: $video_url"
+	[ -z "$video_url" ] && die "Video URL not found"
+	[ ! "$PID" = "0" ] && kill "$PID" > /dev/null 2>&1
+
+	if [ "$is_download" -eq 0 ]; then
+		lg "PLAYING: $video_url with player: $PLAYER_FN"
+		case "$PLAYER_FN" in
+			mpv)
+				nohup "$PLAYER_FN" "$video_url" --referrer="$refr" --force-media-title="aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
+				;;
+			vlc)
+				nohup "$PLAYER_FN" --play-and-exit --http-referrer="$refr" "$video_url" > /dev/null 2>&1 &
+				;;
+			*)
+				nohup "$PLAYER_FN" "$video_url" > /dev/null 2>&1 & # try to open with just the video url
+				;;
+		esac
+		PID=$!
+		if command -v "notify-send" > /dev/null; then
+			((!SILENT)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Playing $anime_id - Episode $episode"
+		else
+			((!SILENT)) && inf "Playing $anime_id - Episode $episode"
+		fi
+		if ((is_autoplay)); then
+			lg "Waiting for video to finish playing..."
+			wait "$PID"
+			if ((episode + 1 <= LAST_EP_NUMBER)) && continue_watching; then
+				open_episode "$anime_id" "$((episode + 1))" "$ddir"
+			else
+				exit 0
+			fi
+		fi
+	else
+		lg "Downloading episode $episode ..."
+		dl_dir="${ddir// /}/$anime_id"
+		episode=$(printf "%03d" "$episode") # add 0 padding to the episode name
+		{
+			mkdir -p "$dl_dir" || die "Could not create directory"
+			if command -v "notify-send" > /dev/null; then
+				if download "$refr" "$video_url" "$anime_id" "$episode" "$dl_dir"; then
+					((!SILENT)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode"
+				else
+					((!SILENT)) && notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
+				fi
+			else
+				if download "$refr" "$video_url" "$anime_id" "$episode" "$dl_dir"; then
+					((!SILENT)) && inf "Download complete for" "${anime_id//-/ } - Episode $episode"
+				else
+					((!SILENT)) && inf "Download failed for" "${anime_id//-/ } - Episode $episode, please retry or check your internet connection"
+				fi
+			fi
+		}
 	fi
 }
 
-# generates a pre-styled span tag with the given msg
-generate_span() {
-	msg="$*"
-	span="<span foreground='#ecbe7b' style='italic' size='small'>$msg</span>"
-	printf "%s\n" "$span"
+stream() {
+	lg "Running stream()"
+	if [ "$#" -eq 0 ]; then
+		get_search_query
+	else
+		get_search_query "$*"
+	fi
+	anime_id="${query// /}"
+	[ -z "$anime_id" ] && die "No anime selected or queried"
+	searched=0
+	lg "Checking if anime: $anime_id has been searched before..."
+	if ! check_db "search" "$anime_id"; then
+		lg "$anime_id has been searched before"
+		selection_id="$anime_id"
+		insert_history "search" "$anime_id" &
+		episode_list "$anime_id"
+		al_episode_list
+	else
+		search_results=$(process_search $query) # want word splitting to account for both input cases
+		[ -z "$search_results" ] && die
+		if ! anime_selection "$search_results"; then
+			die "No anime selection found"
+		fi
+	fi
+	if (((FIRST_EP_NUMBER == LAST_EP_NUMBER && (FIRST_EP_NUMBER == 0 || FIRST_EP_NUMBER == 1)))); then
+		ep_choice_start=1
+	else
+		episode_selection
+	fi
+}
+
+parse_args() {
+	download_dir="."
+	scrape=query
+	quality=best
+	is_download=0
+	is_resume=0
+	is_autoplay=0
+	while getopts 'ad:Hsvq:cf:t:T:CQ:D:Sp:rR' OPT; do
+		case "$OPT" in
+			a)
+				is_autoplay=1
+				;;
+			d)
+				is_download=1
+				download_dir="$OPTARG"
+				lg "DOWNLOAD DIR: $download_dir"
+				;;
+			r)
+				is_resume=1
+				;;
+			R)
+				scrape=recent
+				;;
+			H)
+				scrape=history
+				;;
+			s)
+				scrape=sync
+				;;
+			v)
+				VERBOSE=1
+				;;
+			q)
+				quality="$OPTARG"
+				lg "passed in quality: $quality"
+				;;
+			c)
+				IS_ROFI=0
+				;;
+			f)
+				scrape="file"
+				play_dir="$OPTARG"
+				[ "$play_dir" != "/" ] && play_dir="$(sed -E 's/\/$//' <<< "$play_dir")" # remove trailing slash... unless searching / for some reason
+				;;
+			t)
+				theme="$OPTARG"
+				case "$theme" in
+					aniwrapper | default)
+						ROFI_THEME=aniwrapper.rasi
+						;;
+					*)
+						if [[ "$theme" =~ ($THEMES) ]]; then
+							ROFI_THEME="aniwrapper-$theme.rasi"
+						else
+							die "Invalid theme: $theme.  Please choose from: $THEMES"
+						fi
+						;;
+				esac
+				lg "Setting theme for ani-cli -> $ROFI_THEME"
+				ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
+				lg "ROFI_CFG: $ROFI_CFG"
+				;;
+			T)
+				ROFI_CFG="$OPTARG"
+				[ ! -f "$ROFI_CFG" ] && die "$ROFI_CFG does not exist"
+				lg "CUSTOM ROFI_CFG: $ROFI_CFG"
+				;;
+			C)
+				lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
+				sqlite3 "$CFG_DIR/history.sqlite3"
+				exit $?
+				;;
+			Q)
+				query="$OPTARG"
+				lg "DATABASE QUERY: $query"
+				sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
+				exit $?
+				;;
+			D)
+				DPI="$OPTARG"
+				;;
+			S)
+				SILENT=1
+				;;
+			p)
+				PLAYER_FN="$OPTARG"
+				if ! command -v "$PLAYER_FN" > /dev/null; then
+					die "ERROR: $PLAYER_FN does not exist"
+				fi
+				;;
+			*)
+				inf "Invalid option"
+				exit 1
+				;;
+		esac
+	done
+}
+
+show_menu() {
+	if ((!SILENT)); then
+		episode=${ep_choice_end:-$ep_choice_start}
+		choice=''
+		while :; do
+			inf "Currently playing $selection_id episode" "${episode// /}/$LAST_EP_NUMBER"
+			((episode != LAST_EP_NUMBER)) && menu_line_alternate "next episode" "n"
+			((episode != FIRST_EP_NUMBER)) && menu_line_alternate "previous episode" "p"
+			((FIRST_EP_NUMBER != LAST_EP_NUMBER)) && menu_line_alternate "select episode" "s"
+			menu_line_alternate "replay current episode" "r"
+			menu_line_alternate "search for another anime" "a"
+			menu_line_alternate "download current episode" "d"
+			menu_line_alternate "download current episode (with quality selection)" "D"
+			menu_line_alternate "select video quality (current: $quality)" "Q"
+			menu_line_strong "exit" "q"
+			prompt "Enter choice"
+			read -r choice
+			case $choice in
+				n)
+					episode=$((episode + 1))
+					;;
+				p)
+					episode=$((episode - 1))
+					;;
+
+				s)
+					episode_selection
+					episode=$ep_choice_start
+					;;
+
+				r)
+					episode=$((episode))
+					;;
+				a)
+					stream
+					[ -z "$ep_choice_start" ] && die "No episode selected"
+					episode=$ep_choice_start
+					lg "New selection: $selection_id - $episode"
+					;;
+				Q)
+					set_video_quality
+					episode=$((episode))
+					;;
+
+				d)
+					get_dl_dir
+					is_download=1
+					;;
+				D)
+					get_dl_dir
+					set_video_quality
+					is_download=1
+					;;
+				q)
+					break
+					;;
+
+				*)
+					die "invalid choice"
+					;;
+			esac
+			open_episode "$selection_id" "$episode" "$download_dir"
+		done
+	fi
+}
+
+main() {
+	case $scrape in
+		query)
+			stmt="SELECT anime_name FROM watch_history ORDER BY watch_date DESC LIMIT 1;"
+			((is_resume)) && anime="$(run_stmt "$stmt")" || anime="$*"
+			if [ -z "$anime" ]; then
+				stream
+			else
+				stream "$anime"
+			fi
+			;;
+		history)
+			stmt="SELECT anime_name FROM search_history ORDER BY search_date DESC"
+			search_results="$(run_stmt "$stmt")"
+			[ -z "$search_results" ] && die "History is empty"
+			if ! anime_selection "${search_results[@]}"; then
+				die "No anime selected"
+			fi
+			lg "SELECTION: $selection_id"
+
+			stmt="SELECT episode_number FROM watch_history WHERE anime_name = '$selection_id' ORDER BY watch_date DESC LIMIT 1;"
+			ep_choice_start=$(run_stmt "$stmt")
+			lg "Most recently watched episode: $ep_choice_start"
+			;;
+		sync)
+			prompt "Enter username for remote user"
+			read -r username
+			prompt "Enter host for remote user"
+			read -r host
+
+			connection_str="$username@$host"
+			prompt "Enter port to connect to remote host with or leave blank for default (22)"
+			read -r port
+			[ -z "$port" ] && PORT=22 || PORT="$port"
+
+			prompt "Enter path to private key (leave blank if unsure or not needed)"
+			read -r key_path
+
+			lg "Syncing database with: $connection_str on port $PORT"
+			temp_db="/tmp/aniwrapper_tmp_history.sqlite3"
+
+			if [[ -z "$key_path" ]]; then
+				if ! scp -P "$PORT" "$connection_str:$HISTORY_DB" "$temp_db"; then
+					die "Error getting database file from remote host"
+				fi
+			else
+				if ! scp -P "$PORT" -i "$key_path" "$connection_str:$HISTORY_DB" "$temp_db"; then
+					die "Error getting database file from remote host"
+				fi
+			fi
+			sync_search_history && sync_watch_history
+			exit $?
+			;;
+		file)
+			lg "STARTING DIR: $play_dir"
+			[ ! -d "$play_dir" ] && die "$play_dir does not exist"
+			insert_history "directory" "$play_dir"
+			video_path="$(find_media "$play_dir")"
+			retcode="$?"
+			if [ "$retcode" -ne 0 ]; then
+				die
+			elif [ -z "$video_path" ]; then
+				die "Something went wrong getting path... path is empty"
+			fi
+			lg "VIDEO PATH: $video_path"
+			play_file "$video_path"
+			exit $?
+			;;
+		recent)
+			# get list of recently added anime from $BASE_URL
+			lg "Getting list of recently added anime"
+			recently_updated="$(curl -A "$AGENT" -s "$BASE_URL" | grep -oE '/v1/([^"]*)' | sed -E 's/\/v1\///')"
+			while read -r updated_episode; do
+				anime_name="${updated_episode%%/*}"
+				lg "ANIME NAME: $anime_name"
+				if ! check_db "search" "$anime_name"; then
+					stmt="SELECT COUNT(*) FROM watch_history WHERE anime_name = '$anime_name' AND episode_number = '${updated_episode##*/ep}';"
+					lg "QUERY: $stmt"
+					if [[ "$(run_stmt "$stmt")" -ne 0 ]]; then
+						lg "$updated_episode watched before... adding to watched list"
+						[[ -z "$watched" ]] && watched="$cnt" || watched="$watched, $cnt"
+					fi
+				fi
+				((++cnt))
+			done <<< "$recently_updated"
+			selection="$(rofi -dpi "$DPI" -dmenu -no-custom -config "$ROFI_CFG" \
+				-l 15 -a "$watched" -i -p "Enter selection" -async-pre-read 30 \
+				-window-title 'aniwrapper' <<< "$recently_updated")"
+			if [ -z "$selection" ]; then
+				die "No selection made"
+			fi
+			lg "SELECTION: $selection"
+			# get everything before -episode-
+			selection_id="${selection%%/*}"
+			# get everything after -episode-
+			ep_choice_start="${selection##*/ep}"
+			episode_list "$selection_id"
+			al_episode_list
+			;;
+	esac
+
+	check_input
+
+	for ep in $episodes; do
+		open_episode "$selection_id" "$ep" "$download_dir"
+	done
+
+	if ((is_download)); then
+		lg "Finished downloading episodes: $episodes for $selection_id... exiting"
+		exit 0
+	elif ((!is_autoplay)); then
+		show_menu
+	fi
 }
 
 # runs sql command on the history database
@@ -552,602 +981,15 @@ find_media() {
 	esac
 }
 
-# get the search query from user or from args
-get_search_query() {
-	if [ $# -gt 0 ]; then
-		query="${*// /-}"
-	elif [ "$IS_ROFI" -eq 1 ]; then
-		stmt="SELECT id || '. ' || anime_name FROM search_history ORDER BY search_date DESC;"
-		msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
-		query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
-			-mesg "$(generate_span "$msg")" \
-			-config "$ROFI_CFG" -window-title 'aniwrapper' < <(run_stmt "$stmt"))
-		query="${query//[1-9]*\. /}"
-	elif [ "$IS_ROFI" -eq 0 ]; then
-		prompt "Search Anime"
-		read -r query
-	fi
-}
-
-# get anime name along with its id
-search_anime() {
-	if [[ $# -gt 1 ]]; then
-		# if multi-word query, concatenate into one string and replace spaces with '-'
-		search="$*"
-		search="${search// /-}"
-	else
-		# if one word, remove leading or trailing whitespace
-		search="${1// /}"
-	fi
-	lg "Search Query: $search"
-	curl -s "$BASE_URL/search.html" -G -d "keyword=$search" |
-		sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
-}
-
-# only lets the user pass in case of a valid search
-process_search() {
-	search_results=$(search_anime "$@")
-	while [ -z "$search_results" ]; do
-		extended_search_results=$(extended_search "$@")
-		if [ -n "$extended_search_results" ]; then
-			extended_search_results=$(printf '%s' "$extended_search_results" | head -n 1)
-			search_results=$(search_anime "$extended_search_results")
-			break
-		fi
-		err 'No search results found for '"$*"''
-		if [ "$IS_ROFI" -eq 1 ]; then
-			stmt="SELECT id || '. ' || anime_name FROM search_history ORDER BY search_date DESC;"
-			msg="Choose from list of searched anime below, or enter a unique name of an anime to search for"
-			query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
-				-mesg "$(generate_span "$msg")" \
-				-config "$ROFI_CFG" -window-title 'aniwrapper' < <(run_stmt "$stmt"))
-			query="${query//[1-9]*\. /}"
-		else
-			prompt "Search Anime"
-			read -r query
-		fi
-		[ -z "$query" ] && return 1
-		search_results=$(search_anime "$query")
-	done
-	lg "Search Results: $search_results"
-	printf '%s' "$search_results"
-}
-
-# searches on gogoanime (instead of gogoplay) because they index english titles
-extended_search() {
-	indexing_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
-	search=$(printf '%s' "$1" | tr ' ' '-')
-	curl -s "$indexing_url//search.html" -G -d "keyword=$search" |
-		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
-}
-
-#update main url to latest one
-updateurl() {
-	prev_url=$(printf "%s" "$BASE_URL" | cut -d"/" -f3)
-	new_url=$(printf "%s" "$dpage_link" | cut -d"/" -f3)
-	[ "$prev_url" != "$new_url" ] && printf "%s" "$new_url" > "$URLFILE"
-}
-
-check_episode() {
-	data=$(curl -s "$BASE_URL/videos/$1")
-	del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
-	[ -n "$del" ] && printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
-}
-
-search_eps() {
-	anime_id=$1
-	lg "Searching for episodes of $anime_id"
-	select_ep_result=$(check_episode "$anime_id-episode-1" "$anime_id" | sed -E 's/\-episode\-//' | sed -E 's/0-.//')
-	lg "Select Episode Result: $select_ep_result"
-	FIRST_EP_NUMBER=$(printf "%s" "$select_ep_result" | tail -n 1)
-	LAST_EP_NUMBER=$(printf "%s" "$select_ep_result" | head -n 1)
-	lg "First episode: $FIRST_EP_NUMBER"
-	lg "Last episode: $LAST_EP_NUMBER"
-}
-
-# Select anime from query results
-anime_selection() {
-	search_results=$*
-	if ((IS_ROFI == 1)); then
-		menu=""
-		searched=""
-		cnt=0
-		while read -r anime_id; do
-			anime_id=$(printf "%s" "$anime_id" | sed -E 's/\-episode\-.*//')
-			[[ -z "$menu" ]] && menu="$((cnt + 1)). $anime_id" ||
-				menu="$menu|$((cnt + 1)). $anime_id"
-			if ! check_db "search" "$anime_id"; then
-				[[ -z "$searched" ]] && searched="$cnt" || searched="$searched, $cnt"
-			fi
-			((++cnt))
-		done <<< "$search_results"
-		menu="$menu|$((++cnt)). Search another anime|$((++cnt)). Quit"
-
-		# get the anime from indexed list
-		msg="$(generate_span "Query: $query")"
-		selection="$(rofi -dpi "$DPI" -dmenu -no-custom \
-			-async-pre-read 33 -config "$ROFI_CFG" -l 15 -i -sep '|' \
-			-mesg "$msg" -a "$searched" -p "Enter selection" -window-title 'aniwrapper' <<< "$menu")"
-		choice="${selection%%.*}" # remmove everything from . to end
-		lg "CHOICE: $choice"
-		if ((choice == cnt)); then
-			die "Quitting"
-		elif ((choice == --cnt)); then
-			stream
-			return $?
-		fi
-	else
-		count=1
-		while read -r anime_id; do
-			anime_id=$(printf "%s" "$anime_id" | sed -E 's/\-episode\-.*//')
-			menu_line_alternate "$anime_id" "$count"
-			: count=$((count += 1))
-		done <<< "$search_results"
-		prompt "Enter choice"
-		read -r choice
-	fi
-
-	# Check if input is a number
-	[[ "$choice" -eq "$choice" ]] 2> /dev/null || die "Invalid number entered"
-
-	count=1
-	while read -r anime_id; do
-		if [[ "$count" -eq "$choice" ]]; then
-			anime_id=$(printf "%s" "$anime_id" | sed -E 's/\-episode\-.*//')
-			selection_id=$anime_id
-			break
-		fi
-		count=$((count + 1))
-	done <<< "$search_results"
-
-	[[ -z "$selection_id" ]] && die "Invalid number entered"
-	insert_history "search" "$selection_id" &
-	lg "Selection: $selection_id"
-	search_eps "$anime_id"
-	return 0
-}
-
-# select episode from query results
-episode_selection() {
-	ep_choice_start=1
-	if ((IS_ROFI == 1)); then
-		lg "Anime ID: $anime_id"
-		stmt="SELECT episode_number FROM watch_history WHERE anime_name = '$anime_id';"
-
-		# Get Watch History for $anime_id as comma separated list
-		watch_history=""
-		while read -r i; do
-			if ((FIRST_EP_NUMBER == 0)); then
-				[[ -z "$watch_history" ]] && watch_history="$((i))" || watch_history="$watch_history, $((i))"
-			else
-				[[ -z "$watch_history" ]] && watch_history="$((--i))" || watch_history="$watch_history, $((--i))"
-			fi
-		done < <(run_stmt "$stmt")
-		lg "Episode watch history -> $watch_history"
-
-		# get user choice and set the start and end
-		msg1="Anime Name: $anime_id"
-		msg2="Range of episodes can be provided as: START_EPISODE - END_EPISODE"
-		[[ "$is_download" -eq 1 ]] && msg=$(printf "%s\n%s" "$(generate_span "$msg1")" "$(generate_span "$msg2")") || msg=$(printf "%s\n" "$(generate_span "$msg1")")
-		choice=$(
-			seq "$FIRST_EP_NUMBER" "$LAST_EP_NUMBER" |
-				rofi -dpi "$DPI" -dmenu -l 12 \
-					-theme-str 'window {width: 45%;}' \
-					-a "$watch_history" \
-					-p "Select Episode [$FIRST_EP_NUMBER, $LAST_EP_NUMBER]:" \
-					-mesg "$msg" -window-title 'aniwrapper' \
-					-config "$ROFI_CFG"
-		)
-		ep_choice_start=$(printf '%s\n' "${choice}" | awk '{print $1}')
-		ep_choice_end=$(printf '%s\n' "${choice}" | awk '{print $NF}')
-		lg "START: $ep_choice_start | END: $ep_choice_end"
-	elif [ -n "$LAST_EP_NUMBER" ]; then
-		[[ "$is_download" -eq 1 ]] &&
-			inf "Range of episodes can be specified:" "start_number end_number"
-		inf "Anime:" "$anime_id"
-		prompt "Choose episode " "[$FIRST_EP_NUMBER-$LAST_EP_NUMBER]"
-		read -r ep_choice_start ep_choice_end
-		[[ -z "$ep_choice_end" ]] && ep_choice_end="$ep_choice_start"
-	fi
-	if (((ep_choice_start < 0 || ep_choice_start > LAST_EP_NUMBER) || ep_choice_end < ep_choice_start || ep_choice_end > LAST_EP_NUMBER)); then
-		die "Invalid episode/range entered: ep_start -> $ep_choice_start | ep_end -> $ep_choice_end"
-	fi
-}
-
-continue_watching() {
-	if ((IS_ROFI == 1)); then
-		msg="$(printf '%s\n%s' "$(generate_span "Anime: $anime_id")" "$(generate_span "Next episode: $((episode + 1))")")"
-		choice=$(rofi -dmenu -dpi "$DPI" -config "$ROFI_CFG" \
-			-theme-str 'listview {columns: 1;} window {width: 25%;}' \
-			-i -l 2 -no-custom -sep '|' -a 0 -mesg "$msg" \
-			-p "Continue watching?" -window-title 'aniwrapper' <<< "Yes|No")
-	else
-		inf "Continue watching $selection_id?"
-		prompt "Next episode -> $((episode + 1)) [Y/n]"
-		read -r choice
-		[ -z "$choice" ] && choice="y"
-	fi
-
-	[[ "$choice" =~ ^(y|Y|Yes)$ ]] && return 0 || return 1
-}
-
-open_episode() {
-	anime_id="$1"
-	episode="$2"
-	ddir="$3"
-
-	insert_history "watch" "$anime_id" "$episode"
-
-	lg "Getting data for episode $episode"
-	dpage_link=$(get_dpage_link "$anime_id-episode-" "$episode")
-	lg "dpage_link: $dpage_link"
-	if [[ -z "$dpage_link" ]]; then
-		die "Could not get download page link"
-	else
-		get_video_link "$dpage_link"
-	fi
-	lg "Video url: $video_url"
-
-	if [ "$is_download" -eq 0 ]; then
-		kill "$PID" > /dev/null 2>&1
-		lg "PLAYING: $video_url with player: $PLAYER_FN"
-		case "$PLAYER_FN" in
-			mpv)
-				nohup "$PLAYER_FN" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="aniwrapper: $anime_id E$(printf "%03d" "$episode")" > /dev/null 2>&1 &
-				;;
-			vlc)
-				nohup "$PLAYER_FN" --play-and-exit --http-referrer="$refr" "$video_url" > /dev/null 2>&1 &
-				;;
-			*)
-				nohup "$PLAYER_FN" "$video_url" > /dev/null 2>&1 & # try to open with just the video url
-				;;
-		esac
-		PID=$!
-		if command -v "notify-send" > /dev/null; then
-			((SILENT != 1)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Playing $anime_id - Episode $episode"
-		else
-			((SILENT != 1)) && inf "Playing $anime_id - Episode $episode"
-		fi
-		if ((is_autoplay == 1)); then
-			lg "Waiting for video to finish playing..."
-			wait "$PID"
-			if ((episode + 1 <= LAST_EP_NUMBER)) && continue_watching; then
-				open_episode "$anime_id" "$((episode + 1))" "$ddir"
-			else
-				exit 0
-			fi
-		fi
-	else
-		lg "Downloading episode $episode ..."
-		dl_dir="${ddir// /}/$anime_id"
-		episode=$(printf "%03d" "$episode") # add 0 padding to the episode name
-		{
-			mkdir -p "$dl_dir" || die "Could not create directory"
-			if command -v "notify-send" > /dev/null; then
-				if download "$refr" "$video_url" "$anime_id" "$episode.mp4" "$dl_dir"; then
-					((SILENT != 1)) && notify-send -i "$ANIWRAPPER_ICON_PATH" "Download complete for ${anime_id//-/ } - Episode: $episode"
-				else
-					((SILENT != 1)) && notify-send -i "$MAISAN_ICON_PATH" "Download failed for ${anime_id//-/ } - Episode: $episode. Please retry or check your internet connection"
-				fi
-			else
-				if download "$refr" "$video_url" "$anime_id" "$episode.mp4" "$dl_dir"; then
-					((SILENT != 1)) && inf "Download complete for" "${anime_id//-/ } - Episode $episode"
-				else
-					((SILENT != 1)) && inf "Download failed for" "${anime_id//-/ } - Episode $episode, please retry or check your internet connection"
-				fi
-			fi
-		}
-	fi
-}
-
-stream() {
-	lg "Running stream()"
-	if [ "$#" -eq 0 ]; then
-		get_search_query
-	else
-		get_search_query "$*"
-	fi
-	anime_id="${query// /}"
-	[ -z "$anime_id" ] && die "No anime selected or queried"
-	searched=0
-	lg "Checking if anime: $anime_id has been searched before..."
-	if ! check_db "search" "$anime_id"; then
-		lg "$anime_id has been searched before"
-		selection_id="$anime_id"
-		insert_history "search" "$anime_id" &
-		search_eps "$anime_id"
-	else
-		search_results=$(process_search $query) # want word splitting to account for both input cases
-		[ -z "$search_results" ] && die
-		if ! anime_selection "$search_results"; then
-			die "No anime selection found"
-		fi
-	fi
-	if (((FIRST_EP_NUMBER == LAST_EP_NUMBER && (FIRST_EP_NUMBER == 0 || FIRST_EP_NUMBER == 1)))); then
-		ep_choice_start=1
-	else
-		episode_selection
-	fi
-}
-
-parse_args() {
-	download_dir="."
-	scrape=query
-	quality=best
-	is_download=0
-	is_resume=0
-	is_autoplay=0
-	while getopts 'ad:Hsvq:cf:t:T:CQ:D:Sp:rR' OPT; do
-		case "$OPT" in
-			a)
-				is_autoplay=1
-				;;
-			d)
-				is_download=1
-				download_dir="$OPTARG"
-				lg "DOWNLOAD DIR: $download_dir"
-				;;
-			r)
-				is_resume=1
-				;;
-			R)
-				scrape=recent
-				;;
-			H)
-				scrape=history
-				;;
-			s)
-				scrape=sync
-				;;
-			v)
-				VERBOSE=1
-				;;
-			q)
-				quality="$OPTARG"
-				lg "passed in quality: $quality"
-				;;
-			c)
-				IS_ROFI=0
-				;;
-			f)
-				scrape="file"
-				play_dir="$OPTARG"
-				[ "$play_dir" != "/" ] && play_dir="$(sed -E 's/\/$//' <<< "$play_dir")" # remove trailing slash... unless searching / for some reason
-				;;
-			t)
-				theme="$OPTARG"
-				case "$theme" in
-					aniwrapper | default)
-						ROFI_THEME=aniwrapper.rasi
-						;;
-					*)
-						if [[ "$theme" =~ ($THEMES) ]]; then
-							ROFI_THEME="aniwrapper-$theme.rasi"
-						else
-							die "Invalid theme: $theme.  Please choose from: $THEMES"
-						fi
-						;;
-				esac
-				lg "Setting theme for ani-cli -> $ROFI_THEME"
-				ROFI_CFG="$CFG_DIR/themes/$ROFI_THEME"
-				lg "ROFI_CFG: $ROFI_CFG"
-				;;
-			T)
-				ROFI_CFG="$OPTARG"
-				[ ! -f "$ROFI_CFG" ] && die "$ROFI_CFG does not exist"
-				lg "CUSTOM ROFI_CFG: $ROFI_CFG"
-				;;
-			C)
-				lg "Connecting to history database -> $CFG_DIR/history.sqlite3"
-				sqlite3 "$CFG_DIR/history.sqlite3"
-				exit $?
-				;;
-			Q)
-				query="$OPTARG"
-				lg "DATABASE QUERY: $query"
-				sqlite3 -line "$CFG_DIR/history.sqlite3" "$query"
-				exit $?
-				;;
-			D)
-				DPI="$OPTARG"
-				;;
-			S)
-				SILENT=1
-				;;
-			p)
-				PLAYER_FN="$OPTARG"
-				if ! command -v "$PLAYER_FN" > /dev/null; then
-					die "ERROR: $PLAYER_FN does not exist"
-				fi
-				;;
-			*)
-				inf "Invalid option"
-				exit 1
-				;;
-		esac
-	done
-}
-
-show_menu() {
-	if ((SILENT != 1)); then
-		episode=${ep_choice_end:-$ep_choice_start}
-		choice=''
-		while :; do
-			inf "Currently playing $selection_id episode" "${episode// /}/$LAST_EP_NUMBER"
-			((episode != LAST_EP_NUMBER)) && menu_line_alternate "next episode" "n"
-			((episode != FIRST_EP_NUMBER)) && menu_line_alternate "previous episode" "p"
-			((FIRST_EP_NUMBER != LAST_EP_NUMBER)) && menu_line_alternate "select episode" "s"
-			menu_line_alternate "replay current episode" "r"
-			menu_line_alternate "search for another anime" "a"
-			menu_line_alternate "download current episode" "d"
-			menu_line_alternate "download current episode (with quality selection)" "D"
-			menu_line_alternate "select video quality (current: $quality)" "Q"
-			menu_line_strong "exit" "q"
-			prompt "Enter choice"
-			read -r choice
-			case $choice in
-				n)
-					episode=$((episode + 1))
-					;;
-				p)
-					episode=$((episode - 1))
-					;;
-
-				s)
-					episode_selection
-					episode=$ep_choice_start
-					;;
-
-				r)
-					episode=$((episode))
-					;;
-				a)
-					stream
-					episode=$ep_choice_start
-					lg "NEW EPISODE: $selection_id - $episode"
-					;;
-				Q)
-					set_video_quality
-					episode=$((episode))
-					;;
-
-				d)
-					get_dl_dir
-					is_download=1
-					;;
-				D)
-					get_dl_dir
-					set_video_quality
-					is_download=1
-					;;
-				q)
-					break
-					;;
-
-				*)
-					die "invalid choice"
-					;;
-			esac
-			open_episode "$selection_id" "$episode" "$download_dir"
-		done
-	fi
-}
-
-main() {
-	case $scrape in
-		query)
-			stmt="SELECT anime_name FROM watch_history ORDER BY watch_date DESC LIMIT 1;"
-			((is_resume == 1)) && anime="$(run_stmt "$stmt")" || anime="$*"
-			if [ -z "$anime" ]; then
-				stream
-			else
-				stream "$anime"
-			fi
-			;;
-		history)
-			stmt="SELECT anime_name FROM search_history ORDER BY search_date DESC"
-			search_results="$(run_stmt "$stmt")"
-			[ -z "$search_results" ] && die "History is empty"
-			if ! anime_selection "${search_results[@]}"; then
-				die "No anime selected"
-			fi
-			lg "SELECTION: $selection_id"
-
-			stmt="SELECT episode_number FROM watch_history WHERE anime_name = '$selection_id' ORDER BY watch_date DESC LIMIT 1;"
-			ep_choice_start=$(run_stmt "$stmt")
-			lg "Most recently watched episode: $ep_choice_start"
-			;;
-		sync)
-			prompt "Enter username for remote user"
-			read -r username
-			prompt "Enter host for remote user"
-			read -r host
-
-			connection_str="$username@$host"
-			prompt "Enter port to connect to remote host with or leave blank for default (22)"
-			read -r port
-			[ -z "$port" ] && PORT=22 || PORT="$port"
-
-			prompt "Enter path to private key (leave blank if unsure or not needed)"
-			read -r key_path
-
-			lg "Syncing database with: $connection_str on port $PORT"
-			temp_db="/tmp/aniwrapper_tmp_history.sqlite3"
-
-			if [[ -z "$key_path" ]]; then
-				if ! scp -P "$PORT" "$connection_str:$HISTORY_DB" "$temp_db"; then
-					die "Error getting database file from remote host"
-				fi
-			else
-				if ! scp -P "$PORT" -i "$key_path" "$connection_str:$HISTORY_DB" "$temp_db"; then
-					die "Error getting database file from remote host"
-				fi
-			fi
-			sync_search_history && sync_watch_history
-			exit $?
-			;;
-		file)
-			lg "STARTING DIR: $play_dir"
-			[ ! -d "$play_dir" ] && die "$play_dir does not exist"
-			insert_history "directory" "$play_dir"
-			video_path="$(find_media "$play_dir")"
-			retcode="$?"
-			if [ "$retcode" -ne 0 ]; then
-				die
-			elif [ -z "$video_path" ]; then
-				die "Something went wrong getting path... path is empty"
-			fi
-			lg "VIDEO PATH: $video_path"
-			play_file "$video_path"
-			exit $?
-			;;
-		recent)
-			# get list of recently added anime from $BASE_URL
-			recently_updated="$(curl -s "$BASE_URL" | sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p')"
-			while read -r updated_episode; do
-				anime_name=$(printf "%s" "$updated_episode" | sed -E 's/\-episode\-.*//')
-				lg "ANIME NAME: $anime_name"
-				if ! check_db "search" "$anime_name"; then
-					stmt="SELECT COUNT(*) FROM watch_history WHERE anime_name = '$anime_name' AND episode_number = '${updated_episode##*-episode-}';"
-					lg "QUERY: $stmt"
-					if [[ "$(run_stmt "$stmt")" -ne 0 ]]; then
-						lg "$updated_episode watched before... adding to watched list"
-						[[ -z "$watched" ]] && watched="$cnt" || watched="$watched, $cnt"
-					fi
-				fi
-				((++cnt))
-			done <<< "$recently_updated"
-			selection="$(rofi -dpi "$DPI" -dmenu -no-custom -config "$ROFI_CFG" \
-				-l 15 -a "$watched" -i -p "Enter selection" -async-pre-read 30 \
-				-window-title 'aniwrapper' <<< "$recently_updated")"
-			if [ -z "$selection" ]; then
-				die "No selection made"
-			fi
-			lg "SELECTION: $selection"
-			# get everything before -episode-
-			selection_id="${selection%%-episode-*}"
-			# get everything after -episode-
-			ep_choice_start="${selection##*-episode-}"
-			search_eps "$selection_id" "$ep_choice_start"
-			;;
-	esac
-
-	check_input
-
-	for ep in $episodes; do
-		open_episode "$selection_id" "$ep" "$download_dir"
-	done
-
-	if ((is_download == 1)); then
-		lg "Finished downloading episodes: $episodes for $selection_id... exiting"
-		exit 0
-	elif ((is_autoplay == 0)); then
-		show_menu
-	fi
-}
-
+progress "Checking dependencies..."
 dep_ch "$PLAYER_FN" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c" "openssl" "ffmpeg"
 parse_args "$@"
 shift $((OPTIND - 1))
+if ((IS_ROFI)); then
+	. "$CFG_DIR/lib/ani-cli/UI-ROFI" || die "No UI file"
+	lg "rofi UI loaded"
+else
+	. "$CFG_DIR/lib/ani-cli/UI" || die "No UI file"
+	lg "command-line UI loaded"
+fi
 main "$@"
-updateurl &
