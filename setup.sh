@@ -7,7 +7,7 @@
 ######################
 VERBOSE=0
 
-log() {
+lg() {
 	if [[ "$VERBOSE" -eq 1 ]]; then
 		printf "%s\n" "$*"
 	fi
@@ -16,7 +16,7 @@ log() {
 if [[ $# -ge 1 ]]; then
 	if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
 		VERBOSE=1
-		log "VERBOSE LOGGING ENABLED"
+		lg "VERBOSE lgGING ENABLED"
 	fi
 fi
 
@@ -25,8 +25,8 @@ DB="history.sqlite3"
 DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 MPV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/mpv"
 
-log "CONFIG DIR:" "$DIR"
-log "MPV DIR:" "$MPV_DIR"
+lg "CONFIG DIR:" "$DIR"
+lg "MPV DIR:" "$MPV_DIR"
 
 # executes aniwrapper setup
 # 1. create the aniwrapper directory in $XDG_CONFIG_HOME
@@ -35,43 +35,48 @@ log "MPV DIR:" "$MPV_DIR"
 # 4. move skip-intro.lua into mpv/scripts folder
 # 5. move the aniwrapper icon to $XDG_CONFIG_HOME/aniwrapper/ directory
 run_setup() {
-	log "INSTALL DIR: $DIR"
+	lg "INSTALL DIR: $DIR"
 
 	if [[ ! -d "$DIR" ]]; then
-		log "Creating directory $DIR"
+		lg "Creating directory $DIR"
 		mkdir -p "$DIR"
-		log "Directory created"
+		lg "Directory created"
 	fi
 
-	log "CREATING HISTORY DATABASE IF NOT EXISTS"
+	lg "CREATING HISTORY DATABASE IF NOT EXISTS"
 	sqlite3 "$DIR/$DB" < sql/history.sql
-	log "FINISHED CREATING DB"
+	lg "FINISHED CREATING DB"
 
-	# log "themes directory does not exist in filesystem... Creating and moving themes"
+	lg "INSTALLING UI FILES TO $DIR/lib/ani-cli"
+	mkdir -p "$DIR/lib/ani-cli"
+	cp -r lib/ani-cli/* "$DIR/lib/ani-cli/"
+	lg "FINISHED INSTALLING UI FILES"
+
+	# lg "themes directory does not exist in filesystem... Creating and moving themes"
 	mkdir -p "$DIR/themes"
 	cp themes/* "$DIR/themes/"
-	log "Theme files moved..."
+	lg "Theme files moved..."
 
-	log "Creating mpv/scripts/ directory if it doesn't exist..."
+	lg "Creating mpv/scripts/ directory if it doesn't exist..."
 	mkdir -p "$MPV_DIR/scripts/"
 	if [[ ! -f "$MPV_DIR/scripts/skip-intro.lua" ]]; then
-		log "Moving skip-intro.lua into mpv scripts directory..."
+		lg "Moving skip-intro.lua into mpv scripts directory..."
 		cp lua/skip-intro.lua "$MPV_DIR/scripts/"
-		log "Moved skip-intro.lua into scripts directory..."
+		lg "Moved skip-intro.lua into scripts directory..."
 	else
-		log "skip-intro.lua already exists in $XDG_CONFIG_HOME/mpv/scripts/... skipping"
+		lg "skip-intro.lua already exists in $XDG_CONFIG_HOME/mpv/scripts/... skipping"
 	fi
 
 	if [[ ! -d "$DIR/icons" ]]; then
-		log "Creating icons directory"
+		lg "Creating icons directory"
 		mkdir -p "$DIR/icons"
 	fi
 	cp .assets/icons/* "$DIR/icons/"
-	log "Installed icons in config directory..."
+	lg "Installed icons in config directory..."
 }
 
 if run_setup; then
-	log "Setup Complete...."
+	lg "Setup Complete...."
 else
 	printf "%s\n" "There was an error during setup"
 	exit 1

@@ -2,9 +2,6 @@
 
 set -Eeo pipefail
 
-#############
-#  Globals  #
-#############
 CMD="/usr/bin/ani-cli"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 CFG_FILE="$CFG_DIR/themes/aniwrapper.rasi"
@@ -42,7 +39,7 @@ Usage:
 	aniwrapper -Q <query>
 	aniwrapper -C
 Options:
-    -a  enable autoplay
+        -a  enable autoplay
 	-c  enable command-line mode (rofi disabled)
 	-C  connect to history database
 	-d  download episode in command-line mode
@@ -51,7 +48,7 @@ Options:
 	-p  enable player selection menu
 	-q  enable quality selection
 	-Q  <query> query the history database
-    -r  start script in episode selection using the most recently watched anime
+        -r  start script in episode selection using the most recently watched anime
 	-v  verbose output
 	-S  silent mode (suppress output to stdout) [cannot be used with -v]
 	-t  <alter|aniwrapper (default)|dracula|doomone|fancy|material|monokai|nord|nord2|onedark> change rofi theme
