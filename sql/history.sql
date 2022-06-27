@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS watch_history (
     episode_number integer NOT NULL,
     watch_date DATETIME NOT NULL,
     CHECK (LENGTH(anime_name) > 0),
-    UNIQUE (anime_name, episode_number, watch_date)
+    UNIQUE (anime_name, episode_number)
 );
 
 CREATE TABLE IF NOT EXISTS search_history (
@@ -34,6 +34,6 @@ CREATE TABLE IF NOT EXISTS search_history (
     CHECK (LENGTH(anime_name) > 0)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS anime_search_idx ON search_history (anime_name, search_date);
+CREATE UNIQUE INDEX IF NOT EXISTS anime_search_idx ON search_history (anime_name);
 CREATE UNIQUE INDEX IF NOT EXISTS watch_anime_episode_idx ON watch_history (anime_name, episode_number);
 CREATE UNIQUE INDEX IF NOT EXISTS dir_filename_idx ON file_history (directory, filename);
