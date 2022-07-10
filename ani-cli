@@ -299,12 +299,7 @@ search_anime() {
 process_search() {
 	progress "Searching $query.."
 	search_results=$(search_anime "$query")
-	while [ -z "$search_results" ]; do
-		retry 'No search results found'
-		query="$REPLY $REPLY2"
-		progress "Searching $scrape.."
-		search_results=$(search_anime "$query")
-	done
+	[ -z "$search_results" ] && die 'No search results found'
 	lg "Search Results: $search_results"
 	printf "%s\n" "$search_results"
 }
