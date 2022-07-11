@@ -118,7 +118,7 @@ download() {
 			rm -f video.ts
 			;;
 		*)
-			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$5" -o "$4.mp4" --download-result=hide
+			axel -a -k -n 30 --header=Referer:"$1" "$2" -o "$5/$4.mp4"
 			;;
 	esac
 }
@@ -977,7 +977,7 @@ find_media() {
 }
 
 progress "Checking dependencies..."
-dep_ch "$PLAYER_FN" "curl" "sed" "grep" "sqlite3" "rofi" "git" "aria2c" "openssl" "ffmpeg"
+dep_ch "$PLAYER_FN" "curl" "sed" "grep" "sqlite3" "rofi" "git" "axel" "openssl" "ffmpeg"
 parse_args "$@"
 shift $((OPTIND - 1))
 if ((IS_ROFI)); then

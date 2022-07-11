@@ -73,7 +73,7 @@ episode introduction by skipping to the next moment of silence in the video
 These are the minimum dependences required to run `aniwrapper`
 
 ```
-aria2 curl ffmpeg grep mpv rofi sed sqlite3
+axel curl ffmpeg grep mpv rofi sed sqlite3
 ```
 
 **Arch Linux**
@@ -92,10 +92,10 @@ Install the Dependencies
 
 ```sh
 # Arch
-pacman -S --needed aria2 curl ffmpeg grep mpv rofi sed sqlite3
+pacman -S --needed axel curl ffmpeg grep mpv rofi sed sqlite3
 
 # Debian
-apt install aria2 curl ffmpeg grep mpv rofi sed sqlite3
+apt install axel curl ffmpeg grep mpv rofi sed sqlite3
 ```
 
 Clone and switch into the repo directory
