@@ -415,7 +415,7 @@ stream() {
 	else
 		get_search_query "$*"
 	fi
-	anime_id="${query// /}"
+	anime_id="$query"
 	[ -z "$anime_id" ] && die "No anime selected or queried"
 	searched=0
 	lg "Checking if anime: $anime_id has been searched before..."
