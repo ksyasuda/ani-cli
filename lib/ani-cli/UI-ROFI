@@ -173,7 +173,8 @@ get_search_query() {
 		query=$(rofi -dpi "$DPI" -dmenu -l 15 -p "Search Anime:" \
 			-mesg "$(generate_span "$msg")" \
 			-config "$ROFI_CFG" -window-title 'aniwrapper' < <(run_stmt "$stmt"))
-		query="${query//[1-9]*\. /}"
+		query="${query#*\. }" # remove [1-9]. from beginning of query
+		query="${query// /-}" # replace spaces with -
 	fi
 }
 
