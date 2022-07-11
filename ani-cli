@@ -282,14 +282,7 @@ dep_ch() {
 
 # get anime name along with its id
 search_anime() {
-	if [[ $# -gt 1 ]]; then
-		# if multi-word query, concatenate into one string and replace spaces with '-'
-		search="$*"
-		search="${search// /-}"
-	else
-		# if one word, remove leading or trailing whitespace
-		search="${1// /}"
-	fi
+	search=$(printf '%s' "$1" | tr ' ' '-')
 	lg "Search Query: $search"
 	curl -s "https://gogoanime.lu//search.html?keyword=$search" -L |
 		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*_\1_p'
