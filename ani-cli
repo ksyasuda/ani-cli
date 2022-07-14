@@ -482,8 +482,7 @@ parse_args() {
 				scrape="file"
 				play_dir="$OPTARG"
 				[ "$play_dir" != "/" ] && play_dir="$(sed -E 's/\/$//' <<< "$play_dir")" # remove trailing slash... unless searching / for some reason
-				[ ! -f "$CFG_DIR/lib/ani-cli/UI-play" ] && die "UI-play file not found"
-				. "$CFG_DIR/lib/ani-cli/UI-play"
+				. "$CFG_DIR/lib/ani-cli/UI-play" || die "UI-play file not found"
 				lg "play UI loaded"
 				;;
 			t)
