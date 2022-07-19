@@ -53,6 +53,9 @@ Defaults:
 **-p**
 : Enable video player selection menu
 
+**-P**
+: Enable provider selection menu
+
 **-q**
 : Enable quality selection
 
