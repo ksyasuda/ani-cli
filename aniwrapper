@@ -22,6 +22,7 @@ IS_ROFI=1
 IS_SYNC=0
 IS_ALTERNATE_PLAYER=0
 IS_VERBOSE=0
+SELECT_PROVIDER=0
 SILENT=0
 
 quit="8. Quit"
@@ -46,6 +47,7 @@ Options:
 	-f  <path_to_directory> (no trailing slash) specify starting directory for play for file mode
 	-h  show this help text
 	-p  enable player selection menu
+	-P  select provider to scrape first
 	-q  enable quality selection
 	-Q  <query> query the history database
         -r  start script in episode selection using the most recently watched anime
@@ -155,7 +157,7 @@ set_theme() {
 }
 
 parse_args() {
-	while getopts 'acCdD:f:hpqQ:rSt:T:v' OPT; do
+	while getopts 'acCdD:f:hpPqQ:rSt:T:v' OPT; do
 		case "$OPT" in
 			a)
 				IS_AUTOPLAY=1
@@ -188,6 +190,9 @@ parse_args() {
 				;;
 			p)
 				IS_ALTERNATE_PLAYER=1
+				;;
+			P)
+				SELECT_PROVIDER=1
 				;;
 			q)
 				GET_QUALITY=1
@@ -252,6 +257,37 @@ get_player() {
 	fi
 }
 
+# prompts the user to select a provider and returns the provider name and index
+get_provider() {
+	providers="1. Mp4upload|2. Doodstream|3. Streamlare|4. Okru|5. Xstreamcdn|6. Animixplay|7. Gogoanime"
+	if ((IS_ROFI)); then
+		selection="$(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
+			-i -l 7 -theme-str 'listview {columns: 1;} window {width: 45%;}' \
+			-p "Select provider:" -window-title 'aniwrapper' \
+			-a 0 -sep '|' <<< "$providers")"
+		[ -z "$selection" ] && selection=1
+		provider_idx="${selection:0:1}"
+	else
+		printf "%s%s\n" "Select provider:" "[$providers]"
+		prompt "Enter provider [1-7]"
+		read -r provider_idx
+		[ -z "$provider_idx" ] && die "ERROR: provider index cannot be empty"
+		((provider_idx < 1 || provider_idx > 7)) && die "ERROR: provider index must be between 1 and 7"
+	fi
+	while IFS='|' read -ra providers_list; do
+		for p in "${providers_list[@]}"; do
+			if [[ "${p:0:1}" == "$provider_idx" ]]; then
+				lg "provider -> $p | provider index -> $idx" > /dev/stderr
+				provider="${p:3}"
+				break
+			fi
+			((++idx))
+		done
+	done <<< "$providers"
+	[ -z "$provider" ] && provider="mp4upload"
+	inf "Selected provider: $provider"
+}
+
 # Check passed in flags and set cli arguments
 check_flags() {
 	if ((IS_VERBOSE && SILENT)); then
@@ -292,6 +328,12 @@ check_flags() {
 	fi
 	if ((IS_RESUME)); then
 		args+=(-r)
+	fi
+	if ((SELECT_PROVIDER)); then
+		get_provider || provider_idx=1
+		lg "PROVIDER INDEX -> $provider_idx"
+		lg "SELECTED PROVIDER -> $provider"
+		args+=(-P"$provider_idx")
 	fi
 	if ((SILENT)); then
 		args+=(-S)

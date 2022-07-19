@@ -446,7 +446,7 @@ parse_args() {
 	is_download=0
 	is_resume=0
 	is_autoplay=0
-	while getopts 'ad:Hsvq:cf:t:T:CQ:D:Sp:rR' OPT; do
+	while getopts 'ad:Hsvq:cf:t:T:CQ:D:Sp:P:rR' OPT; do
 		case "$OPT" in
 			a)
 				is_autoplay=1
@@ -530,6 +530,10 @@ parse_args() {
 				if ! command -v "$PLAYER_FN" > /dev/null; then
 					die "ERROR: $PLAYER_FN does not exist"
 				fi
+				;;
+			P)
+				select_provider="$OPTARG"
+				((select_provider < 1 || select_provider > 7)) && die "Invalid provider: $select_provider"
 				;;
 			*)
 				inf "Invalid option"
