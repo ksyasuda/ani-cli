@@ -292,7 +292,7 @@ search_anime() {
 	fi
 	lg "Search Query: $search"
 	curl -s "https://gogoanime.lu//search.html?keyword=$search" -L |
-		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*_\1_p'
+		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*">$_\1_p'
 }
 
 # only lets the user pass in case of a valid search
@@ -714,6 +714,7 @@ main() {
 
 	for ep in $episodes; do
 		open_episode "$selection_id" "$ep" "$download_dir"
+		sleep 2
 	done
 
 	if ((is_download)); then
