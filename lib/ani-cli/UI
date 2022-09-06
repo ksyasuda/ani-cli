@@ -93,7 +93,6 @@ anime_selection() {
 	lg "Selection: $selection_id"
 	progress "(Gogoanime) Searching Episodes.."
 	episode_list "$selection_id"
-	al_episode_list
 	return 0
 }
 
