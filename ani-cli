@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 AGENT="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
+ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 BASE_URL="https://animixplay.to"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
-JOBFILE="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-jobs"
-TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-temp"
+GOGOHD_URL="https://gogohd.net/"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
+MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
 ROFI_THEME="aniwrapper.rasi"
 THEMES="alter|aniwrapper|dracula|doomone|fancy|material|monokai|nord|nord2|onedark"
-ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
-MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
+TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-temp"
 DPI=96
 IS_ROFI=1
 VERBOSE=0
@@ -74,51 +74,11 @@ check_input() {
 # $1: dpage_link | $2: video_url | $3: anime_id | $4: episode | $5: download_dir
 download() {
 	case $2 in
-		*manifest*m3u8*)
-			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$3/$4.mp4"
-			;;
 		*m3u8*)
-			progress "Fetching Metadata.."
-			[ -d "$TMPDIR" ] || mkdir "$TMPDIR"
-			m3u8_data="$(curl -s "$2")"
-			key_uri="$(printf "%s" "$m3u8_data" | sed -nE 's/^#EXT-X-KEY.*URI="([^"]*)"/\1/p')"
-			m3u8_data="$(printf "%s" "$m3u8_data" | sed "/#/d")"
-			printf "%s" "$m3u8_data" | grep -q "http" || relative_url=$(printf "%s" "$2" | sed "s|[^/]*$||")
-			range=$(printf "%s\n" "$m3u8_data" | wc -l)
-			# Getting and 'decrypting' encryption key
-			if [ -n "$key_uri" ]; then
-				key=$(curl -s "$key_uri" | od -A n -t x1 | tr -d ' |\n')
-				iv=$(openssl rand -hex 16)
-			fi
-			# Asyncronously downloading pieces to temporary directory
-			inf "pieces : $range"
-			for i in $(seq "$range"); do
-				curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$TMPDIR/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ %s / %s done" "$i" "$range" &
-				jobs -p > "$JOBFILE"
-				while [ "$(wc -w "$JOBFILE" | cut -d' ' -f1)" -ge 35 ]; do
-					jobs > "$JOBFILE"
-					sleep 0.05
-				done
-			done
-			wait
-			# Decrypting and concatenating the pieces
-			if [ -n "$key_uri" ]; then
-				progress "Decrypting and Concatenating pieces into single file.."
-				for i in "$TMPDIR"/*; do
-					openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts < "$i"
-				done
-			else
-				progress "Concatenating pieces into single file.."
-				cat "$TMPDIR"/* >> video.ts
-			fi
-			# cleanup and encoding
-			rm -rdf "$TMPDIR" "$JOBFILE"
-			inf "Encoding file to mp4 video.."
-			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$3/$4.mp4"
-			rm -f video.ts
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$5/$4.mp4"
 			;;
 		*)
-			axel -a -k -n 30 --header=Referer:"$1" "$2" -o "$5/$4.mp4"
+			axel -a -k -n 10 --header=Referer:"$1" "$2" -o "$5/$4.mp4"
 			;;
 	esac
 }
@@ -126,56 +86,17 @@ download() {
 generate_link() {
 	case $1 in
 		1)
-			progress "Fetching Mp4upload links.."
-			refr=$(printf "%s" "$al_links" | grep "mp4upload")
-			[ -z "$refr" ] && refr=$(printf "%s" "$resp" | grep "mp4upload")
-			[ -z "$refr" ] && return 0
-			result_links="$(curl -A "$AGENT" -s "$refr" -H "DNT: 1" -L |
-				sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
-			;;
-		2)
-			progress "Fetching Doodstream links.."
-			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
-			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
-			refr="https://dood.pm/e/$dood_id"
-			[ -z "$dood_id" ] || dood_md5=$(curl -A "$AGENT" -s "$refr" --max-time 10 | sed -nE "s|.*'(.*pass_md5.*)', func.*|\1|p")
-			[ -z "$dood_md5" ] && return 0
-			result_links="$(curl -A "$AGENT" -s "https://dood.pm${dood_md5}" -e "$refr" || true)doodstream?token=$(printf "%s" "$dood_md5" | cut -d'/' -f4 || true)&expiry=$(date +%s)000"
-			;;
-		3)
-			progress "Fetching Streamlare links.."
-			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
-			[ -z "$lare_id" ] && lare_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
-			refr="https://streamlare.com/e/$lare_id"
-			[ -z "$lare_id" ] && return 0
-			lare_token=$(curl -s -A "$AGENT" "$refr" -L | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
-			[ -z "$lare_token" ] || result_links="$(curl -s -A "$AGENT" -H "x-requested-with:XMLHttpRequest" -X POST "https://streamlare.com/api/video/download/get" -d "{\"id\":\"$lare_id\"}" \
-				-H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | sed 's/\\//g' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
-			;;
-		4)
-			progress "Fetching Okru links.."
-			ok_id=$(printf "%s" "$al_links" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
-			[ -z "$ok_id" ] && ok_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
-			refr="https://odnoklassniki.ru/videoembed/$ok_id"
-			[ -z "$ok_id" ] && return 0
-			result_links="$(curl -s "$refr" | sed -nE 's_.*data-options="([^"]*)".*_\1_p' | sed -e 's/&quot;/"/g' -e 's/\u0026/\&/g' -e 's/amp;//g' | sed 's/\\//g' | sed -nE 's/.*videos":(.*),"metadataE.*/\1/p' | tr '{|}' '\n' |
-				sed -nE 's/"name":"mobile","url":"(.*)",.*/144p >\1/p ;
-						s/"name":"lowest","url":"(.*)",.*/240p >\1/p ;
-						s/"name":"low","url":"(.*)",.*/360p >\1/p ;
-						s/"name":"sd","url":"(.*)",.*/480p >\1/p ;
-						s/"name":"hd","url":"(.*)",.*/720p >\1/p ;
-						s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
-			;;
-		5)
-			progress "Fetching Xstreamcdn links.."
+			provider_name='Xstreamcdn'
+			progress "Fetching $provider_name links.."
 			fb_id=$(printf "%s" "$resp" | sed -n "s_.*fembed.*/v/__p")
 			refr="https://fembed-hd.com/v/$fb_id"
 			[ -z "$fb_id" ] && return 0
 			result_links="$(curl -A "$AGENT" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" |
 				sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
 			;;
-		6)
-			progress "Fetching Animixplay Direct links.."
+		2)
+			provider_name='Animixplay'
+			progress "Fetching $provider_name Direct link.."
 			refr="$BASE_URL"
 			[ -z "$id" ] && return 0
 			enc_id=$(printf "%s" "$id" | base64)
@@ -183,19 +104,21 @@ generate_link() {
 			result_links="$(curl -s "$BASE_URL/api/live${ani_id}" -A "$AGENT" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
 			;;
 		*)
-			progress "Fetching Goload Direct links.."
-			refr="https://goload.pro"
+			provider_name='Gogoanime'
+			progress "Fetching $provider_name Direct link.."
+			refr="$GOGOHD_URL"
 			[ -z "$id" ] && return 0
 			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			iv=$(printf "%s" "$resp" | sed -n '3p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			second_key=$(printf "%s" "$resp" | sed -n '4p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			token=$(printf "%s" "$resp" | head -1 | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
 			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" -a)
-			data=$(curl -A "$AGENT" -s -H "X-Requested-With:XMLHttpRequest" "https://goload.pro/encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+			data=$(curl -A "$AGENT" -sL -H "X-Requested-With:XMLHttpRequest" "${GOGOHD_URL}encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
 			result_links="$(printf '%s' "$data" | base64 -d 2> /dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2> /dev/null |
 				sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')"
 			;;
 	esac
+	printf '%s' "$video_url"
 }
 
 get_video_quality_mp4() {
@@ -222,46 +145,40 @@ get_video_quality_m3u8() {
 	m3u8_links=$(curl -A "$AGENT" -s --referer "$dpage_link" "$1")
 	case $quality in
 		best)
-			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1)
+			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*).*_\1_p' | sort -nr | head -1)
 			;;
 		worst)
-			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | tail -1)
+			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*).*_\1_p' | sort -nr | tail -1)
 			;;
 		*)
 			res_selector=$quality
-			if ! (printf '%s' "$m3u8_links" | grep -q "$quality,"); then
+			if ! (printf '%s' "$m3u8_links" | grep -q "x$quality"); then
 				err "Current video quality is not available (defaulting to best quality)"
-				res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1)
+				res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*).*_\1_p' | sort -nr | head -1)
 			fi
 			;;
 	esac
-	video_url=$(printf '%s' "$m3u8_links" | sed -n "/$res_selector,/{n;p;}" | tr -d '\r')
+	video_url=$(printf '%s' "$m3u8_links" | sed -n "/x$res_selector/{n;p;}" | tr -d '\r')
 	printf "%s" "$m3u8_links" | grep -q "http" || video_url="$(printf "%s" "$1" | sed 's|[^/]*$||')$video_url" || true
 }
 
 # chooses the link for the set quality
 get_video_link() {
 	dpage_url="$1"
-	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
-	al_links=$(printf "%s" "$al_data" | sed -e 's_:\[_\n_g' -e 's_:"_\n"_g' | sed -e 's/].*//g' -e '1,2d' | sed -n "${episode}p" | tr -d '"' | tr "," "\n")
-	[ -z "$id" ] && id=$(printf "%s" "$al_links" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=([^&]*).*/\1/p')
 	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
-	resp="$(curl -A "$AGENT" -s "https://goload.pro/streaming.php?id=$id" |
+	resp="$(curl -A "$AGENT" -sL "${GOGOHD_URL}streaming.php?id=$id" |
 		sed -nE 's/.*class="container-(.*)">/\1/p ;
 			s/.*class="wrapper container-(.*)">/\1/p ;
 			s/.*class=".*videocontent-(.*)">/\1/p ;
 			s/.*data-value="(.*)">.*/\1/p ;
 			s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
-	# providers: Doodstream for default, mp4upload for downloading. For best quality use okru, for fallback use goload. Then it's a round robin of which links are returned.
-	provider=2
-	uname -a | grep -qE '[Aa]ndroid' && provider=3
-	[ "$is_download" -eq 1 ] && provider=1
-	[ "$quality" != "best" ] && provider=4
+	provider=1
 	[ -n "$select_provider" ] && provider="$select_provider"
 	i=0
-	while [ "$i" -lt 7 ] && [ -z "$result_links" ]; do
+	while [ "$i" -lt 3 ] && [ -z "$result_links" ]; do
 		generate_link "$provider"
-		provider=$((provider % 7 + 1))
+		provider=$((provider % 3 + 1))
 		: $((i += 1))
 	done
 	if printf '%s' "$result_links" | grep -q "m3u8"; then
@@ -304,37 +221,11 @@ process_search() {
 	printf "%s\n" "$search_results"
 }
 
-# searches on gogoanime (instead of gogoplay) because they index english titles
-extended_search() {
-	indexing_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
-	search=$(printf '%s' "$1" | tr ' ' '-')
-	curl -s "$indexing_url//search.html" -G -d "keyword=$search" |
-		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
-}
-
 episode_list() {
-	data=$(curl -A "$AGENT" -s "$BASE_URL/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p" | tr -d '\r')
-	#extract all embed links of all episode from data
-	select_ep_result=$(printf "%s" "$data" | head -1 | tr "," "\n" | sed '/extra/d' | sed -nE 's_".*":"(.*)".*_\1_p')
-	lg "Episode List: $select_ep_result"
+	select_ep_result=$(curl -A "$AGENT" -s "$BASE_URL/v1/$1" | sed -nE "s_.*epslistplace.*>(.*)</div>_\1_p" | tr "," "\n" | sed -e '/extra/d' -e '/PV/d' | sed -nE 's_".*":"(.*)".*_\1_p')
 	FIRST_EP_NUMBER=1
 	[ -z "$select_ep_result" ] && LAST_EP_NUMBER=0 || LAST_EP_NUMBER=$(printf "%s\n" "$select_ep_result" | wc -l)
-	lg "First Ep: $FIRST_EP_NUMBER, Last Ep: $LAST_EP_NUMBER"
-}
-
-#from allanime server
-al_episode_list() {
-	ext_id=$(printf "%s" "$data" | tail -1)
-	al_server_link=$(curl -s -H "x-requested-with:XMLHttpRequest" -X POST "https://animixplay.to/api/search" -d "recomended=$ext_id" -A "$AGENT" |
-		sed -nE 's_.*"AL","items":\[(.*)\]\},.*_\1_p' | tr '{|}' '\n' | sed -nE 's_"url":"(.*)",.*title.*_\1_p')
-	[ -z "$al_server_link" ] && return 0
-	progress "(Allanime) Searching Episodes.."
-	if printf "%s" "$selection_id" | grep -q "dub"; then
-		al_server_link=$(printf "%s" "$al_server_link" | grep "dub" | head -1)
-	else
-		al_server_link=$(printf "%s" "$al_server_link" | sed 's/-dub//' | head -1)
-	fi
-	al_data=$(curl -s "${BASE_URL}${al_server_link}" -A "$AGENT" | sed -nE 's_.*epslistplace.*>(.*)</div>_\1_p')
+	lg "First Ep #: $FIRST_EP_NUMBER | Last Ep #: $LAST_EP_NUMBER"
 }
 
 open_episode() {
@@ -424,7 +315,6 @@ stream() {
 		selection_id="$anime_id"
 		insert_history "search" "$anime_id" &
 		episode_list "$anime_id"
-		al_episode_list
 	else
 		search_results=$(process_search $query) # want word splitting to account for both input cases
 		[ -z "$search_results" ] && die
@@ -533,7 +423,9 @@ parse_args() {
 				;;
 			P)
 				select_provider="$OPTARG"
-				((select_provider < 1 || select_provider > 7)) && die "Invalid provider: $select_provider"
+				provider_begin=1
+				provider_end=3
+				((select_provider < provider_begin || select_provider > provider_end)) && die "Invalid provider: $select_provider"
 				;;
 			*)
 				inf "Invalid option"
@@ -706,7 +598,6 @@ main() {
 			# get everything after -episode-
 			ep_choice_start="${selection##*/ep}"
 			episode_list "$selection_id"
-			al_episode_list
 			;;
 	esac
 

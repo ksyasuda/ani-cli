@@ -259,7 +259,7 @@ get_player() {
 
 # prompts the user to select a provider and returns the provider name and index
 get_provider() {
-	providers="1. Mp4upload|2. Doodstream|3. Streamlare|4. Okru|5. Xstreamcdn|6. Animixplay|7. Gogoanime"
+	providers="1. Xstreamcdn|2. Animixplay|3. Gogoanime"
 	if ((IS_ROFI)); then
 		selection="$(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
 			-i -l 7 -theme-str 'listview {columns: 1;} window {width: 45%;}' \
@@ -268,11 +268,13 @@ get_provider() {
 		[ -z "$selection" ] && selection=1
 		provider_idx="${selection:0:1}"
 	else
+		provider_begin=1
+		provider_end=3
 		printf "%s%s\n" "Select provider:" "[$providers]"
-		prompt "Enter provider [1-7]"
+		prompt "Enter provider [$provider_begin-$provider_end]"
 		read -r provider_idx
 		[ -z "$provider_idx" ] && die "ERROR: provider index cannot be empty"
-		((provider_idx < 1 || provider_idx > 7)) && die "ERROR: provider index must be between 1 and 7"
+		((provider_idx < provider_begin || provider_idx > provider_end)) && die "ERROR: provider index must be between $provider_begin and $provider_end"
 	fi
 	while IFS='|' read -ra providers_list; do
 		for p in "${providers_list[@]}"; do
@@ -284,7 +286,7 @@ get_provider() {
 			((++idx))
 		done
 	done <<< "$providers"
-	[ -z "$provider" ] && provider="mp4upload"
+	[ -z "$provider" ] && provider="Xstreamcdn"
 	inf "Selected provider: $provider"
 }
 
@@ -332,7 +334,6 @@ check_flags() {
 	if ((SELECT_PROVIDER)); then
 		get_provider || provider_idx=1
 		lg "PROVIDER INDEX -> $provider_idx"
-		lg "SELECTED PROVIDER -> $provider"
 		args+=(-P"$provider_idx")
 	fi
 	if ((SILENT)); then
