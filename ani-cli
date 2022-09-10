@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 AGENT="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
+ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 BASE_URL="https://animixplay.to"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
-JOBFILE="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-jobs"
-TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-temp"
+GOGOHD_URL="https://gogohd.net/"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
+MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
 ROFI_THEME="aniwrapper.rasi"
 THEMES="alter|aniwrapper|dracula|doomone|fancy|material|monokai|nord|nord2|onedark"
-ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
-MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
+TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-temp"
 DPI=96
 IS_ROFI=1
 VERBOSE=0
@@ -106,14 +106,14 @@ generate_link() {
 		*)
 			provider_name='Gogoanime'
 			progress "Fetching $provider_name Direct link.."
-			refr="https://goload.pro"
+			refr="$GOGOHD_URL"
 			[ -z "$id" ] && return 0
 			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			iv=$(printf "%s" "$resp" | sed -n '3p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			second_key=$(printf "%s" "$resp" | sed -n '4p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			token=$(printf "%s" "$resp" | head -1 | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
 			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" -a)
-			data=$(curl -A "$AGENT" -s -H "X-Requested-With:XMLHttpRequest" "https://goload.pro/encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+			data=$(curl -A "$AGENT" -sL -H "X-Requested-With:XMLHttpRequest" "${GOGOHD_URL}encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
 			result_links="$(printf '%s' "$data" | base64 -d 2> /dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2> /dev/null |
 				sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')"
 			;;
@@ -145,29 +145,29 @@ get_video_quality_m3u8() {
 	m3u8_links=$(curl -A "$AGENT" -s --referer "$dpage_link" "$1")
 	case $quality in
 		best)
-			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1)
+			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*).*_\1_p' | sort -nr | head -1)
 			;;
 		worst)
-			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | tail -1)
+			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*).*_\1_p' | sort -nr | tail -1)
 			;;
 		*)
 			res_selector=$quality
-			if ! (printf '%s' "$m3u8_links" | grep -q "$quality,"); then
+			if ! (printf '%s' "$m3u8_links" | grep -q "x$quality"); then
 				err "Current video quality is not available (defaulting to best quality)"
-				res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1)
+				res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*).*_\1_p' | sort -nr | head -1)
 			fi
 			;;
 	esac
-	video_url=$(printf '%s' "$m3u8_links" | sed -n "/$res_selector,/{n;p;}" | tr -d '\r')
+	video_url=$(printf '%s' "$m3u8_links" | sed -n "/x$res_selector/{n;p;}" | tr -d '\r')
 	printf "%s" "$m3u8_links" | grep -q "http" || video_url="$(printf "%s" "$1" | sed 's|[^/]*$||')$video_url" || true
 }
 
 # chooses the link for the set quality
 get_video_link() {
 	dpage_url="$1"
-	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=([^&]*).*/\1/p')
 	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
-	resp="$(curl -A "$AGENT" -s "https://goload.pro/streaming.php?id=$id" |
+	resp="$(curl -A "$AGENT" -sL "${GOGOHD_URL}streaming.php?id=$id" |
 		sed -nE 's/.*class="container-(.*)">/\1/p ;
 			s/.*class="wrapper container-(.*)">/\1/p ;
 			s/.*class=".*videocontent-(.*)">/\1/p ;
