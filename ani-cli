@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 AGENT="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
-ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 BASE_URL="https://animixplay.to"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aniwrapper"
 GOGOHD_URL="https://gogohd.net/"
 HISTORY_DB="$CFG_DIR/history.sqlite3"
+ANIWRAPPER_ICON_PATH="$CFG_DIR/icons/icon-64.png"
 MAISAN_ICON_PATH="$CFG_DIR/icons/MYsan.png"
 ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
 ROFI_THEME="aniwrapper.rasi"
