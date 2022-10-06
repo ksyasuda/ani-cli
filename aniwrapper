@@ -8,7 +8,7 @@ CFG_FILE="$CFG_DIR/themes/aniwrapper.rasi"
 DEFAULT_DOWNLOAD="$HOME/Videos/sauce"
 ROFI_THEME="aniwrapper.rasi"
 THEMES="alter|aniwrapper|dracula|doomone|fancy|material|monokai|nord|nord2|onedark"
-QUALITIES="1. best|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst"
+QUALITIES="1. best|2. worst"
 SUPPORTED_PLAYERS="mpv|vlc"
 QUALITY=best
 PLAYER_FN=mpv
@@ -85,9 +85,6 @@ quit() {
 }
 
 run() {
-	if ((!IS_PLAY_FROM_FILE && !IS_SYNC && GET_QUALITY)); then
-		get_quality
-	fi
 	if ((IS_CUSTOM_THEME)); then
 		args+=(-T"$CFG_FILE")
 	elif ((!IS_CUSTOM_THEME)); then
@@ -106,7 +103,7 @@ get_quality() {
 			-sep '|' -no-custom <<< "$QUALITIES")
 		QUALITY=$(awk '{print $2}' <<< "$selection")
 	else
-		qualities="best|1080p|720p|480p|360p|worst"
+		qualities="best|worst"
 		prompt "Choose quality " "[$qualities]"
 		read -r QUALITY
 		while [[ ! "$QUALITY" =~ ($qualities) ]]; do
@@ -342,6 +339,9 @@ check_flags() {
 	if ((IS_VERBOSE)); then
 		args+=(-v)
 	fi
+    if ((GET_QUALITY)); then
+        args+=(-q)
+    fi
 
 	lg "ARGS: ${args[*]}"
 	if ((IS_AUTOPLAY || IS_DOWNLOAD || !IS_ROFI || IS_RESUME || IS_PLAY_FROM_FILE)); then

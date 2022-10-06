@@ -143,7 +143,7 @@ get_dl_dir() {
 
 # sets the video quality
 set_video_quality() {
-	((IS_MP4)) && qualities="best|1080p|720p|480p|360p|worst" || qualities="best|worst"
+	qualities="best|worst"
 	prompt "Choose quality [$qualities]"
 	read -r quality
 	while [[ ! "$quality" =~ ($qualities) ]]; do
@@ -152,6 +152,19 @@ set_video_quality() {
 		read -r quality
 	done
 	[ -z "$quality" ] && die "No quality selected"
+}
+
+# gets the video quality from the user
+get_quality() {
+	qualities="best|worst"
+    prompt "Choose quality " "[$qualities]"
+    read -r quality
+    while [[ ! "$quality" =~ ($qualities) ]]; do
+        lg "$quality not a valid quality -> [$qualities]"
+        prompt "Choose quality " "[$qualities]"
+        read -r quality
+    done
+	lg "selected quality: $quality"
 }
 
 # vim :ft=sh
