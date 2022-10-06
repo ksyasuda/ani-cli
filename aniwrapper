@@ -22,6 +22,7 @@ IS_ROFI=1
 IS_SYNC=0
 IS_ALTERNATE_PLAYER=0
 IS_VERBOSE=0
+IS_SELECT_EPISODE=1
 SELECT_PROVIDER=0
 SILENT=0
 
@@ -34,9 +35,9 @@ help_text() {
 		printf "%s\n" "$line"
 	done <<< "
 Usage:
-	aniwrapper [-adhpqSv] [-t <theme> | -T <config_path>] [<query>]
+	aniwrapper [-adehpqSv] [-t <theme> | -T <config_path>] [<query>]
 	aniwrapper -f <directory_path> [-t <theme> | -T <config_path>] [-pSv] [<query>]\
-	aniwrapper -c [-dhpqSv] [<query>]
+	aniwrapper -c [-dehpqSv] [<query>]
 	aniwrapper -Q <query>
 	aniwrapper -C
 Options:
@@ -44,6 +45,7 @@ Options:
 	-c  enable command-line mode (rofi disabled)
 	-C  connect to history database
 	-d  download episode in command-line mode
+        -e  [<episode> | <begin> - <end>] select episode(s) to stream/download
 	-f  <path_to_directory> (no trailing slash) specify starting directory for play for file mode
 	-h  show this help text
 	-p  enable player selection menu
@@ -154,7 +156,7 @@ set_theme() {
 }
 
 parse_args() {
-	while getopts 'acCdD:f:hpPqQ:rSt:T:v' OPT; do
+	while getopts 'acCdD:e:f:hpPqQ:rSt:T:v' OPT; do
 		case "$OPT" in
 			a)
 				IS_AUTOPLAY=1
@@ -174,6 +176,11 @@ parse_args() {
 				;;
 			D)
 				DPI="$OPTARG"
+				;;
+			e)
+				episodes="$OPTARG"
+				[[ "$episodes" =~ ^[0-9]+(-[0-9]+)? ]] || die "Invalid episode range: $episodes"
+				IS_SELECT_EPISODE=0
 				;;
 			f)
 				IS_PLAY_FROM_FILE=1
@@ -339,9 +346,12 @@ check_flags() {
 	if ((IS_VERBOSE)); then
 		args+=(-v)
 	fi
-    if ((GET_QUALITY)); then
-        args+=(-q)
-    fi
+	if ((GET_QUALITY)); then
+		args+=(-q)
+	fi
+	if ((!IS_SELECT_EPISODE)); then
+		args+=(-e"$episodes")
+	fi
 
 	lg "ARGS: ${args[*]}"
 	if ((IS_AUTOPLAY || IS_DOWNLOAD || !IS_ROFI || IS_RESUME || IS_PLAY_FROM_FILE)); then

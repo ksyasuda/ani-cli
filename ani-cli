@@ -11,6 +11,7 @@ ROFI_CFG="$CFG_DIR/themes/aniwrapper.rasi"
 ROFI_THEME="aniwrapper.rasi"
 THEMES="alter|aniwrapper|dracula|doomone|fancy|material|monokai|nord|nord2|onedark"
 TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-temp"
+SELECT_EPISODES=1
 DPI=96
 GET_QUALITY=0
 IS_ROFI=1
@@ -308,6 +309,23 @@ open_episode() {
 	fi
 }
 
+# Sets $ep_choice_start = 1 if only one episode exists
+# else call episode_selection
+get_episode() {
+	if ((!SELECT_EPISODES)); then
+		read -r ep_choice_start ep_choice_end <<< "${episodes//-/}"
+		# error if ep_choice_start is not a number
+		[[ -z "$ep_choice_start" || ! "$ep_choice_start" =~ ^[0-9]+$ ]] && die "Invalid episode number: ${ep_choice_start:-NULL}"
+		# if ep_choice_end is not a number, set it to ep_choice_start
+		[[ -n "$ep_choice_end" && ! "$ep_choice_end" =~ ^[0-9]+$ ]] && ep_choice_end="$ep_choice_start"
+
+	elif (((FIRST_EP_NUMBER == LAST_EP_NUMBER && (FIRST_EP_NUMBER == 0 || FIRST_EP_NUMBER == 1)))); then
+		ep_choice_start=1
+	else
+		episode_selection
+	fi
+}
+
 stream() {
 	lg "Running stream()"
 	if [ "$#" -eq 0 ]; then
@@ -331,11 +349,7 @@ stream() {
 			die "No anime selection found"
 		fi
 	fi
-	if (((FIRST_EP_NUMBER == LAST_EP_NUMBER && (FIRST_EP_NUMBER == 0 || FIRST_EP_NUMBER == 1)))); then
-		ep_choice_start=1
-	else
-		episode_selection
-	fi
+	get_episode
 }
 
 parse_args() {
@@ -345,7 +359,7 @@ parse_args() {
 	is_download=0
 	is_resume=0
 	is_autoplay=0
-	while getopts 'ad:Hsvqcf:t:T:CQ:D:Sp:P:rR' OPT; do
+	while getopts 'ad:e:Hsvqcf:t:T:CQ:D:Sp:P:rR' OPT; do
 		case "$OPT" in
 			a)
 				is_autoplay=1
@@ -354,6 +368,11 @@ parse_args() {
 				is_download=1
 				download_dir="$OPTARG"
 				lg "DOWNLOAD DIR: $download_dir"
+				;;
+			e)
+				episodes="$OPTARG"
+				[[ "$episodes" =~ ^[0-9]+(-[0-9]+)? ]] || die "Invalid episode range: $episodes"
+				SELECT_EPISODES=0
 				;;
 			r)
 				is_resume=1
@@ -470,7 +489,7 @@ show_menu() {
 					;;
 
 				s)
-					episode_selection
+					get_episode
 					episode=$ep_choice_start
 					;;
 
@@ -605,7 +624,7 @@ main() {
 			lg "SELECTION: $selection"
 			selection_id="${selection%%/*}"
 			episode_list "$selection_id"
-			episode_selection
+			get_episode
 			;;
 	esac
 
