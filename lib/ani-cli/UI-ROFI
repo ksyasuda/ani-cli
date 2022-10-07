@@ -206,6 +206,7 @@ set_video_quality() {
 		-i -l 6 -no-custom -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
 		-p "Choose quality:" -window-title 'aniwrapper' -selected-row "$cur_quality" <<< "$qualities")
 	quality=$(awk '{ print $2 }' <<< "$choice")
+	NEW_QUALITY=1
 }
 
 # vim :ft=sh
