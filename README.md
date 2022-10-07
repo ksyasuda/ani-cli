@@ -145,7 +145,7 @@ aniwrapper -c # Use ani-cli command-line mode (rofi disabled)
 aniwrapper -C # Connect to history database
 aniwrapper -d # Download anime in command-line mode
 aniwrapper -d <query> # Run in download mode (best quality), searching for <query>
-aniwrapper -e <episode> or <"begin_episode - end_episode">
+aniwrapper -e <episode> or <begin_episode - end_episode>
 aniwrapper -f <starting_directory> # Specify starting directory for play_from_file mode, bypassing main menu
 aniwrapper -h # Show help menu
 aniwrapper -p # Enable player selection menu
