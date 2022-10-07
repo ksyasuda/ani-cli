@@ -192,7 +192,7 @@ get_dl_dir() {
 
 # sets the video quality
 set_video_quality() {
-	((IS_MP4)) && qualities="1. best|2. 1080p|3. 720p|4. 480p|5. 360p|6. worst" || qualities="1. best|2. worst"
+	qualities="1. best|2. worst"
 	while IFS='|' read -ra quals; do
 		for q in "${quals[@]}"; do
 			if [[ "$(awk '{ print $NF }' <<< "$q")" == "$quality" ]]; then
@@ -206,6 +206,7 @@ set_video_quality() {
 		-i -l 6 -no-custom -sep '|' -a "$cur_quality" -mesg "$(generate_span "Current quality: $quality")" \
 		-p "Choose quality:" -window-title 'aniwrapper' -selected-row "$cur_quality" <<< "$qualities")
 	quality=$(awk '{ print $2 }' <<< "$choice")
+	NEW_QUALITY=1
 }
 
 # vim :ft=sh

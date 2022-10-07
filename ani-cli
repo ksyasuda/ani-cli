@@ -12,10 +12,12 @@ ROFI_THEME="aniwrapper.rasi"
 THEMES="alter|aniwrapper|dracula|doomone|fancy|material|monokai|nord|nord2|onedark"
 TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/aniwrapper-temp"
 DPI=96
+GET_QUALITY=0
 IS_ROFI=1
 VERBOSE=0
 SILENT=0
 FIRST_EP_NUMBER=1
+NEW_QUALITY=0
 PLAYER_FN="mpv"
 PID=0
 
@@ -182,8 +184,14 @@ get_video_link() {
 		: $((i += 1))
 	done
 	if printf '%s' "$result_links" | grep -q "m3u8"; then
+		lg "Using m3u8 link"
+		# if a new quality has not been selected already, then get video quality
+		# from user
+		((GET_QUALITY && !NEW_QUALITY)) && set_video_quality
 		get_video_quality_m3u8 "$result_links"
 	else
+		lg "Using mp4 link"
+		((GET_QUALITY && !NEW_QUALITY)) && set_video_quality
 		video_url=$(get_video_quality_mp4 "$result_links")
 	fi
 	unset result_links
@@ -223,6 +231,7 @@ process_search() {
 
 episode_list() {
 	select_ep_result=$(curl -A "$AGENT" -s "$BASE_URL/v1/$1" | sed -nE "s_.*epslistplace.*>(.*)</div>_\1_p" | tr "," "\n" | sed -e '/extra/d' -e '/PV/d' | sed -nE 's_".*":"(.*)".*_\1_p')
+	lg "Select Episode Result: $select_ep_result"
 	FIRST_EP_NUMBER=1
 	[ -z "$select_ep_result" ] && LAST_EP_NUMBER=0 || LAST_EP_NUMBER=$(printf "%s\n" "$select_ep_result" | wc -l)
 	lg "First Ep #: $FIRST_EP_NUMBER | Last Ep #: $LAST_EP_NUMBER"
@@ -299,6 +308,24 @@ open_episode() {
 	fi
 }
 
+# Sets $ep_choice_start = 1 if only one episode exists
+# else call episode_selection
+get_episode() {
+	[[ "$LAST_EP_NUMBER" -eq 0 ]] && die "Episodes not released yet for $anime_id"
+	if ((!is_select_episodes)); then
+		read -r ep_choice_start ep_choice_end <<< "${episodes//-/}"
+		# error if ep_choice_start is not a number
+		[[ -z "$ep_choice_start" || ! "$ep_choice_start" =~ ^[0-9]+$ ]] && die "Invalid episode number: ${ep_choice_start:-NULL}"
+		# if ep_choice_end is not a number, set it to ep_choice_start
+		[[ -n "$ep_choice_end" && ! "$ep_choice_end" =~ ^[0-9]+$ ]] && ep_choice_end="$ep_choice_start"
+
+	elif (((FIRST_EP_NUMBER == LAST_EP_NUMBER && (FIRST_EP_NUMBER == 0 || FIRST_EP_NUMBER == 1)))); then
+		ep_choice_start=1
+	else
+		episode_selection
+	fi
+}
+
 stream() {
 	lg "Running stream()"
 	if [ "$#" -eq 0 ]; then
@@ -322,21 +349,18 @@ stream() {
 			die "No anime selection found"
 		fi
 	fi
-	if (((FIRST_EP_NUMBER == LAST_EP_NUMBER && (FIRST_EP_NUMBER == 0 || FIRST_EP_NUMBER == 1)))); then
-		ep_choice_start=1
-	else
-		episode_selection
-	fi
+	get_episode
 }
 
 parse_args() {
 	download_dir="."
 	scrape=query
 	quality=best
+	is_select_episodes=1
 	is_download=0
 	is_resume=0
 	is_autoplay=0
-	while getopts 'ad:Hsvq:cf:t:T:CQ:D:Sp:P:rR' OPT; do
+	while getopts 'ad:e:Hsvqcf:t:T:CQ:D:Sp:P:rR' OPT; do
 		case "$OPT" in
 			a)
 				is_autoplay=1
@@ -345,6 +369,11 @@ parse_args() {
 				is_download=1
 				download_dir="$OPTARG"
 				lg "DOWNLOAD DIR: $download_dir"
+				;;
+			e)
+				episodes="$OPTARG"
+				[[ "$episodes" =~ ^[0-9]+(-[0-9]+)? ]] || die "Invalid episode range: $episodes"
+				is_select_episodes=0
 				;;
 			r)
 				is_resume=1
@@ -362,8 +391,7 @@ parse_args() {
 				VERBOSE=1
 				;;
 			q)
-				quality="$OPTARG"
-				lg "passed in quality: $quality"
+				GET_QUALITY=1
 				;;
 			c)
 				IS_ROFI=0
@@ -461,7 +489,7 @@ show_menu() {
 					;;
 
 				s)
-					episode_selection
+					get_episode
 					episode=$ep_choice_start
 					;;
 
@@ -489,7 +517,8 @@ show_menu() {
 					is_download=1
 					;;
 				q)
-					break
+					lg "Exiting..."
+					exit 0
 					;;
 
 				*)
@@ -577,7 +606,7 @@ main() {
 				anime_name="${updated_episode%%/*}"
 				lg "ANIME NAME: $anime_name"
 				if ! check_db "search" "$anime_name"; then
-					stmt="SELECT COUNT(*) FROM watch_history WHERE anime_name = '$anime_name' AND episode_number = '${updated_episode##*/ep}';"
+					stmt="SELECT COUNT(*) FROM search_history WHERE anime_name = '$anime_name';"
 					lg "QUERY: $stmt"
 					if [[ "$(run_stmt "$stmt")" -ne 0 ]]; then
 						lg "$updated_episode watched before... adding to watched list"
@@ -593,11 +622,9 @@ main() {
 				die "No selection made"
 			fi
 			lg "SELECTION: $selection"
-			# get everything before -episode-
 			selection_id="${selection%%/*}"
-			# get everything after -episode-
-			ep_choice_start="${selection##*/ep}"
 			episode_list "$selection_id"
+			get_episode
 			;;
 	esac
 
@@ -605,13 +632,14 @@ main() {
 
 	for ep in $episodes; do
 		open_episode "$selection_id" "$ep" "$download_dir"
-		sleep 2
+		wait
+		((is_download)) && sleep 2
 	done
 
 	if ((is_download)); then
-		lg "Finished downloading episodes: $episodes for $selection_id... exiting"
+		notification "Finished downloading episodes: $episodes for $selection_id... exiting"
 		exit 0
-	elif ((!is_autoplay)); then
+	elif ((!is_autoplay && is_select_episodes)); then
 		show_menu
 	fi
 }

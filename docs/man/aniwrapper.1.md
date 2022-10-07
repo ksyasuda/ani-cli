@@ -44,6 +44,9 @@ Defaults:
 **-d**
 : Enable downloading anime in command-line mode
 
+**-e** _episode_ **or** _begin_episode - end_episode_
+: Select episode(s) to stream/download
+
 **-f**
 : Specify the starting search directory for "Play from File" mode
 

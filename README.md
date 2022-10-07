@@ -145,6 +145,7 @@ aniwrapper -c # Use ani-cli command-line mode (rofi disabled)
 aniwrapper -C # Connect to history database
 aniwrapper -d # Download anime in command-line mode
 aniwrapper -d <query> # Run in download mode (best quality), searching for <query>
+aniwrapper -e <episode> or <begin_episode - end_episode>
 aniwrapper -f <starting_directory> # Specify starting directory for play_from_file mode, bypassing main menu
 aniwrapper -h # Show help menu
 aniwrapper -p # Enable player selection menu
@@ -261,37 +262,6 @@ Change aniwrapper theme
 </div>
 
 </details>
-
-## ani-cli
-
-```
-# watch anime
-ani-cli <query>
-
-# verbose logging
-ani-cli -v
-
-# download anime
-ani-cli -d <download_directory>
-
-# resume watching anime
-ani-cli -H
-
-# sync history across devices
-ani-cli -s
-
-# choose quality
-ani-cli -q <best (default)|1080p|720p|480p|360p|worst>
-
-# choose rofi theme from presets
-ani-cli -t <aniwrapper (default)|dracula|fancy|material|monokai|nord|nord2|onedark>
-
-# Specify starting directory for play_from_file mode (does not work with -c)
-ani-cli -f <starting_directory>
-
-# run ani-cli in command-line mode (rofi disabled)
-ani-cli -c
-```
 
 # Themes
 
