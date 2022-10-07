@@ -312,6 +312,7 @@ open_episode() {
 # Sets $ep_choice_start = 1 if only one episode exists
 # else call episode_selection
 get_episode() {
+	[[ "$LAST_EP_NUMBER" -eq 0 ]] && die "Episodes not released yet for $anime_id"
 	if ((!SELECT_EPISODES)); then
 		read -r ep_choice_start ep_choice_end <<< "${episodes//-/}"
 		# error if ep_choice_start is not a number
