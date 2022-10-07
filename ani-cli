@@ -632,15 +632,17 @@ main() {
 
 	for ep in $episodes; do
 		open_episode "$selection_id" "$ep" "$download_dir"
-		wait
+		if ((!is_autoplay && is_select_episodes)); then
+			show_menu
+		else
+			wait
+		fi
 		((is_download)) && sleep 2
 	done
 
 	if ((is_download)); then
 		notification "Finished downloading episodes: $episodes for $selection_id... exiting"
 		exit 0
-	elif ((!is_autoplay && is_select_episodes)); then
-		show_menu
 	fi
 }
 
