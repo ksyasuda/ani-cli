@@ -632,7 +632,7 @@ main() {
 
 	for ep in $episodes; do
 		open_episode "$selection_id" "$ep" "$download_dir"
-		if ((!is_autoplay && is_select_episodes)); then
+		if ((!is_download && !is_autoplay && is_select_episodes)); then
 			show_menu
 		else
 			wait
