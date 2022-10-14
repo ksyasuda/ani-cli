@@ -606,7 +606,9 @@ main() {
 				anime_name="${updated_episode%%/*}"
 				lg "ANIME NAME: $anime_name"
 				if ! check_db "search" "$anime_name"; then
-					stmt="SELECT COUNT(*) FROM search_history WHERE anime_name = '$anime_name';"
+					ep="${updated_episode##*/ep}"
+					[ "$ep" = "$anime_name" ] && ep=1
+					stmt="SELECT COUNT(*) FROM watch_history WHERE anime_name = '$anime_name' AND episode_number = '${ep:-1}';"
 					lg "QUERY: $stmt"
 					if [[ "$(run_stmt "$stmt")" -ne 0 ]]; then
 						lg "$updated_episode watched before... adding to watched list"
@@ -623,8 +625,11 @@ main() {
 			fi
 			lg "SELECTION: $selection"
 			selection_id="${selection%%/*}"
+			anime_id="$selection_id"
 			episode_list "$selection_id"
-			get_episode
+			ep_choice_start="${selection##*/ep}"
+			lg "EP_CHOICE_START: $ep_choice_start"
+			[ "$ep_choice_start" = "$selection_id" ] && get_episode
 			;;
 	esac
 
