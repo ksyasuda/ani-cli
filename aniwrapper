@@ -263,7 +263,7 @@ get_player() {
 
 # prompts the user to select a provider and returns the provider name and index
 get_provider() {
-	providers="1. Xstreamcdn|2. Animixplay|3. Gogoanime"
+	providers="1. Animixplay|2. Xstreamcdn|3. Gogoanime"
 	if ((IS_ROFI)); then
 		selection="$(rofi -dmenu -config "$CFG_FILE" -DPI "$DPI" \
 			-i -l 7 -theme-str 'listview {columns: 1;} window {width: 45%;}' \
