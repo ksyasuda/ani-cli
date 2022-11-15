@@ -93,11 +93,8 @@ generate_link() {
 			refr="$BASE_URL"
 			[ -z "$id" ] && return 0
 			enc_id=$(printf "%s" "$id" | base64)
-			second_enc_id=$(printf "%s" "$enc_id" | base64)
-			increment_char=$(printf "%s" "$enc_id" | sed -e 's/=//g' -e 's/.*\(.\)$/\1/' | tr "0-9a-zA-Z" "1-9a-zA-Z_")
-			new_enc_id=$(printf "%s" "$enc_id" | sed -e 's/=//g' -e "s/\(.*\).$/\1$increment_char/")
-			ani_id=$(printf "cW9%sMVFhzM0dyVTh3ZTlP%s" "$new_enc_id" "$second_enc_id")
-			result_links="$(curl -s "$BASE_URL/api/${ani_id}" -A "$AGENT" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
+			ani_id=$(printf "%sLTXs3GrU8we9O%s" "$id" "$enc_id" | base64)
+			result_links="$(curl -s "$BASE_URL/api/cW9${ani_id}" -A "$AGENT" -I | sed -nE 's_[L|l]ocation: https?://[^#]*#([^#]*).*_\1_p' | base64 --decode)"
 			;;
 		2)
 			provider_name='Xstreamcdn'
@@ -116,11 +113,11 @@ generate_link() {
 			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			iv=$(printf "%s" "$resp" | sed -n '3p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			second_key=$(printf "%s" "$resp" | sed -n '4p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-			token=$(printf "%s" "$resp" | head -1 | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
+			token=$(printf "%s" "$resp" | head -1 | base64 --decode | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
 			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" -a)
 			data=$(curl -A "$AGENT" -sL -H "X-Requested-With:XMLHttpRequest" "${GOGOHD_URL}encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-			result_links="$(printf '%s' "$data" | base64 -d 2> /dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2> /dev/null |
-				tr -d "\\" | sed -nE "s_.*file\":\"([^\"]*)\".*source.*_\1_p")"
+			result_links="$(printf '%s' "$data" | base64 --decode 2> /dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2> /dev/null |
+				tr -d \\\\ | sed -nE "s_.*file\":\"([^\"]*)\".*source.*_\1_p")"
 			;;
 	esac
 	printf '%s' "$video_url"
